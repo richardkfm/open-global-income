@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+- Automated World Bank data importer (`npm run data:update`)
+- Admin-editable `config.json` for all importer tunables (data sources, indicators, countries, income thresholds, output rounding)
+- Modular importer pipeline: config → fetch → transform → validate → write
+- Importer validates output before overwriting `countries.json` (same rules as test suite)
+- Unit tests for transformer, validator, and config validation (15 tests)
+- Retry with exponential backoff for World Bank API calls
+
+### Changed
+- Data version format now dynamic (e.g. `worldbank-2026` based on fetch year)
+- Loader test uses pattern match for data version instead of exact string
+
 ## [0.0.2] - 2026-03-17
 
 ### Added

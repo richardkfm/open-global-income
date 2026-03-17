@@ -93,6 +93,24 @@ score           = clamp(incomeRatio + giniPenalty, 0, 1)
 - **GNI per capita** (not GDP) reflects what residents actually earn
 - **Gini penalty** amplifies need for countries with high inequality
 
+## Updating Country Data
+
+Country data (GDP, GNI, PPP, Gini, population) can be refreshed from the World Bank API:
+
+```bash
+npm run data:update
+```
+
+This fetches the latest indicators, validates the output, and writes a new `countries.json`. The importer is fully configurable — edit `src/data/worldbank/config.json` to:
+
+- **Swap data source** — change `source.baseUrl` and `indicators` codes
+- **Add/remove countries** — edit `countries.codes` or set `mode: "all"`
+- **Adjust income thresholds** — edit `incomeGroupThresholds` (updated annually by World Bank)
+- **Change rounding** — edit `output.roundDecimals`
+- **Change Gini lookback** — edit `giniIndex.lookbackYears`
+
+No TypeScript knowledge required — it's a plain JSON file with comments.
+
 ## Phases
 
 - [x] **Phase 1 (v0.0.1)** — Project scaffold, stub rules engine, dummy data

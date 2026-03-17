@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { getCountryByCode, getAllCountries, getDataVersion } from './loader.js';
 
 describe('data loader', () => {
-  it('returns the worldbank data version string', () => {
-    expect(getDataVersion()).toBe('worldbank-2023');
+  it('returns a worldbank data version string', () => {
+    expect(getDataVersion()).toMatch(/^worldbank-\d{4}/);
   });
 
   it('loads all countries (49 in Phase 2 dataset)', () => {
