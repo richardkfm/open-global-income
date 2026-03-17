@@ -15,5 +15,5 @@ COPY package.json package-lock.json* ./
 RUN npm ci --omit=dev
 COPY --from=build /app/dist ./dist
 COPY src/data/countries.json ./dist/data/countries.json
-EXPOSE 3000
+EXPOSE 3333
 CMD ["node", "dist/index.js"]

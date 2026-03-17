@@ -1,15 +1,22 @@
 /** ISO 3166-1 alpha-2 country code */
 export type CountryCode = string;
 
+/** World Bank income group classification */
+export type IncomeGroup = 'HIC' | 'UMC' | 'LMC' | 'LIC';
+
 export interface CountryStats {
   /** GDP per capita in current USD */
   gdpPerCapitaUsd: number;
+  /** GNI per capita, Atlas method, current USD */
+  gniPerCapitaUsd: number;
   /** PPP conversion factor (LCU per international $) */
   pppConversionFactor: number;
   /** Gini coefficient (0–100 scale), null if unavailable */
   giniIndex: number | null;
   /** Total population */
   population: number;
+  /** World Bank income group */
+  incomeGroup: IncomeGroup;
 }
 
 export interface Country {
@@ -38,7 +45,7 @@ export interface GlobalIncomeEntitlement {
   /**
    * Normalized score 0–1 representing relative entitlement need.
    * Higher score = the global floor is a larger fraction of the country's
-   * average income, indicating greater need.
+   * average income, indicating greater need. Inequality (Gini) amplifies need.
    */
   score: number;
   /** Which ruleset and data snapshot produced this result */

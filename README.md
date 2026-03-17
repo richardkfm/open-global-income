@@ -15,7 +15,7 @@ This project provides a neutral **entitlement / score layer** that other project
 ```
 src/
 ├── core/        Pure domain logic (types, rules engine) — zero framework deps
-├── data/        Data loading and normalization
+├── data/        Data loading, normalization, World Bank source docs
 ├── api/         HTTP layer (Fastify)
 └── adapters/    Chain/currency adapters (Solana, Ethereum — future)
 ```
@@ -56,7 +56,7 @@ Calculate the global income entitlement for a country (ISO 3166-1 alpha-2 code).
 **Example:**
 
 ```bash
-curl http://localhost:3000/v1/income/calc?country=NG
+curl http://localhost:3333/v1/income/calc?country=NG
 ```
 
 ```json
@@ -64,24 +64,48 @@ curl http://localhost:3000/v1/income/calc?country=NG
   "ok": true,
   "data": {
     "countryCode": "NG",
-    "pppUsdPerMonth": 200,
-    "localCurrencyPerMonth": 33700,
+    "pppUsdPerMonth": 210,
+    "localCurrencyPerMonth": 35385,
     "score": 1,
     "meta": {
-      "rulesetVersion": "stub-v0.0.1",
-      "dataVersion": "dummy-2026-03-01"
+      "rulesetVersion": "v1",
+      "dataVersion": "worldbank-2023"
     }
   }
 }
 ```
 
-**Available countries (Phase 1):** `DE` (Germany), `BR` (Brazil), `NG` (Nigeria)
+**49 countries available** across all World Bank income groups (HIC, UMC, LMC, LIC).
+
+## Ruleset v1
+
+The current formula (`rulesetVersion: "v1"`):
+
+```
+pppUsdPerMonth  = 210                                (global floor, PPP-USD/month)
+localCurrency   = pppUsdPerMonth × pppConversionFactor
+incomeRatio     = 210 / (gniPerCapitaUsd / 12)
+giniPenalty     = (giniIndex / 100) × 0.15           (0 if Gini unavailable)
+score           = clamp(incomeRatio + giniPenalty, 0, 1)
+```
+
+- **$210/month** is derived from the World Bank upper-middle-income poverty line ($6.85/day)
+- **GNI per capita** (not GDP) reflects what residents actually earn
+- **Gini penalty** amplifies need for countries with high inequality
+
+## Phases
+
+- [x] **Phase 1 (v0.0.1)** — Project scaffold, stub rules engine, dummy data
+- [x] **Phase 2 (v0.0.2)** — Real World Bank data, Ruleset v1, unit tests
+- [ ] **Phase 3 (v0.0.3)** — API expansion, rulesets endpoint, countries endpoint, error handling
+- [ ] **Phase 4 (v0.0.4)** — Documentation (ARCHITECTURE, RULESET, CONTRIBUTING), CI
+- [ ] **Phase 5 (v0.0.5)** — Currency/unit model, Solana adapter skeleton
 
 ## Current Status
 
-**Version 0.0.1** — Phase 1 (scaffold + stub rules engine + dummy data)
+**Version 0.0.2** — Phase 2 (real data + Ruleset v1)
 
-See [claude.md](./claude.md) for the full roadmap.
+See [CHANGELOG.md](./CHANGELOG.md) for details.
 
 ## License
 

@@ -2,7 +2,7 @@ services:
   api:
     build: .
     ports:
-      - "3000:3000"
+      - "3333:3333"
     environment:
       - NODE_ENV=production
-      - PORT=3000
+      - PORT=3333

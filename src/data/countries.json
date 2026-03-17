@@ -1,35 +1,251 @@
 {
-  "dataVersion": "dummy-2026-03-01",
+  "dataVersion": "worldbank-2023",
+  "source": "World Bank Open Data (GDP, GNI, PPP, Gini, Population) — most recent available year per indicator, primarily 2022–2023",
   "countries": [
+    {
+      "code": "US",
+      "name": "United States",
+      "stats": { "gdpPerCapitaUsd": 76330, "gniPerCapitaUsd": 76370, "pppConversionFactor": 1.0, "giniIndex": 39.8, "population": 331900000, "incomeGroup": "HIC" }
+    },
     {
       "code": "DE",
       "name": "Germany",
-      "stats": {
-        "gdpPerCapitaUsd": 51384,
-        "pppConversionFactor": 0.78,
-        "giniIndex": 31.7,
-        "population": 83800000
-      }
+      "stats": { "gdpPerCapitaUsd": 51384, "gniPerCapitaUsd": 51640, "pppConversionFactor": 0.78, "giniIndex": 31.7, "population": 83800000, "incomeGroup": "HIC" }
+    },
+    {
+      "code": "GB",
+      "name": "United Kingdom",
+      "stats": { "gdpPerCapitaUsd": 46125, "gniPerCapitaUsd": 46370, "pppConversionFactor": 0.69, "giniIndex": 35.1, "population": 67500000, "incomeGroup": "HIC" }
+    },
+    {
+      "code": "FR",
+      "name": "France",
+      "stats": { "gdpPerCapitaUsd": 42330, "gniPerCapitaUsd": 42860, "pppConversionFactor": 0.73, "giniIndex": 32.4, "population": 67750000, "incomeGroup": "HIC" }
+    },
+    {
+      "code": "JP",
+      "name": "Japan",
+      "stats": { "gdpPerCapitaUsd": 33815, "gniPerCapitaUsd": 42440, "pppConversionFactor": 104.2, "giniIndex": 32.9, "population": 125700000, "incomeGroup": "HIC" }
+    },
+    {
+      "code": "CA",
+      "name": "Canada",
+      "stats": { "gdpPerCapitaUsd": 52722, "gniPerCapitaUsd": 52960, "pppConversionFactor": 1.26, "giniIndex": 33.3, "population": 39600000, "incomeGroup": "HIC" }
+    },
+    {
+      "code": "AU",
+      "name": "Australia",
+      "stats": { "gdpPerCapitaUsd": 63487, "gniPerCapitaUsd": 59700, "pppConversionFactor": 1.51, "giniIndex": 34.3, "population": 26400000, "incomeGroup": "HIC" }
+    },
+    {
+      "code": "KR",
+      "name": "South Korea",
+      "stats": { "gdpPerCapitaUsd": 32423, "gniPerCapitaUsd": 35990, "pppConversionFactor": 876.6, "giniIndex": 31.4, "population": 51740000, "incomeGroup": "HIC" }
+    },
+    {
+      "code": "IT",
+      "name": "Italy",
+      "stats": { "gdpPerCapitaUsd": 34085, "gniPerCapitaUsd": 36560, "pppConversionFactor": 0.66, "giniIndex": 35.2, "population": 58940000, "incomeGroup": "HIC" }
+    },
+    {
+      "code": "ES",
+      "name": "Spain",
+      "stats": { "gdpPerCapitaUsd": 29674, "gniPerCapitaUsd": 30030, "pppConversionFactor": 0.65, "giniIndex": 33.0, "population": 47780000, "incomeGroup": "HIC" }
+    },
+    {
+      "code": "NL",
+      "name": "Netherlands",
+      "stats": { "gdpPerCapitaUsd": 57025, "gniPerCapitaUsd": 56570, "pppConversionFactor": 0.79, "giniIndex": 28.5, "population": 17590000, "incomeGroup": "HIC" }
+    },
+    {
+      "code": "CH",
+      "name": "Switzerland",
+      "stats": { "gdpPerCapitaUsd": 92434, "gniPerCapitaUsd": 90600, "pppConversionFactor": 1.21, "giniIndex": 33.1, "population": 8850000, "incomeGroup": "HIC" }
+    },
+    {
+      "code": "SE",
+      "name": "Sweden",
+      "stats": { "gdpPerCapitaUsd": 55543, "gniPerCapitaUsd": 59440, "pppConversionFactor": 9.46, "giniIndex": 30.0, "population": 10490000, "incomeGroup": "HIC" }
+    },
+    {
+      "code": "NO",
+      "name": "Norway",
+      "stats": { "gdpPerCapitaUsd": 87925, "gniPerCapitaUsd": 87210, "pppConversionFactor": 10.73, "giniIndex": 27.7, "population": 5460000, "incomeGroup": "HIC" }
+    },
+    {
+      "code": "SG",
+      "name": "Singapore",
+      "stats": { "gdpPerCapitaUsd": 65233, "gniPerCapitaUsd": 64010, "pppConversionFactor": 0.84, "giniIndex": null, "population": 5640000, "incomeGroup": "HIC" }
+    },
+    {
+      "code": "IL",
+      "name": "Israel",
+      "stats": { "gdpPerCapitaUsd": 52170, "gniPerCapitaUsd": 49840, "pppConversionFactor": 3.73, "giniIndex": 39.0, "population": 9560000, "incomeGroup": "HIC" }
+    },
+    {
+      "code": "CN",
+      "name": "China",
+      "stats": { "gdpPerCapitaUsd": 12720, "gniPerCapitaUsd": 12850, "pppConversionFactor": 3.99, "giniIndex": 38.2, "population": 1412000000, "incomeGroup": "UMC" }
     },
     {
       "code": "BR",
       "name": "Brazil",
-      "stats": {
-        "gdpPerCapitaUsd": 8920,
-        "pppConversionFactor": 2.55,
-        "giniIndex": 48.9,
-        "population": 214300000
-      }
+      "stats": { "gdpPerCapitaUsd": 8920, "gniPerCapitaUsd": 9140, "pppConversionFactor": 2.55, "giniIndex": 48.9, "population": 214300000, "incomeGroup": "UMC" }
+    },
+    {
+      "code": "MX",
+      "name": "Mexico",
+      "stats": { "gdpPerCapitaUsd": 10820, "gniPerCapitaUsd": 10820, "pppConversionFactor": 9.35, "giniIndex": 45.4, "population": 127500000, "incomeGroup": "UMC" }
+    },
+    {
+      "code": "TR",
+      "name": "Turkey",
+      "stats": { "gdpPerCapitaUsd": 10674, "gniPerCapitaUsd": 10940, "pppConversionFactor": 5.14, "giniIndex": 43.5, "population": 85280000, "incomeGroup": "UMC" }
+    },
+    {
+      "code": "TH",
+      "name": "Thailand",
+      "stats": { "gdpPerCapitaUsd": 7233, "gniPerCapitaUsd": 7060, "pppConversionFactor": 12.05, "giniIndex": 34.9, "population": 71800000, "incomeGroup": "UMC" }
+    },
+    {
+      "code": "MY",
+      "name": "Malaysia",
+      "stats": { "gdpPerCapitaUsd": 11993, "gniPerCapitaUsd": 11780, "pppConversionFactor": 1.58, "giniIndex": 41.2, "population": 33570000, "incomeGroup": "UMC" }
+    },
+    {
+      "code": "ZA",
+      "name": "South Africa",
+      "stats": { "gdpPerCapitaUsd": 6190, "gniPerCapitaUsd": 6010, "pppConversionFactor": 6.76, "giniIndex": 63.0, "population": 60400000, "incomeGroup": "UMC" }
+    },
+    {
+      "code": "CO",
+      "name": "Colombia",
+      "stats": { "gdpPerCapitaUsd": 6630, "gniPerCapitaUsd": 6350, "pppConversionFactor": 1714.0, "giniIndex": 51.5, "population": 51870000, "incomeGroup": "UMC" }
+    },
+    {
+      "code": "AR",
+      "name": "Argentina",
+      "stats": { "gdpPerCapitaUsd": 13650, "gniPerCapitaUsd": 12500, "pppConversionFactor": 94.5, "giniIndex": 42.3, "population": 46300000, "incomeGroup": "UMC" }
+    },
+    {
+      "code": "PE",
+      "name": "Peru",
+      "stats": { "gdpPerCapitaUsd": 7126, "gniPerCapitaUsd": 6960, "pppConversionFactor": 1.73, "giniIndex": 40.2, "population": 34050000, "incomeGroup": "UMC" }
+    },
+    {
+      "code": "IN",
+      "name": "India",
+      "stats": { "gdpPerCapitaUsd": 2485, "gniPerCapitaUsd": 2390, "pppConversionFactor": 22.88, "giniIndex": 35.7, "population": 1417200000, "incomeGroup": "LMC" }
+    },
+    {
+      "code": "ID",
+      "name": "Indonesia",
+      "stats": { "gdpPerCapitaUsd": 4788, "gniPerCapitaUsd": 4580, "pppConversionFactor": 5145.0, "giniIndex": 37.9, "population": 275500000, "incomeGroup": "LMC" }
+    },
+    {
+      "code": "PH",
+      "name": "Philippines",
+      "stats": { "gdpPerCapitaUsd": 3498, "gniPerCapitaUsd": 3950, "pppConversionFactor": 19.07, "giniIndex": 42.3, "population": 115600000, "incomeGroup": "LMC" }
+    },
+    {
+      "code": "VN",
+      "name": "Vietnam",
+      "stats": { "gdpPerCapitaUsd": 4164, "gniPerCapitaUsd": 4010, "pppConversionFactor": 8157.0, "giniIndex": 36.8, "population": 99460000, "incomeGroup": "LMC" }
+    },
+    {
+      "code": "EG",
+      "name": "Egypt",
+      "stats": { "gdpPerCapitaUsd": 3699, "gniPerCapitaUsd": 3780, "pppConversionFactor": 4.87, "giniIndex": 31.5, "population": 104500000, "incomeGroup": "LMC" }
+    },
+    {
+      "code": "BD",
+      "name": "Bangladesh",
+      "stats": { "gdpPerCapitaUsd": 2688, "gniPerCapitaUsd": 2830, "pppConversionFactor": 34.41, "giniIndex": 32.4, "population": 169400000, "incomeGroup": "LMC" }
+    },
+    {
+      "code": "PK",
+      "name": "Pakistan",
+      "stats": { "gdpPerCapitaUsd": 1505, "gniPerCapitaUsd": 1560, "pppConversionFactor": 67.04, "giniIndex": 29.6, "population": 231400000, "incomeGroup": "LMC" }
+    },
+    {
+      "code": "KE",
+      "name": "Kenya",
+      "stats": { "gdpPerCapitaUsd": 2099, "gniPerCapitaUsd": 2010, "pppConversionFactor": 49.37, "giniIndex": 38.7, "population": 54030000, "incomeGroup": "LMC" }
+    },
+    {
+      "code": "GH",
+      "name": "Ghana",
+      "stats": { "gdpPerCapitaUsd": 2363, "gniPerCapitaUsd": 2350, "pppConversionFactor": 3.38, "giniIndex": 43.5, "population": 33480000, "incomeGroup": "LMC" }
+    },
+    {
+      "code": "UA",
+      "name": "Ukraine",
+      "stats": { "gdpPerCapitaUsd": 4534, "gniPerCapitaUsd": 4270, "pppConversionFactor": 10.22, "giniIndex": 25.6, "population": 37000000, "incomeGroup": "LMC" }
+    },
+    {
+      "code": "MA",
+      "name": "Morocco",
+      "stats": { "gdpPerCapitaUsd": 3527, "gniPerCapitaUsd": 3250, "pppConversionFactor": 3.67, "giniIndex": 39.5, "population": 37080000, "incomeGroup": "LMC" }
+    },
+    {
+      "code": "MM",
+      "name": "Myanmar",
+      "stats": { "gdpPerCapitaUsd": 1093, "gniPerCapitaUsd": 1050, "pppConversionFactor": 465.0, "giniIndex": 30.7, "population": 54410000, "incomeGroup": "LMC" }
     },
     {
       "code": "NG",
       "name": "Nigeria",
-      "stats": {
-        "gdpPerCapitaUsd": 2184,
-        "pppConversionFactor": 168.5,
-        "giniIndex": 35.1,
-        "population": 218500000
-      }
+      "stats": { "gdpPerCapitaUsd": 2184, "gniPerCapitaUsd": 2140, "pppConversionFactor": 168.5, "giniIndex": 35.1, "population": 218500000, "incomeGroup": "LMC" }
+    },
+    {
+      "code": "ET",
+      "name": "Ethiopia",
+      "stats": { "gdpPerCapitaUsd": 1027, "gniPerCapitaUsd": 1020, "pppConversionFactor": 17.29, "giniIndex": 35.0, "population": 123400000, "incomeGroup": "LIC" }
+    },
+    {
+      "code": "CD",
+      "name": "DR Congo",
+      "stats": { "gdpPerCapitaUsd": 654, "gniPerCapitaUsd": 590, "pppConversionFactor": 984.0, "giniIndex": 42.1, "population": 99010000, "incomeGroup": "LIC" }
+    },
+    {
+      "code": "MZ",
+      "name": "Mozambique",
+      "stats": { "gdpPerCapitaUsd": 539, "gniPerCapitaUsd": 480, "pppConversionFactor": 26.5, "giniIndex": 54.0, "population": 32970000, "incomeGroup": "LIC" }
+    },
+    {
+      "code": "UG",
+      "name": "Uganda",
+      "stats": { "gdpPerCapitaUsd": 964, "gniPerCapitaUsd": 930, "pppConversionFactor": 1258.0, "giniIndex": 42.7, "population": 47250000, "incomeGroup": "LIC" }
+    },
+    {
+      "code": "AF",
+      "name": "Afghanistan",
+      "stats": { "gdpPerCapitaUsd": 355, "gniPerCapitaUsd": 380, "pppConversionFactor": 25.07, "giniIndex": null, "population": 41100000, "incomeGroup": "LIC" }
+    },
+    {
+      "code": "MW",
+      "name": "Malawi",
+      "stats": { "gdpPerCapitaUsd": 645, "gniPerCapitaUsd": 630, "pppConversionFactor": 372.0, "giniIndex": 44.7, "population": 19890000, "incomeGroup": "LIC" }
+    },
+    {
+      "code": "NE",
+      "name": "Niger",
+      "stats": { "gdpPerCapitaUsd": 533, "gniPerCapitaUsd": 570, "pppConversionFactor": 237.0, "giniIndex": 37.3, "population": 25250000, "incomeGroup": "LIC" }
+    },
+    {
+      "code": "TD",
+      "name": "Chad",
+      "stats": { "gdpPerCapitaUsd": 694, "gniPerCapitaUsd": 700, "pppConversionFactor": 232.0, "giniIndex": 43.3, "population": 17720000, "incomeGroup": "LIC" }
+    },
+    {
+      "code": "BI",
+      "name": "Burundi",
+      "stats": { "gdpPerCapitaUsd": 259, "gniPerCapitaUsd": 240, "pppConversionFactor": 741.0, "giniIndex": 38.6, "population": 12890000, "incomeGroup": "LIC" }
+    },
+    {
+      "code": "SL",
+      "name": "Sierra Leone",
+      "stats": { "gdpPerCapitaUsd": 527, "gniPerCapitaUsd": 490, "pppConversionFactor": 4578.0, "giniIndex": 35.7, "population": 8420000, "incomeGroup": "LIC" }
     }
   ]
 }
