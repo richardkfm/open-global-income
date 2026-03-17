@@ -20,6 +20,8 @@ src/
 └── adapters/    Chain/currency adapters (Solana, Ethereum — future)
 ```
 
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for a full module breakdown, dependency rules, and design decisions.
+
 ## Quickstart
 
 ```bash
@@ -31,6 +33,9 @@ npm run dev
 
 # Run tests
 npm test
+
+# Type-check
+npm run typecheck
 
 # Build for production
 npm run build
@@ -107,37 +112,35 @@ score           = clamp(incomeRatio + giniPenalty, 0, 1)
 - **GNI per capita** (not GDP) reflects what residents actually earn
 - **Gini penalty** amplifies need for countries with high inequality
 
-## Updating Country Data
+See [RULESET_V1.md](./RULESET_V1.md) for the full specification with worked examples and data source details.
 
-Country data (GDP, GNI, PPP, Gini, population) can be refreshed from the World Bank API:
+## Chain adapters
 
-```bash
-npm run data:update
-```
+Adapters map a `GlobalIncomeEntitlement` (in PPP-USD/month) to a concrete token or currency amount for a specific chain. They are pure calculation modules — no chain writes.
 
-This fetches the latest indicators, validates the output, and writes a new `countries.json`. The importer is fully configurable — edit `src/data/worldbank/config.json` to:
+**Available:** Solana (`src/adapters/solana/`) — maps entitlements to any SPL token amount via a configurable exchange rate.
 
-- **Swap data source** — change `source.baseUrl` and `indicators` codes
-- **Add/remove countries** — edit `countries.codes` or set `mode: "all"`
-- **Adjust income thresholds** — edit `incomeGroupThresholds` (updated annually by World Bank)
-- **Change rounding** — edit `output.roundDecimals`
-- **Change Gini lookback** — edit `giniIndex.lookbackYears`
+**Planned:** Ethereum / L2s (same `ChainAdapter` interface).
 
-No TypeScript knowledge required — it's a plain JSON file with comments.
+See `src/adapters/` for the interface definition and implementation details.
 
 ## Phases
 
 - [x] **Phase 1 (v0.0.1)** — Project scaffold, stub rules engine, dummy data
-- [x] **Phase 2 (v0.0.2)** — Real World Bank data, Ruleset v1, data importer, unit tests
-- [x] **Phase 3 (v0.0.3)** — API expansion, rulesets endpoint, countries endpoint, user layer, error handling
-- [ ] **Phase 4 (v0.0.4)** — Documentation (ARCHITECTURE, RULESET, CONTRIBUTING), CI
-- [ ] **Phase 5 (v0.0.5)** — Currency/unit model, Solana adapter skeleton
+- [x] **Phase 2 (v0.0.2)** — Real World Bank data, Ruleset v1, unit tests
+- [x] **Phase 3 (v0.0.3)** — API expansion, rulesets endpoint, countries endpoint, error handling
+- [x] **Phase 4 (v0.0.4)** — Documentation ([ARCHITECTURE](./ARCHITECTURE.md), [RULESET_V1](./RULESET_V1.md), [CONTRIBUTING](./CONTRIBUTING.md)), CI
+- [x] **Phase 5 (v0.0.5)** — Currency/unit model, Solana adapter skeleton
+
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup, code style, testing requirements, and the PR process.
 
 ## Current Status
 
-**Version 0.0.3** — Phase 3 (expanded API + user layer + error handling)
+**Version 0.0.5** — Phase 5 complete (Solana adapter + currency model)
 
-See [CHANGELOG.md](./CHANGELOG.md) for details.
+See [CHANGELOG.md](./CHANGELOG.md) for full version history.
 
 ## License
 

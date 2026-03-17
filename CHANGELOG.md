@@ -4,18 +4,28 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [0.0.3] - 2026-03-17
+## [0.0.5] - 2026-03-17
 
 ### Added
-- `GET /v1/income/rulesets` — list all rulesets with formula, parameters, and active status
-- `GET /v1/income/countries` — list all supported countries with income group and data availability
-- `POST /v1/users` — register a user with a `country_code`
-- `GET /v1/users/:id/income` — get a user's income entitlement
-- Global error handler with consistent JSON error responses
-- Custom 404 handler for unknown routes
-- Rulesets registry (`src/core/rulesets.ts`) — pure data, no HTTP
-- In-memory user store (`src/core/users.ts`) — Phase 3 placeholder
-- API integration tests using Fastify `.inject()` (16 tests)
+- `BaseUnit` type alias (`'PPP-USD/month'`) and `BASE_UNIT` constant in `src/core/types.ts` — formalises the internal base unit concept
+- `src/adapters/types.ts`: `TokenAmount` interface and `ChainAdapter<TConfig>` generic interface for chain-agnostic adapter contracts
+- `src/adapters/solana/index.ts`: Solana adapter (`solanaAdapter`) implementing `ChainAdapter<SolanaAdapterConfig>` — maps `GlobalIncomeEntitlement` to any SPL token amount (pure calculation, no chain writes)
+- `src/adapters/solana/program-types.ts`: TypeScript type definitions for a future on-chain Solana program account layout (`EntitlementAccount`)
+- `src/adapters/solana/index.test.ts`: unit tests for the Solana adapter (token amount calculation, custom rates, metadata)
+
+## [0.0.4] - 2026-03-17
+
+### Added
+- `ARCHITECTURE.md`: full module breakdown, dependency rules, ASCII data-flow diagram, and key design decisions
+- `RULESET_V1.md`: complete formula specification for Ruleset v1 with constants, rationale, worked examples (DE/BR/BI), data source table, and versioning policy
+- `CONTRIBUTING.md`: development setup, code style guide, testing requirements, PR checklist, and guides for adding country data, new rulesets, and chain adapters
+- `CODE_OF_CONDUCT.md`: Contributor Covenant v2.1
+- `src/api/routes/income.test.ts`: API-level integration tests using Fastify `inject()` (happy path, case-insensitive lookup, missing parameter, unknown country)
+- `.github/workflows/ci.yml`: GitHub Actions CI — runs type-check and full test suite on every push and pull request
+- `npm run typecheck` script (`tsc --noEmit`)
+
+### Changed
+- `README.md`: updated with links to new docs, `typecheck` script, chain adapters section, Contributing section, and current status
 
 ## [0.0.2] - 2026-03-17
 
