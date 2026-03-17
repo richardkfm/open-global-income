@@ -115,7 +115,7 @@ Later versions (>= 0.1.0 / 1.0.0) can stabilize Ruleset v1, finalize data pipeli
 
 - Prefer English for code identifiers, comments, and documentation.
 
-## Model Usage Policy
+## Model Usage Policy with Claude Code
 
 Token efficiency matters. Use the right model for the right task:
 
