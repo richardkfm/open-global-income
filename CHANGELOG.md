@@ -35,7 +35,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `gniPerCapitaUsd` and `incomeGroup` fields on `CountryStats`
 - `IncomeGroup` type (`HIC` | `UMC` | `LMC` | `LIC`)
 - World Bank data source documentation (`src/data/worldbank/README.md`)
-- Comprehensive unit tests for Ruleset v1 (10 tests) and data loader (6 tests)
+- Automated World Bank data importer (`npm run data:update`)
+- Admin-editable `config.json` for all importer tunables (data sources, indicators, countries, income thresholds, output rounding)
+- Modular importer pipeline: config → fetch → transform → validate → write
+- Importer validates output before overwriting `countries.json` (same rules as test suite)
+- Retry with exponential backoff for World Bank API calls
+- Comprehensive unit tests: Ruleset v1 (10), data loader (6), importer (22)
 - This CHANGELOG
 
 ### Changed

@@ -1,0 +1,67 @@
+{
+  "_comment": "World Bank data importer configuration. Edit this file to change data sources, indicators, countries, thresholds, or output settings. No TypeScript knowledge required.",
+
+  "source": {
+    "_comment": "API base URL and request parameters. Change baseUrl to swap to a different data provider.",
+    "baseUrl": "https://api.worldbank.org/v2",
+    "format": "json",
+    "perPage": 300,
+    "retries": 3,
+    "retryDelayMs": 1000
+  },
+
+  "indicators": {
+    "_comment": "Map from our internal field name to the data provider's indicator code. Change codes to use different indicators or a different provider.",
+    "gdpPerCapitaUsd": "NY.GDP.PCAP.CD",
+    "gniPerCapitaUsd": "NY.GNP.PCAP.CD",
+    "pppConversionFactor": "PA.NUS.PPP",
+    "giniIndex": "SI.POV.GINI",
+    "population": "SP.POP.TOTL"
+  },
+
+  "countries": {
+    "_comment": "ISO 3166-1 alpha-2 codes to include. Set mode to 'all' to fetch every country the API provides, or 'explicit' to use only the listed codes.",
+    "mode": "explicit",
+    "codes": [
+      "US", "DE", "GB", "FR", "JP", "CA", "AU", "KR", "IT", "ES",
+      "NL", "CH", "SE", "NO", "SG", "IL",
+      "CN", "BR", "MX", "TR", "TH", "MY", "ZA", "CO", "AR", "PE",
+      "IN", "ID", "PH", "VN", "EG", "BD", "PK", "KE", "GH", "UA", "MA", "MM", "NG",
+      "ET", "CD", "MZ", "UG", "AF", "MW", "NE", "TD", "BI", "SL"
+    ]
+  },
+
+  "incomeGroupThresholds": {
+    "_comment": "GNI per capita (Atlas method, current USD) thresholds for World Bank income classification. The World Bank updates these annually — adjust here when new thresholds are published.",
+    "HIC": { "min": 14006 },
+    "UMC": { "min": 4516, "max": 14005 },
+    "LMC": { "min": 1146, "max": 4515 },
+    "LIC": { "max": 1145 }
+  },
+
+  "giniIndex": {
+    "_comment": "Gini data is sparse — many countries only report every few years. lookbackYears controls how far back to search for the most recent value. Set nullable to false to exclude countries without Gini data.",
+    "lookbackYears": 10,
+    "nullable": true
+  },
+
+  "output": {
+    "_comment": "Where and how to write the result. path is relative to this config file.",
+    "path": "../countries.json",
+    "dataVersionPrefix": "worldbank",
+    "roundDecimals": {
+      "gdpPerCapitaUsd": 0,
+      "gniPerCapitaUsd": 0,
+      "pppConversionFactor": 2,
+      "giniIndex": 1,
+      "population": 0
+    }
+  },
+
+  "validation": {
+    "_comment": "Rules the output must satisfy before it's written. If validation fails, countries.json is NOT overwritten.",
+    "minCountries": 40,
+    "requiredIncomeGroups": ["HIC", "UMC", "LMC", "LIC"],
+    "giniRange": [0, 100]
+  }
+}

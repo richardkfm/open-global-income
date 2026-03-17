@@ -1,6 +1,6 @@
 {
   "name": "open-global-income",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Open standard and reference implementation for a global income entitlement calculation model",
   "type": "module",
   "engines": {
@@ -11,7 +11,8 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "data:update": "tsx src/data/worldbank/importer.ts"
   },
   "keywords": [
     "global-income",

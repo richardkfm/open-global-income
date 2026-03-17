@@ -35,6 +35,23 @@ export interface RulesetMeta {
   dataVersion: string;
 }
 
+/** Full description of a ruleset for the /rulesets endpoint */
+export interface RulesetInfo {
+  version: string;
+  name: string;
+  description: string;
+  active: boolean;
+  parameters: Record<string, number>;
+  formula: string;
+}
+
+/** Minimal user record for the optional user layer */
+export interface User {
+  id: string;
+  countryCode: CountryCode;
+  createdAt: string;
+}
+
 export interface GlobalIncomeEntitlement {
   /** ISO country code this was calculated for */
   countryCode: CountryCode;

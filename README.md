@@ -58,8 +58,6 @@ Returns `{ "status": "ok" }`.
 
 Calculate the global income entitlement for a country (ISO 3166-1 alpha-2 code).
 
-**Example:**
-
 ```bash
 curl http://localhost:3333/v1/income/calc?country=NG
 ```
@@ -79,6 +77,22 @@ curl http://localhost:3333/v1/income/calc?country=NG
   }
 }
 ```
+
+### `GET /v1/income/rulesets`
+
+List all available rulesets with formula, parameters, and active status.
+
+### `GET /v1/income/countries`
+
+List all supported countries with income group and data availability.
+
+### `POST /v1/users`
+
+Register a user with a country code. Body: `{ "country_code": "DE" }`
+
+### `GET /v1/users/:id/income`
+
+Get a registered user's income entitlement.
 
 **49 countries available** across all World Bank income groups (HIC, UMC, LMC, LIC).
 
