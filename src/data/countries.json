@@ -1,0 +1,35 @@
+{
+  "dataVersion": "dummy-2026-03-01",
+  "countries": [
+    {
+      "code": "DE",
+      "name": "Germany",
+      "stats": {
+        "gdpPerCapitaUsd": 51384,
+        "pppConversionFactor": 0.78,
+        "giniIndex": 31.7,
+        "population": 83800000
+      }
+    },
+    {
+      "code": "BR",
+      "name": "Brazil",
+      "stats": {
+        "gdpPerCapitaUsd": 8920,
+        "pppConversionFactor": 2.55,
+        "giniIndex": 48.9,
+        "population": 214300000
+      }
+    },
+    {
+      "code": "NG",
+      "name": "Nigeria",
+      "stats": {
+        "gdpPerCapitaUsd": 2184,
+        "pppConversionFactor": 168.5,
+        "giniIndex": 35.1,
+        "population": 218500000
+      }
+    }
+  ]
+}
