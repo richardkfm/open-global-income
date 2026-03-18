@@ -4,6 +4,8 @@
 
 Like what OpenStreetMap did for geographic data, or what SMTP did for email: a shared standard that makes every program built on top of it cheaper, faster, and more trustworthy than if they built alone.
 
+[Key Principles](#key-principles) | [Architecture](#architecture) | [Quickstart](#quickstart) | [API](#api) | [Authentication](#authentication) | [Rulesets](#rulesets) | [Admin UI](#admin-ui) | [Chain Adapters](#chain-adapters) | [Disbursement Providers](#disbursement-providers) | [Webhooks](#webhooks) | [SDK](#typescript-sdk) | [Database](#database) | [Vision](#vision) | [Contributing](#contributing) | [Governance](#governance)
+
 ## Key Principles
 
 - **Neutral** — no hard dependency on any specific blockchain or token. Values expressed in PPP-adjusted USD, mapped to currencies/tokens via adapters.
