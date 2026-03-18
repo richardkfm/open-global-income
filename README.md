@@ -1,14 +1,15 @@
 # Open Global Income
 
-An open, transparent standard for calculating a **global income entitlement** per person and country.
+**The shared infrastructure layer for universal basic income** — the neutral, auditable protocol that any government, NGO, or DAO can build on to deliver income floors to people.
 
-This project provides a neutral **entitlement / score layer** that other projects (NGOs, DAOs, ReFi platforms, SaaS, governments) can integrate with. It does not distribute money — it defines a versioned, auditable calculation model and exposes it through a public API.
+Like what OpenStreetMap did for geographic data, or what SMTP did for email: a shared standard that makes every program built on top of it cheaper, faster, and more trustworthy than if they built alone.
 
 ## Key Principles
 
 - **Neutral** — no hard dependency on any specific blockchain or token. Values expressed in PPP-adjusted USD, mapped to currencies/tokens via adapters.
 - **Transparent** — all formulas, parameters, and data sources are open. Every result includes `ruleset_version` and `data_version`.
-- **Modular** — clean separation between data sources, rules engine, API, and chain adapters.
+- **Modular** — clean separation between data sources, rules engine, simulation, disbursement, and chain adapters.
+- **Non-custodial** — the platform calculates and prepares payment instructions but never holds or moves funds directly.
 
 ## Architecture
 
