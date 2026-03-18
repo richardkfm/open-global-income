@@ -132,6 +132,43 @@ Register a user with a country code. Body: `{ "country_code": "DE" }`
 
 Get a registered user's income entitlement.
 
+### `POST /v1/simulate`
+
+Run a budget simulation for a country. Returns full cost breakdown.
+
+```bash
+curl -X POST http://localhost:3333/v1/simulate \
+  -H "Content-Type: application/json" \
+  -d '{"country":"KE","coverage":0.2,"targetGroup":"all","durationMonths":12,"adjustments":{"floorOverride":null,"householdSize":null}}'
+```
+
+Body fields:
+- `country` — ISO 3166-1 alpha-2 code (required)
+- `coverage` — fraction of population to cover, 0–1 (required)
+- `targetGroup` — `"all"` or `"bottom_quintile"` (default `"all"`)
+- `durationMonths` — programme duration 1–120 (default `12`)
+- `adjustments.floorOverride` — override the $210 PPP-USD floor (optional)
+
+### `POST /v1/simulate/compare`
+
+Compare the same scenario across multiple countries, sorted by annual cost ascending. Body: `{ "countries": ["KE","MZ","BI"], "coverage": 0.2, "durationMonths": 12 }`. Max 20 countries.
+
+### `POST /v1/simulations`
+
+Save a simulation with an optional name. Body: same as `POST /v1/simulate` plus `"name"`.
+
+### `GET /v1/simulations`
+
+List saved simulations. Query params: `page`, `limit`.
+
+### `GET /v1/simulations/:id`
+
+Retrieve a saved simulation by ID.
+
+### `DELETE /v1/simulations/:id`
+
+Delete a saved simulation.
+
 ### `GET /metrics`
 
 Prometheus metrics endpoint (request counts, duration histograms, active connections, Node.js runtime metrics).
@@ -187,6 +224,7 @@ A server-rendered admin dashboard (no SPA framework — uses htmx for interactiv
 - **Dashboard** — country count, users, API keys, request stats
 - **API Key Management** — create and revoke keys with tier selection
 - **Audit Log** — recent API requests with live-refresh
+- **Simulate** — run budget simulations with live cost preview, compare countries, save/delete scenarios
 
 Access at `http://localhost:3333/admin`. Login with the password set in `ADMIN_PASSWORD`.
 
@@ -201,7 +239,7 @@ See `src/adapters/types.ts` for the `ChainAdapter<TConfig>` interface.
 
 ## Webhooks
 
-Subscribe to events (`income.calculated`, `user.created`, `ruleset.updated`) and receive HMAC-SHA256 signed payloads at your endpoint. See `src/webhooks/` for the dispatcher and type definitions.
+Subscribe to events (`entitlement.calculated`, `user.created`, `api_key.created`, `api_key.revoked`, `data.updated`, `simulation.created`) and receive HMAC-SHA256 signed payloads at your endpoint. See `src/webhooks/` for the dispatcher and type definitions.
 
 ## TypeScript SDK
 
@@ -236,7 +274,7 @@ Set `DB_BACKEND=postgres` and `DATABASE_URL` to switch backends.
 - [x] **Phase 8 (v0.0.8)** — Admin UI with htmx, session auth, API key management
 - [x] **Phase 9 (v0.0.9)** — EVM adapter, webhooks, SDK generation
 - [x] **Phase 10 (v0.1.0)** — Prometheus metrics, Ruleset v2 preview, governance, API stability
-- [ ] **Phase 11** — Budget simulation engine (cost modeling, targeting presets, comparison)
+- [x] **Phase 11 (v0.2.0)** — Budget simulation engine (cost modeling, targeting presets, comparison, saved simulations)
 - [ ] **Phase 12** — Disbursement integration (Solana USDC, EVM, M-Pesa stub, approval workflow)
 - [ ] **Phase 13** — Pilot dashboard (pilot lifecycle, disbursement tracking, donor reports)
 
@@ -252,7 +290,7 @@ See [GOVERNANCE.md](./GOVERNANCE.md) for the decision-making process, API stabil
 
 ## Current Status
 
-**Version 0.1.0** — First API-stable release. 105 tests across 8 test suites.
+**Version 0.2.0** — Budget Simulation Engine. 142 tests across 10 test suites.
 
 See [CHANGELOG.md](./CHANGELOG.md) for full version history.
 

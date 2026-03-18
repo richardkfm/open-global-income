@@ -1,6 +1,6 @@
 {
   "name": "open-global-income",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Open standard and reference implementation for a global income entitlement calculation model",
   "type": "module",
   "engines": {

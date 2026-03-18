@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.2.0] - 2026-03-18
+
+### Added
+- **Budget simulation endpoint** `POST /v1/simulate` — returns full cost breakdown for a country and coverage scenario: recipient count, monthly/annual cost in local currency and PPP-USD, and cost as % of GDP
+- **Targeting presets** — `all` (entire population) and `bottom_quintile` (bottom 20% by income, approximated from existing Gini data)
+- **Floor override** — `adjustments.floorOverride` to replace the default $210 PPP-USD/month with a custom floor for scenario modeling
+- **Comparison simulation** `POST /v1/simulate/compare` — run the same scenario across up to 20 countries, sorted by annual PPP-USD cost ascending
+- **Saved simulations** — SQLite-backed persistence with full CRUD:
+  - `POST /v1/simulations` — run and save a simulation with an optional name
+  - `GET /v1/simulations` — paginated list
+  - `GET /v1/simulations/:id` — retrieve by ID
+  - `DELETE /v1/simulations/:id` — delete
+- **`simulation.created` webhook event** — fired when a simulation is saved, enabling downstream systems (e.g. donor dashboards) to react
+- **Admin UI simulation page** at `/admin/simulate`:
+  - Country dropdown, coverage percentage input, duration input, target group selector
+  - Live cost preview via htmx partial refresh (no page reload)
+  - Multi-country comparison table
+  - Save simulation with a name and delete saved simulations
+- `SimulationParameters`, `SimulationResult`, `SavedSimulation` types in `src/core/types.ts`
+- Pure `calculateSimulation()` function in `src/core/simulations.ts` (no I/O, fully testable)
+- `src/db/simulations-db.ts` — CRUD helpers for the `simulations` table
+- 16 unit tests for simulation math + 21 integration tests for all simulation endpoints (142 tests total)
+
+### Changed
+- `USECASE.md` — Step 4 of Scenario A now shows `POST /v1/simulate` with a full example response; Scenario B adds `POST /v1/simulate/compare` for NGO cost comparison
+- Summary tables in `USECASE.md` updated to reflect simulation capabilities now available
+- Admin nav updated with a **Simulate** link
+- Phase 11 marked complete in `README.md`
+
 ## [0.1.0] - 2026-03-18
 
 ### Added
