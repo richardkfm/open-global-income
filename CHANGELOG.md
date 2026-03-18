@@ -4,6 +4,34 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.3] - 2026-03-18
+
+### Added
+- **Pilot data model** — 2 new database tables: `pilots` (lifecycle tracking with status transitions) and `pilot_disbursements` (join table linking pilots to disbursements)
+- **`Pilot`, `PilotStatus`, `PilotReport` domain types** in `src/core/types.ts`
+- **6 new API endpoints:**
+  - `POST /v1/pilots` — create a pilot linked to a simulation
+  - `GET /v1/pilots` — paginated list with status and country filters
+  - `GET /v1/pilots/:id` — full pilot detail with linked disbursements
+  - `PATCH /v1/pilots/:id` — update status (with validated transitions), description, dates, recipients
+  - `POST /v1/pilots/:id/disbursements` — link a disbursement to a pilot
+  - `GET /v1/pilots/:id/report` — generate structured JSON report with variance analysis
+- **Pilot status lifecycle** — `planning → active → paused → completed` with enforced transition rules
+- **Variance analysis** — report endpoint compares actual disbursements against simulation projections, showing +/- percentage deviation
+- **3 new webhook events:** `pilot.created`, `pilot.status_changed`, `pilot.report_generated`
+- **Admin UI pilot dashboard** at `/admin/pilots`:
+  - Pilot list with status badges, create form with country and simulation selectors
+  - Pilot detail with summary cards (recipients, disbursed, count, avg per recipient), status transition buttons, disbursement timeline, simulation variance display, and disbursement linking
+- **PostgreSQL migration** `003_add_pilots.sql`
+- **~30 new tests** — CRUD, status transitions, disbursement linking, report generation, full lifecycle, and edge cases
+- `src/db/pilots-db.ts` — CRUD helpers for pilot and pilot_disbursements tables
+
+### Changed
+- OpenAPI spec version bumped to `0.1.3`
+- `USECASE.md` extended with pilot lifecycle scenario (Steps 7–10 in Scenario A)
+- `README.md` updated with pilot endpoints, webhook events, admin UI section, and phase checklist
+- Phase 13 marked complete in `ROADMAP.md` and `README.md`
+
 ## [0.1.2] - 2026-03-18
 
 ### Added

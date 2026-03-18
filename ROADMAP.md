@@ -259,7 +259,7 @@ New events:
 
 ---
 
-## Phase 13: Pilot Dashboard
+## Phase 13: Pilot Dashboard ✅
 
 **Goal:** Give NGOs and government stakeholders a real-time view of a running pilot. Answer: *"Is it working, and can we prove it?"*
 

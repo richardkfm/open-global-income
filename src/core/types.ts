@@ -161,3 +161,42 @@ export interface DisbursementLogEntry {
   details: Record<string, unknown> | null;
   timestamp: string;
 }
+
+// ── Pilot types ──────────────────────────────────────────────────────────────
+
+export type PilotStatus = 'planning' | 'active' | 'paused' | 'completed';
+
+export interface Pilot {
+  id: string;
+  name: string;
+  countryCode: string;
+  description: string | null;
+  simulationId: string | null;
+  status: PilotStatus;
+  startDate: string | null;
+  endDate: string | null;
+  targetRecipients: number | null;
+  apiKeyId: string | null;
+  createdAt: string;
+}
+
+export interface PilotReport {
+  pilot: {
+    id: string;
+    name: string;
+    country: string;
+    status: PilotStatus;
+    startDate: string | null;
+    endDate: string | null;
+  };
+  summary: {
+    totalRecipients: number;
+    totalDisbursed: number;
+    disbursementCount: number;
+    averagePerRecipient: number;
+    periodCovered: { from: string | null; to: string | null };
+  };
+  simulation: { id: string; projectedCost: number; variance: string } | null;
+  disbursements: Disbursement[];
+  meta: { generatedAt: string };
+}

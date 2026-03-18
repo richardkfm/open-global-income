@@ -95,6 +95,34 @@ const SCHEMA = `
   CREATE INDEX IF NOT EXISTS idx_disbursements_status ON disbursements(status);
   CREATE INDEX IF NOT EXISTS idx_disbursements_channel ON disbursements(channel_id);
   CREATE INDEX IF NOT EXISTS idx_disbursement_log_id ON disbursement_log(disbursement_id);
+
+  CREATE TABLE IF NOT EXISTS pilots (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    country_code TEXT NOT NULL,
+    description TEXT,
+    simulation_id TEXT,
+    status TEXT NOT NULL DEFAULT 'planning'
+      CHECK(status IN ('planning','active','paused','completed')),
+    start_date TEXT,
+    end_date TEXT,
+    target_recipients INTEGER,
+    api_key_id TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (simulation_id) REFERENCES simulations(id),
+    FOREIGN KEY (api_key_id) REFERENCES api_keys(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS pilot_disbursements (
+    pilot_id TEXT NOT NULL,
+    disbursement_id TEXT NOT NULL,
+    PRIMARY KEY (pilot_id, disbursement_id),
+    FOREIGN KEY (pilot_id) REFERENCES pilots(id),
+    FOREIGN KEY (disbursement_id) REFERENCES disbursements(id)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_pilots_country ON pilots(country_code);
+  CREATE INDEX IF NOT EXISTS idx_pilots_status ON pilots(status);
 `;
 
 export function getDb(dbPath?: string): Database.Database {

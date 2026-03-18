@@ -5,13 +5,16 @@ import { renderDashboard, type DashboardData } from './views/dashboard.js';
 import { renderApiKeys } from './views/api-keys.js';
 import { renderAuditLog, renderAuditTable } from './views/audit.js';
 import { renderSimulatePage, renderSimulationPreview, renderComparisonTable } from './views/simulate.js';
+import { renderPilotsPage, renderPilotDetailPage } from './views/pilots.js';
 import { listApiKeys, createApiKey, revokeApiKey, type ApiKeyTier } from '../db/api-keys.js';
 import { getRecentAuditEntries, getAuditStats } from '../db/audit.js';
 import { getAllCountries, getCountryByCode, getDataVersion } from '../data/loader.js';
 import { getDb } from '../db/database.js';
 import { calculateSimulation } from '../core/simulations.js';
-import { listSimulations, saveSimulation, deleteSimulation } from '../db/simulations-db.js';
-import type { SimulationParameters, TargetGroup } from '../core/types.js';
+import { listSimulations, saveSimulation, deleteSimulation, getSimulationById } from '../db/simulations-db.js';
+import { createPilot, getPilotById, listPilots, updatePilot, linkDisbursement, getPilotDisbursementIds } from '../db/pilots-db.js';
+import { getDisbursementById } from '../db/disbursements-db.js';
+import type { SimulationParameters, TargetGroup, PilotStatus } from '../core/types.js';
 
 function getAdminPassword(): string {
   return process.env.ADMIN_PASSWORD ?? 'admin';
@@ -228,4 +231,86 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     if (id) deleteSimulation(id);
     return reply.redirect('/admin/simulate?flash=Simulation+deleted');
   });
+
+  // ── Pilots ──────────────────────────────────────────────────────────────────
+
+  app.get('/pilots', async (request, reply) => {
+    const { pilots } = listPilots({ limit: 100, offset: 0 });
+    const countries = getAllCountries();
+    const { simulations } = listSimulations(100, 0);
+    const url = new URL(request.url, 'http://localhost');
+    const flash = url.searchParams.get('flash') ?? undefined;
+    return reply.type('text/html').send(renderPilotsPage(pilots, countries, simulations, flash));
+  });
+
+  app.get<{ Params: { id: string } }>('/pilots/:id', async (request, reply) => {
+    const pilot = getPilotById(request.params.id);
+    if (!pilot) {
+      return reply.redirect('/admin/pilots?flash=Pilot+not+found');
+    }
+    const disbursementIds = getPilotDisbursementIds(pilot.id);
+    const disbursements = disbursementIds
+      .map((did) => getDisbursementById(did))
+      .filter((d) => d !== null);
+    const simulation = pilot.simulationId ? getSimulationById(pilot.simulationId) : null;
+    const url = new URL(request.url, 'http://localhost');
+    const flash = url.searchParams.get('flash') ?? undefined;
+    return reply.type('text/html').send(renderPilotDetailPage(pilot, disbursements, simulation, flash));
+  });
+
+  app.post<{ Body: { name?: string; countryCode?: string; simulationId?: string; description?: string; startDate?: string; endDate?: string; targetRecipients?: string } }>(
+    '/pilots/create',
+    async (request, reply) => {
+      const body = request.body ?? {};
+      if (!body.name?.trim() || !body.countryCode?.trim()) {
+        return reply.redirect('/admin/pilots?flash=Name+and+country+are+required');
+      }
+      createPilot({
+        name: body.name.trim(),
+        countryCode: body.countryCode.toUpperCase(),
+        description: body.description?.trim() || null,
+        simulationId: body.simulationId?.trim() || null,
+        startDate: body.startDate?.trim() || null,
+        endDate: body.endDate?.trim() || null,
+        targetRecipients: body.targetRecipients ? parseInt(body.targetRecipients, 10) || null : null,
+      });
+      return reply.redirect('/admin/pilots?flash=Pilot+created');
+    },
+  );
+
+  app.post<{ Params: { id: string }; Body: { status?: string } }>(
+    '/pilots/:id/status',
+    async (request, reply) => {
+      const pilot = getPilotById(request.params.id);
+      if (!pilot) {
+        return reply.redirect('/admin/pilots?flash=Pilot+not+found');
+      }
+      const newStatus = request.body?.status;
+      if (!newStatus) {
+        return reply.redirect(`/admin/pilots/${pilot.id}?flash=No+status+provided`);
+      }
+      updatePilot(pilot.id, { status: newStatus as PilotStatus });
+      return reply.redirect(`/admin/pilots/${pilot.id}?flash=Status+updated+to+${encodeURIComponent(newStatus)}`);
+    },
+  );
+
+  app.post<{ Params: { id: string }; Body: { disbursementId?: string } }>(
+    '/pilots/:id/link-disbursement',
+    async (request, reply) => {
+      const pilot = getPilotById(request.params.id);
+      if (!pilot) {
+        return reply.redirect('/admin/pilots?flash=Pilot+not+found');
+      }
+      const disbursementId = request.body?.disbursementId?.trim();
+      if (!disbursementId) {
+        return reply.redirect(`/admin/pilots/${pilot.id}?flash=Disbursement+ID+required`);
+      }
+      const disbursement = getDisbursementById(disbursementId);
+      if (!disbursement) {
+        return reply.redirect(`/admin/pilots/${pilot.id}?flash=Disbursement+not+found`);
+      }
+      linkDisbursement(pilot.id, disbursementId);
+      return reply.redirect(`/admin/pilots/${pilot.id}?flash=Disbursement+linked`);
+    },
+  );
 };

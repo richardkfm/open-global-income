@@ -9,7 +9,10 @@ export type WebhookEvent =
   | 'disbursement.created'
   | 'disbursement.approved'
   | 'disbursement.completed'
-  | 'disbursement.failed';
+  | 'disbursement.failed'
+  | 'pilot.created'
+  | 'pilot.status_changed'
+  | 'pilot.report_generated';
 
 /** Webhook subscription stored in the database */
 export interface WebhookSubscription {

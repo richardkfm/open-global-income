@@ -47,6 +47,7 @@ export function layout(title: string, content: string): string {
       <a href="/admin/api-keys">API Keys</a>
       <a href="/admin/audit">Audit Log</a>
       <a href="/admin/simulate">Simulate</a>
+      <a href="/admin/pilots">Pilots</a>
       <a href="/admin/logout">Logout</a>
     </div>
   </nav>

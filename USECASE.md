@@ -186,7 +186,71 @@ When the dataset or ruleset changes, the ministry can be notified automatically 
 
 Subscribe to `data.updated` and `ruleset.updated` events to receive HMAC-SHA256 signed payloads at your endpoint. This means recalculations trigger automatically when World Bank data is refreshed.
 
-### Step 6 — What the API does NOT provide yet
+### Step 6 — Create a pilot program
+
+With a saved simulation in hand, the ministry can create an operational pilot:
+
+```bash
+curl -X POST http://localhost:3333/v1/pilots \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Kenya Bottom-20% Pilot 2026",
+    "countryCode": "KE",
+    "simulationId": "<simulation-id-from-step-4>",
+    "description": "12-month pilot targeting bottom quintile",
+    "targetRecipients": 10806000,
+    "startDate": "2026-01-01",
+    "endDate": "2026-12-31"
+  }'
+# → { "ok": true, "data": { "id": "...", "status": "planning", ... } }
+```
+
+### Step 7 — Activate and link disbursements
+
+When funding is secured, activate the pilot and link disbursements as they are created:
+
+```bash
+# Activate the pilot
+curl -X PATCH http://localhost:3333/v1/pilots/<pilot-id> \
+  -H "Content-Type: application/json" \
+  -d '{"status": "active"}'
+
+# Link a disbursement to the pilot
+curl -X POST http://localhost:3333/v1/pilots/<pilot-id>/disbursements \
+  -H "Content-Type: application/json" \
+  -d '{"disbursementId": "<disbursement-id>"}'
+```
+
+### Step 8 — Monitor and report
+
+Track actual spending against the original simulation, and generate structured reports for donors:
+
+```bash
+# Get pilot details with all linked disbursements
+curl http://localhost:3333/v1/pilots/<pilot-id>
+
+# Generate a structured report
+curl http://localhost:3333/v1/pilots/<pilot-id>/report
+# → {
+#     "pilot": { "name": "...", "status": "active" },
+#     "summary": { "totalRecipients": 1000, "totalDisbursed": 210000, "variance": "-99.2%" },
+#     "simulation": { "projectedCost": 27231120000, "variance": "-99.2%" },
+#     "disbursements": [ ... ],
+#     "meta": { "generatedAt": "..." }
+#   }
+```
+
+The variance shows how actual disbursements compare to the simulation projection — essential for donor accountability.
+
+### Step 9 — Complete the pilot
+
+```bash
+curl -X PATCH http://localhost:3333/v1/pilots/<pilot-id> \
+  -H "Content-Type: application/json" \
+  -d '{"status": "completed"}'
+```
+
+### Step 10 — What the API does NOT provide yet
 
 | What a real program needs | Available today? | Notes |
 |---------------------------|:---:|-------|
@@ -200,7 +264,9 @@ Subscribe to `data.updated` and `ruleset.updated` events to receive HMAC-SHA256 
 | Event notifications | Yes | Webhooks with HMAC-SHA256 signatures |
 | Total budget estimate | Yes | `POST /v1/simulate` returns full cost breakdown |
 | Coverage/targeting simulation | Yes | `all` and `bottom_quintile` targeting presets supported |
-| Disbursement mechanism | No | Calculation only — no M-Pesa, bank, or blockchain integration |
+| Disbursement mechanism | Yes | Solana USDC, EVM USDC, M-Pesa (stub) with approval workflow |
+| Pilot lifecycle tracking | Yes | `planning → active → paused → completed` with donor reports |
+| Variance analysis | Yes | Actual spend vs. simulation projection in pilot reports |
 | Identity / deduplication | No | User model has no KYC or national ID integration |
 | Household size adjustment | No | Entitlement is per-person, flat |
 | Historical trends / projections | No | Single data snapshot (worldbank-2023) |
@@ -438,7 +504,7 @@ Register webhooks for `disbursement.created`, `disbursement.approved`, `disburse
 
 ## Summary
 
-### What works today (v0.1.2)
+### What works today (v0.1.3)
 
 - Transparent, auditable entitlement calculation for **49 countries**
 - PPP-adjusted amounts in **local currency**
@@ -451,11 +517,12 @@ Register webhooks for `disbursement.created`, `disbursement.approved`, `disburse
 - **Persistent user store** (SQLite default, PostgreSQL supported)
 - **API key authentication** with tiered rate limits
 - **Audit logging** of all API requests
-- **Webhooks** for event-driven integration (HMAC-SHA256 signed), including `simulation.created`, `disbursement.created`, `disbursement.approved`, `disbursement.completed`, `disbursement.failed`
+- **Webhooks** for event-driven integration (HMAC-SHA256 signed), including `simulation.created`, `disbursement.*`, and `pilot.*` events
 - **Disbursement system** — non-custodial payment preparation for Solana USDC, EVM USDC, and M-Pesa (stub) with approval workflow, full audit log, and status tracking
+- **Pilot dashboard** — create pilot programs linked to simulations, track status lifecycle (`planning → active → paused → completed`), link disbursements, generate structured donor reports with variance analysis
 - **Chain adapters** for Solana and EVM (Ethereum, Polygon, Arbitrum, Optimism, Base)
 - **TypeScript SDK** generated from OpenAPI spec
-- **Admin UI** for API key management, monitoring, and simulation playground
+- **Admin UI** for API key management, monitoring, simulation playground, and pilot management
 - **Prometheus metrics** for operational observability
 - **Ruleset v2 preview** with HDI and urbanization factors
 - **Versioned results** (ruleset + data) for reproducibility
