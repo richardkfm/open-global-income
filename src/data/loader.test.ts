@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { getCountryByCode, getAllCountries, getDataVersion } from './loader.js';
+import {
+  getCountryByCode,
+  getAllCountries,
+  getDataVersion,
+  validateCountryData,
+} from './loader.js';
 
 describe('data loader', () => {
   it('returns a worldbank data version string', () => {
@@ -41,13 +46,39 @@ describe('data loader', () => {
       expect(country.stats.gniPerCapitaUsd).toBeGreaterThan(0);
       expect(country.stats.pppConversionFactor).toBeGreaterThan(0);
       expect(country.stats.population).toBeGreaterThan(0);
-      expect(['HIC', 'UMC', 'LMC', 'LIC']).toContain(
-        country.stats.incomeGroup,
-      );
+      expect(['HIC', 'UMC', 'LMC', 'LIC']).toContain(country.stats.incomeGroup);
       if (country.stats.giniIndex !== null) {
         expect(country.stats.giniIndex).toBeGreaterThan(0);
         expect(country.stats.giniIndex).toBeLessThanOrEqual(100);
       }
     }
+  });
+});
+
+describe('validateCountryData', () => {
+  it('validates the current dataset', () => {
+    const data = {
+      dataVersion: getDataVersion(),
+      countries: getAllCountries(),
+    };
+    const result = validateCountryData(data);
+    expect(result.valid).toBe(true);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it('rejects empty dataset', () => {
+    const result = validateCountryData({ dataVersion: '', countries: [] });
+    expect(result.valid).toBe(false);
+    expect(result.errors.length).toBeGreaterThan(0);
+  });
+
+  it('detects duplicate country codes', () => {
+    const country = getAllCountries()[0];
+    const result = validateCountryData({
+      dataVersion: 'test',
+      countries: [country, country],
+    });
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.includes('Duplicate'))).toBe(true);
   });
 });

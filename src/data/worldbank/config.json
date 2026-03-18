@@ -20,15 +20,10 @@
   },
 
   "countries": {
-    "_comment": "ISO 3166-1 alpha-2 codes to include. Set mode to 'all' to fetch every country the API provides, or 'explicit' to use only the listed codes.",
-    "mode": "explicit",
-    "codes": [
-      "US", "DE", "GB", "FR", "JP", "CA", "AU", "KR", "IT", "ES",
-      "NL", "CH", "SE", "NO", "SG", "IL",
-      "CN", "BR", "MX", "TR", "TH", "MY", "ZA", "CO", "AR", "PE",
-      "IN", "ID", "PH", "VN", "EG", "BD", "PK", "KE", "GH", "UA", "MA", "MM", "NG",
-      "ET", "CD", "MZ", "UG", "AF", "MW", "NE", "TD", "BI", "SL"
-    ]
+    "_comment": "ISO 3166-1 alpha-2 codes to include. Set mode to 'all' to fetch every country the API provides (190+), or 'explicit' to use only the listed codes.",
+    "mode": "all",
+    "codes": [],
+    "exclude": ["XK"]
   },
 
   "incomeGroupThresholds": {
@@ -43,6 +38,12 @@
     "_comment": "Gini data is sparse — many countries only report every few years. lookbackYears controls how far back to search for the most recent value. Set nullable to false to exclude countries without Gini data.",
     "lookbackYears": 10,
     "nullable": true
+  },
+
+  "dataVersioning": {
+    "_comment": "When enabled, each import creates a timestamped snapshot in the snapshots directory. The latest snapshot is always symlinked as countries.json.",
+    "keepSnapshots": 5,
+    "snapshotDir": "../snapshots"
   },
 
   "output": {

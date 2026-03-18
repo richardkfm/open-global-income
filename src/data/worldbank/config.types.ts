@@ -19,6 +19,11 @@ export interface ImporterConfig {
   countries: {
     mode: 'explicit' | 'all';
     codes: string[];
+    exclude?: string[];
+  };
+  dataVersioning?: {
+    keepSnapshots: number;
+    snapshotDir: string;
   };
   incomeGroupThresholds: Record<string, { min?: number; max?: number }>;
   giniIndex: {

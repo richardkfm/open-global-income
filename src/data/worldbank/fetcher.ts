@@ -122,12 +122,16 @@ export async function fetchAllIndicators(
     config.countries.mode === 'explicit'
       ? new Set(config.countries.codes.map((c) => c.toUpperCase()))
       : null; // null means accept all
+  const excludeCodes = new Set(
+    (config.countries.exclude ?? []).map((c) => c.toUpperCase()),
+  );
 
   for (const field of fields) {
     const indicatorMap = await fetchIndicator(config, field);
 
     for (const [iso2, iv] of indicatorMap) {
       if (targetCodes && !targetCodes.has(iso2)) continue;
+      if (excludeCodes.has(iso2)) continue;
 
       let entry = allData.get(iso2);
       if (!entry) {
