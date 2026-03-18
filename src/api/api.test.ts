@@ -1,17 +1,26 @@
-import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { buildServer } from './server.js';
-import { clearUsers } from '../core/users.js';
+import { getTestDb, closeDb } from '../db/database.js';
+import { clearUsersDb } from '../db/users-db.js';
+import { createApiKey } from '../db/api-keys.js';
 import type { FastifyInstance } from 'fastify';
 
 let app: FastifyInstance;
 
 beforeAll(async () => {
+  // Use in-memory SQLite for tests
+  getTestDb();
   app = buildServer();
   await app.ready();
 });
 
 beforeEach(() => {
-  clearUsers();
+  clearUsersDb();
+});
+
+afterAll(async () => {
+  await app.close();
+  closeDb();
 });
 
 // --- Health ---
@@ -97,15 +106,12 @@ describe('POST /v1/income/batch', () => {
     expect(body.ok).toBe(true);
     expect(body.data.count).toBe(3);
 
-    // First should succeed
     expect(body.data.results[0].countryCode).toBe('DE');
     expect(body.data.results[0].pppUsdPerMonth).toBe(210);
 
-    // Second should be an error
     expect(body.data.results[1].countryCode).toBe('XX');
     expect(body.data.results[1].error.code).toBe('COUNTRY_NOT_FOUND');
 
-    // Third should succeed
     expect(body.data.results[2].countryCode).toBe('BR');
   });
 
@@ -242,7 +248,6 @@ describe('GET /v1/income/countries/:code', () => {
     expect(body.data.name).toBe('Germany');
     expect(body.data.dataVersion).toMatch(/^worldbank/);
 
-    // Full stats should be present
     expect(body.data.stats).toBeDefined();
     expect(body.data.stats.gdpPerCapitaUsd).toBeGreaterThan(0);
     expect(body.data.stats.gniPerCapitaUsd).toBeGreaterThan(0);
@@ -265,7 +270,7 @@ describe('GET /v1/income/countries/:code', () => {
   });
 });
 
-// --- Users ---
+// --- Users (SQLite-backed) ---
 
 describe('POST /v1/users', () => {
   it('creates a user with valid country code', async () => {
@@ -305,7 +310,6 @@ describe('POST /v1/users', () => {
 
 describe('GET /v1/users/:id/income', () => {
   it('returns income entitlement for a registered user', async () => {
-    // Create user first
     const createRes = await app.inject({
       method: 'POST',
       url: '/v1/users',
@@ -313,7 +317,6 @@ describe('GET /v1/users/:id/income', () => {
     });
     const userId = createRes.json().data.id;
 
-    // Get income
     const res = await app.inject({
       method: 'GET',
       url: `/v1/users/${userId}/income`,
@@ -335,6 +338,38 @@ describe('GET /v1/users/:id/income', () => {
     });
     expect(res.statusCode).toBe(404);
     expect(res.json().error.code).toBe('USER_NOT_FOUND');
+  });
+});
+
+// --- API Key Authentication ---
+
+describe('API key authentication', () => {
+  it('accepts requests with a valid API key', async () => {
+    const { rawKey } = createApiKey('test-key', 'standard');
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/income/calc?country=DE',
+      headers: { 'x-api-key': rawKey },
+    });
+    expect(res.statusCode).toBe(200);
+  });
+
+  it('rejects requests with an invalid API key', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/income/calc?country=DE',
+      headers: { 'x-api-key': 'ogi_free_invalidkey12345' },
+    });
+    expect(res.statusCode).toBe(401);
+    expect(res.json().error.code).toBe('INVALID_API_KEY');
+  });
+
+  it('allows requests without API key when not required', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/income/calc?country=DE',
+    });
+    expect(res.statusCode).toBe(200);
   });
 });
 
@@ -378,18 +413,15 @@ describe('CORS', () => {
 
 describe('Rate limiting', () => {
   it('returns 429 when rate limit is exceeded', async () => {
-    // Create a separate server with very low rate limit for this test
     const limitedApp = buildServer({ rateLimitMax: 2, rateLimitWindow: 60000 });
     await limitedApp.ready();
 
-    // First two requests should succeed
     const res1 = await limitedApp.inject({ method: 'GET', url: '/v1/income/rulesets' });
     expect(res1.statusCode).toBe(200);
 
     const res2 = await limitedApp.inject({ method: 'GET', url: '/v1/income/rulesets' });
     expect(res2.statusCode).toBe(200);
 
-    // Third request should be rate-limited
     const res3 = await limitedApp.inject({ method: 'GET', url: '/v1/income/rulesets' });
     expect(res3.statusCode).toBe(429);
     const body = res3.json();

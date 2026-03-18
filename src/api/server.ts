@@ -4,6 +4,8 @@ import fastifyCors from '@fastify/cors';
 import fastifyRateLimit from '@fastify/rate-limit';
 import fastifySwagger from '@fastify/swagger';
 import fastifySwaggerUi from '@fastify/swagger-ui';
+import { apiKeyAuth } from './middleware/api-key-auth.js';
+import { auditLog } from './middleware/audit-log.js';
 import { healthRoute } from './routes/health.js';
 import { incomeRoute } from './routes/income.js';
 import { rulesetsRoute } from './routes/rulesets.js';
@@ -128,6 +130,12 @@ export function buildServer(opts?: ServerOptions) {
       },
     });
   });
+
+  // API key authentication (before routes)
+  app.register(apiKeyAuth);
+
+  // Audit logging (after auth, before routes)
+  app.register(auditLog);
 
   // Routes
   app.register(healthRoute);

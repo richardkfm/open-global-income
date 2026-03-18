@@ -1,5 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify';
-import { createUser, getUserById } from '../../core/users.js';
+import { createUserDb, getUserByIdDb } from '../../db/users-db.js';
 import { getCountryByCode, getDataVersion } from '../../data/loader.js';
 import { calculateEntitlement } from '../../core/rules.js';
 
@@ -29,13 +29,13 @@ export const usersRoute: FastifyPluginAsync = async (app) => {
       });
     }
 
-    const user = createUser(countryCode);
+    const user = createUserDb(countryCode, request.apiKey?.id);
     return reply.status(201).send({ ok: true, data: user });
   });
 
   /** Get a user's income entitlement */
   app.get<{ Params: { id: string } }>('/users/:id/income', async (request, reply) => {
-    const user = getUserById(request.params.id);
+    const user = getUserByIdDb(request.params.id);
 
     if (!user) {
       return reply.status(404).send({
