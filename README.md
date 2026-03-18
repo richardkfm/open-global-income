@@ -4,6 +4,8 @@
 
 Like what OpenStreetMap did for geographic data, or what SMTP did for email: a shared standard that makes every program built on top of it cheaper, faster, and more trustworthy than if they built alone.
 
+[Key Principles](#key-principles) | [Architecture](#architecture) | [Quickstart](#quickstart) | [API](#api) | [Authentication](#authentication) | [Rulesets](#rulesets) | [Admin UI](#admin-ui) | [Chain Adapters](#chain-adapters) | [Disbursement Providers](#disbursement-providers) | [Webhooks](#webhooks) | [SDK](#typescript-sdk) | [Database](#database) | [Vision](#vision) | [Contributing](#contributing) | [Governance](#governance)
+
 ## Key Principles
 
 - **Neutral** — no hard dependency on any specific blockchain or token. Values expressed in PPP-adjusted USD, mapped to currencies/tokens via adapters.
@@ -329,23 +331,50 @@ npm run db:migrate
 
 Set `DB_BACKEND=postgres` and `DATABASE_URL` to switch backends.
 
-## Phases
+## Vision
 
-- [x] **Phase 1 (v0.0.1)** — Project scaffold, stub rules engine, dummy data
-- [x] **Phase 2 (v0.0.2)** — Real World Bank data, Ruleset v1, unit tests
-- [x] **Phase 3 (v0.0.3)** — API expansion, rulesets endpoint, countries endpoint, error handling
-- [x] **Phase 4 (v0.0.4)** — Documentation ([ARCHITECTURE](./ARCHITECTURE.md), [RULESET_V1](./RULESET_V1.md), [USECASE](./USECASE.md), [CONTRIBUTING](./CONTRIBUTING.md)), CI
-- [x] **Phase 5 (v0.0.5)** — Currency/unit model, Solana adapter skeleton
-- [x] **Phase 6 (v0.0.6)** — Batch endpoint, OpenAPI/Swagger, security headers, CORS, rate limiting
-- [x] **Phase 7 (v0.0.7)** — PostgreSQL migrations, database adapter layer
-- [x] **Phase 8 (v0.0.8)** — Admin UI with htmx, session auth, API key management
-- [x] **Phase 9 (v0.0.9)** — EVM adapter, webhooks, SDK generation
-- [x] **Phase 10 (v0.1.0)** — Prometheus metrics, Ruleset v2 preview, governance, API stability
-- [x] **Phase 11 (v0.1.1)** — Budget simulation engine (cost modeling, targeting presets, comparison, saved simulations)
-- [x] **Phase 12 (v0.1.2)** — Disbursement integration (Solana USDC, EVM, M-Pesa stub, approval workflow)
-- [x] **Phase 13 (v0.1.3)** — Pilot dashboard (pilot lifecycle, disbursement tracking, donor reports)
+```
+┌─────────────────────────────────────────────────┐
+│  FEDERATION                                     │
+│  Multi-program interop, cross-border portability│
+├─────────────────────────────────────────────────┤
+│  EVIDENCE                                       │
+│  Impact measurement, outcome tracking, research │
+├─────────────────────────────────────────────────┤
+│  DISTRIBUTION                                   │
+│  Payment rails — crypto, mobile money, bank     │
+├─────────────────────────────────────────────────┤
+│  SIMULATION                                     │
+│  Budget modeling, targeting, cost projection     │
+├─────────────────────────────────────────────────┤
+│  CALCULATION                                    │
+│  Entitlement formulas, scoring, rulesets        │
+├─────────────────────────────────────────────────┤
+│  DATA                                           │
+│  World Bank indicators, country economics       │
+└─────────────────────────────────────────────────┘
+```
 
-See [ROADMAP.md](./ROADMAP.md) for the full plan with data models, endpoints, and rationale.
+### Built: Data, Calculation, Simulation, Distribution & Pilots (v0.1.3)
+
+Transparent entitlement calculation for 49 countries. Budget simulation with targeting presets and multi-country comparison. Non-custodial disbursement system with Solana USDC, EVM, and M-Pesa providers. Pilot lifecycle management with donor reporting and variance analysis. Approval workflows, audit trails, admin UI. 233 tests across 15 suites.
+
+### Next: Identity, Evidence & Sub-national Data
+
+- **Identity** — pluggable provider interface for national ID, biometrics, or wallet-based verification
+- **Evidence** — pre/post metrics, control groups, outcome surveys, research-grade exports (CSV, Parquet, SPSS)
+- **Sub-national data** — regional cost-of-living adjustments, district-level targeting
+- **Multi-currency settlement** — live exchange rates, multi-rail reconciliation
+
+### Future: Federation Protocol
+
+- **Federation** — multiple programs sharing a common standard, avoiding double-payment, comparing efficiency
+- **Portability** — cross-border entitlement transfer without centralizing personal data
+- **Policy simulation at scale** — governments model national UBI with confidence intervals from real pilot outcomes
+- **Open evidence base** — anonymized, aggregated outcome data across all programs, freely available for research
+- **Self-sustaining governance** — protocol governed by its users (governments, NGOs, DAOs, researchers)
+
+See [CLAUDE.md](./CLAUDE.md) for the full vision. See [ROADMAP.md](./ROADMAP.md) for technical details on completed phases.
 
 ## Contributing
 
