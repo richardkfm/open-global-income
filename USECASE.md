@@ -2,7 +2,7 @@
 
 Open Global Income is a **calculation and scoring layer**. It does not distribute money. It answers one question transparently: *how much should a basic income floor be for a given country, and how urgent is the need?*
 
-Any actor — government, NGO, DAO — builds their distribution and identity layer on top. This document walks through what the alpha API (v0.0.5) can do today, using real data, and where the gaps are.
+Any actor — government, NGO, DAO — builds their distribution and identity layer on top. This document walks through what the API (v0.1.0) can do today, using real data, and where the gaps are.
 
 ---
 
@@ -16,7 +16,7 @@ curl http://localhost:3333/health
 # → { "status": "ok" }
 ```
 
-The API is now running on `http://localhost:3333`.
+The API is now running on `http://localhost:3333`. Interactive docs at `http://localhost:3333/docs` (Swagger UI).
 
 ---
 
@@ -43,6 +43,31 @@ Find Kenya in the response:
 
 49 countries are supported across all four World Bank income groups. If a country is missing, it can be added by editing `src/data/worldbank/config.json` and running `npm run data:update`.
 
+For full economic data, use the country detail endpoint:
+
+```bash
+curl http://localhost:3333/v1/income/countries/KE
+```
+
+```json
+{
+  "ok": true,
+  "data": {
+    "code": "KE",
+    "name": "Kenya",
+    "stats": {
+      "gdpPerCapitaUsd": 2099,
+      "gniPerCapitaUsd": 2010,
+      "pppConversionFactor": 49.37,
+      "giniIndex": 38.7,
+      "population": 54030000,
+      "incomeGroup": "LMC"
+    },
+    "dataVersion": "worldbank-2023"
+  }
+}
+```
+
 ### Step 2 — Audit the formula
 
 ```bash
@@ -67,7 +92,7 @@ curl http://localhost:3333/v1/income/rulesets
 }
 ```
 
-The ministry can verify: the formula uses **GNI per capita** and **Gini index** from World Bank Open Data — both publicly available. The `rulesetVersion` and `dataVersion` fields in every response act as audit anchors. See [RULESET_V1.md](./RULESET_V1.md) for the full specification.
+The ministry can verify: the formula uses **GNI per capita** and **Gini index** from World Bank Open Data — both publicly available. The `rulesetVersion` and `dataVersion` fields in every response act as audit anchors. A Ruleset v2 (preview, not yet active) extends v1 with HDI and urbanization factors. See [RULESET_V1.md](./RULESET_V1.md) for the full v1 specification.
 
 ### Step 3 — Calculate the entitlement for Kenya
 
@@ -99,7 +124,7 @@ curl "http://localhost:3333/v1/income/calc?country=KE"
 
 ### Step 4 — Back-of-envelope budget
 
-Kenya's population is 54.03 million (from the dataset). The API does not expose a budget calculation, but the math is straightforward:
+Kenya's population is 54.03 million (available via `GET /v1/income/countries/KE`). The API does not expose a budget calculation, but the math is straightforward:
 
 ```
 10,368 KES/month × 12 months × 54,030,000 people ≈ 6.72 trillion KES/year
@@ -107,18 +132,28 @@ Kenya's population is 54.03 million (from the dataset). The API does not expose 
 
 At market exchange rates (~130 KES/USD), that's roughly **$51.7 billion/year** for universal coverage — clearly illustrating why most programs target a subset of the population. A ministry would need to model coverage rates (e.g., bottom 20% only), age targeting, and phased rollout.
 
-### Step 5 — What the API does NOT provide yet
+### Step 5 — Subscribe to updates
+
+When the dataset or ruleset changes, the ministry can be notified automatically via **webhooks**:
+
+Subscribe to `data.updated` and `ruleset.updated` events to receive HMAC-SHA256 signed payloads at your endpoint. This means recalculations trigger automatically when World Bank data is refreshed.
+
+### Step 6 — What the API does NOT provide yet
 
 | What a real program needs | Available today? | Notes |
 |---------------------------|:---:|-------|
 | Entitlement amount per person | Yes | 210 PPP-USD = ~10,368 KES/month |
 | Formula transparency & auditability | Yes | `/rulesets` endpoint, open source |
-| Country comparison | Manual | Must call `/calc` per country individually |
-| Total budget estimate | No | Population is in the dataset but not in the API response |
+| Country detail with population | Yes | `GET /v1/income/countries/KE` returns full stats |
+| Batch country comparison | Yes | `POST /v1/income/batch` with up to 50 countries |
+| User persistence | Yes | SQLite (default) or PostgreSQL |
+| API authentication | Yes | API key auth with free/standard/premium tiers |
+| Audit logging | Yes | All API requests logged |
+| Event notifications | Yes | Webhooks with HMAC-SHA256 signatures |
+| Total budget estimate | No | Population is available but no budget simulation endpoint |
 | Coverage/targeting simulation | No | No sub-national, age, or income-bracket modeling |
-| Funding source modeling | No | Out of scope for the calculation layer |
 | Disbursement mechanism | No | Calculation only — no M-Pesa, bank, or blockchain integration |
-| Identity / deduplication | No | User endpoint is an in-memory stub |
+| Identity / deduplication | No | User model has no KYC or national ID integration |
 | Household size adjustment | No | Entitlement is per-person, flat |
 | Historical trends / projections | No | Single data snapshot (worldbank-2023) |
 | Market exchange rate conversion | No | Only PPP conversion is provided |
@@ -131,10 +166,12 @@ An NGO wants to pilot basic income in one of several low-income countries and ne
 
 ### Step 1 — Compare candidate countries
 
+Use the batch endpoint to compare in a single call:
+
 ```bash
-curl "http://localhost:3333/v1/income/calc?country=MZ"
-curl "http://localhost:3333/v1/income/calc?country=BI"
-curl "http://localhost:3333/v1/income/calc?country=ET"
+curl -X POST http://localhost:3333/v1/income/batch \
+  -H "Content-Type: application/json" \
+  -d '{"countries": ["MZ", "BI", "ET"]}'
 ```
 
 | Country | Local currency/month | Score | GNI/capita | Gini | Population |
@@ -145,7 +182,7 @@ curl "http://localhost:3333/v1/income/calc?country=ET"
 
 All three score 1.0 (maximum need). The score alone doesn't differentiate between LIC countries — the useful comparison is on **local currency amounts** (cost per person) and **population** (total program cost). Mozambique's high Gini (54.0) might also factor into the NGO's decision as an indicator of inequality.
 
-**Observation:** The current scoring model saturates at 1.0 for most LMC/LIC countries. A future version could provide finer granularity within the high-need tier.
+**Observation:** The current scoring model saturates at 1.0 for most LMC/LIC countries. Ruleset v2 (preview) aims to provide finer granularity within the high-need tier using HDI and urbanization factors.
 
 ### Step 2 — Model a pilot cohort
 
@@ -160,18 +197,34 @@ curl -X POST http://localhost:3333/v1/users \
 curl http://localhost:3333/v1/users/{id}/income
 ```
 
-**Limitation:** The user store is in-memory — all data is lost on server restart. This is a placeholder for a future persistent layer. An NGO running a real pilot would need:
-- Persistent database (PostgreSQL, etc.)
+Users are now persisted in SQLite (or PostgreSQL with `DB_BACKEND=postgres`), so data survives restarts. However, an NGO running a real pilot would still need:
 - KYC / identity verification
-- Enrollment workflows
+- Enrollment workflows with demographic data
+- Integration with local payment systems
 
-### Step 3 — What's missing for NGOs
+### Step 3 — Integrate programmatically
 
-- **Batch endpoint** — comparing countries requires one call per country
+Use the generated TypeScript SDK for type-safe integration:
+
+```bash
+npm run sdk:generate
+```
+
+```typescript
+import { OgiClient } from './sdk/client.js';
+
+const client = new OgiClient('http://localhost:3333');
+const result = await client.calcIncome('MZ');
+console.log(result.data.localCurrencyPerMonth); // 5565
+```
+
+### Step 4 — What's missing for NGOs
+
 - **CSV/spreadsheet export** — for reports and grant proposals
-- **Sub-national data** — districts and provinces vary widely
+- **Sub-national data** — districts and provinces vary widely within a country
+- **Budget simulation** — coverage rate and targeting scenarios
 - **Disbursement integration** — M-Pesa, bank transfer, etc.
-- **Donor reporting** — audit trail beyond version fields
+- **Donor reporting** — structured reports beyond the audit log
 
 ---
 
@@ -181,52 +234,97 @@ A ReFi DAO wants to distribute USDC to participants based on Open Global Income 
 
 ### Step 1 — Calculate entitlement
 
-Same API call: `GET /v1/income/calc?country=NG` → 210 PPP-USD/month, score 1.0.
+```bash
+curl "http://localhost:3333/v1/income/calc?country=NG"
+# → 210 PPP-USD/month, score 1.0
+```
 
-### Step 2 — Map to token amount
+### Step 2 — Map to token amount using chain adapters
 
-The project defines a `ChainAdapter` interface in `src/adapters/`, but no concrete adapter implementation exists yet. A DAO would currently need to:
+Both **Solana** and **EVM** adapters are available as TypeScript libraries. They convert a `GlobalIncomeEntitlement` into a `TokenAmount` with raw amounts (lamports/wei) and display amounts:
 
-1. Call the API for the entitlement
-2. Apply their own exchange rate (e.g., PPP-USD → USDC)
-3. Build on-chain transactions separately
+```typescript
+import { solanaAdapter } from './src/adapters/solana/index.js';
 
-### Step 3 — What's missing for DAOs
+const entitlement = await fetch('http://localhost:3333/v1/income/calc?country=NG')
+  .then(r => r.json())
+  .then(r => r.data);
 
-- **Solana adapter** — type definitions are planned but no implementation exists yet
-- **API endpoint for token mapping** — adapters would be libraries, not API endpoints
-- **Wallet-based identity** — user model uses UUIDs, not wallet addresses
-- **Oracle integration** — no live exchange rates
+const tokenAmount = solanaAdapter.toTokenAmount(entitlement, {
+  tokenSymbol: 'USDC',
+  tokenDecimals: 6,
+  exchangeRate: 1, // 1 PPP-USD = 1 USDC
+});
+
+console.log(tokenAmount);
+// {
+//   rawAmount: 210000000n,  (210 USDC in lamports)
+//   displayAmount: "210.000000",
+//   symbol: "USDC",
+//   decimals: 6
+// }
+```
+
+For EVM chains, pre-configured settings are available for Ethereum, Polygon, Arbitrum, Optimism, and Base:
+
+```typescript
+import { evmAdapter, evmChains } from './src/adapters/evm/index.js';
+
+const tokenAmount = evmAdapter.toTokenAmount(entitlement, {
+  ...evmChains.polygon,
+  exchangeRate: 1,
+});
+```
+
+### Step 3 — Subscribe to recalculation events
+
+Register a webhook for `entitlement.calculated` events to trigger on-chain updates when data changes.
+
+### Step 4 — What's missing for DAOs
+
+- **API endpoint for token mapping** — adapters are libraries, not API endpoints; the DAO must import them
 - **On-chain program** — no smart contract for storing entitlements or triggering distributions
+- **Wallet-based identity** — user model uses UUIDs, not wallet addresses
+- **Oracle integration** — exchange rates are static config, no live price feeds
+- **Multi-sig governance** — no on-chain governance for ruleset changes
 
 ---
 
 ## Summary
 
-### What works today (alpha v0.0.5)
+### What works today (v0.1.0)
 
 - Transparent, auditable entitlement calculation for **49 countries**
 - PPP-adjusted amounts in **local currency**
 - Need-based **score (0–1)** incorporating inequality via Gini index
+- **Batch endpoint** for comparing up to 50 countries at once
+- **Country detail endpoint** with full economic stats and population
+- **Persistent user store** (SQLite default, PostgreSQL supported)
+- **API key authentication** with tiered rate limits
+- **Audit logging** of all API requests
+- **Webhooks** for event-driven integration (HMAC-SHA256 signed)
+- **Chain adapters** for Solana and EVM (Ethereum, Polygon, Arbitrum, Optimism, Base)
+- **TypeScript SDK** generated from OpenAPI spec
+- **Admin UI** for API key management and monitoring
+- **Prometheus metrics** for operational observability
+- **Ruleset v2 preview** with HDI and urbanization factors
 - **Versioned results** (ruleset + data) for reproducibility
-- Full formula transparency via `/rulesets` endpoint
 - Configurable data pipeline with World Bank source
 
-### What's needed for real-world use
+### What's needed for real-world deployment
 
 Listed roughly by priority (unblocks the most scenarios first):
 
 1. **Budget simulation endpoint** — `GET /v1/income/simulate?country=KE&coverage=0.2` returning total cost, per-person amount, and population covered
-2. **Batch/comparison endpoint** — `GET /v1/income/calc?countries=KE,MZ,BI` to compare multiple countries in one call
-3. **Population and budget in calc response** — expose population and annual cost estimate alongside the entitlement
-4. **Persistent user store** — replace in-memory store with a real database
-5. **Sub-national data** — regional income and cost-of-living differences within a country
-6. **Market exchange rate conversion** — in addition to PPP conversion
-7. **Time series / projections** — historical data snapshots for trend analysis
-8. **Export formats** — CSV, PDF for policymakers and donors
-9. **Chain adapters** — Solana, Ethereum implementations with token mapping
-10. **Identity layer** — wallet-based or national ID integration
-11. **Disbursement adapters** — M-Pesa, bank transfer, stablecoin rails
+2. **Sub-national data** — regional income and cost-of-living differences within a country
+3. **Market exchange rate conversion** — in addition to PPP conversion
+4. **Time series / projections** — historical data snapshots for trend analysis
+5. **Export formats** — CSV, PDF for policymakers and donors
+6. **On-chain programs** — Solana and EVM smart contracts for entitlement storage and distribution
+7. **Wallet-based identity** — link users to wallet addresses for on-chain disbursement
+8. **Oracle integration** — live exchange rates for adapter calculations
+9. **KYC / identity verification** — integration with national ID or biometric systems
+10. **Disbursement adapters** — M-Pesa, bank transfer, stablecoin rails
 
 ---
 
