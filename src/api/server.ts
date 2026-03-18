@@ -4,6 +4,7 @@ import fastifyCors from '@fastify/cors';
 import fastifyRateLimit from '@fastify/rate-limit';
 import fastifySwagger from '@fastify/swagger';
 import fastifySwaggerUi from '@fastify/swagger-ui';
+import fastifyFormBody from '@fastify/formbody';
 import { apiKeyAuth } from './middleware/api-key-auth.js';
 import { auditLog } from './middleware/audit-log.js';
 import { healthRoute } from './routes/health.js';
@@ -11,6 +12,7 @@ import { incomeRoute } from './routes/income.js';
 import { rulesetsRoute } from './routes/rulesets.js';
 import { countriesRoute } from './routes/countries.js';
 import { usersRoute } from './routes/users.js';
+import { adminRoutes } from '../admin/routes.js';
 
 export interface ServerOptions {
   rateLimitMax?: number;
@@ -60,8 +62,12 @@ export function buildServer(opts?: ServerOptions) {
   app.register(fastifyRateLimit, {
     max: rateLimitMax,
     timeWindow: rateLimitWindow,
-    allowList: (req) => req.url === '/health',
+    allowList: (req) =>
+      req.url === '/health' || (req.url?.startsWith('/admin') ?? false),
   });
+
+  // Form body parser (for admin POST forms)
+  app.register(fastifyFormBody);
 
   // OpenAPI spec generation
   app.register(fastifySwagger, {
@@ -143,6 +149,11 @@ export function buildServer(opts?: ServerOptions) {
   app.register(rulesetsRoute, { prefix: '/v1/income' });
   app.register(countriesRoute, { prefix: '/v1/income' });
   app.register(usersRoute, { prefix: '/v1' });
+
+  // Admin UI (feature-flagged)
+  if (process.env.ENABLE_ADMIN === 'true') {
+    app.register(adminRoutes, { prefix: '/admin' });
+  }
 
   return app;
 }
