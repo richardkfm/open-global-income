@@ -37,6 +37,20 @@ const SCHEMA = `
   CREATE INDEX IF NOT EXISTS idx_audit_log_timestamp ON audit_log(timestamp);
   CREATE INDEX IF NOT EXISTS idx_audit_log_api_key ON audit_log(api_key_id);
   CREATE INDEX IF NOT EXISTS idx_api_keys_hash ON api_keys(key_hash);
+
+  CREATE TABLE IF NOT EXISTS simulations (
+    id TEXT PRIMARY KEY,
+    name TEXT,
+    country_code TEXT NOT NULL,
+    parameters TEXT NOT NULL,
+    results TEXT NOT NULL,
+    api_key_id TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (api_key_id) REFERENCES api_keys(id)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_simulations_country ON simulations(country_code);
+  CREATE INDEX IF NOT EXISTS idx_simulations_api_key ON simulations(api_key_id);
 `;
 
 export function getDb(dbPath?: string): Database.Database {

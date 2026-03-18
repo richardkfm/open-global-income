@@ -4,10 +4,14 @@ import { renderLogin } from './views/login.js';
 import { renderDashboard, type DashboardData } from './views/dashboard.js';
 import { renderApiKeys } from './views/api-keys.js';
 import { renderAuditLog, renderAuditTable } from './views/audit.js';
+import { renderSimulatePage, renderSimulationPreview, renderComparisonTable } from './views/simulate.js';
 import { listApiKeys, createApiKey, revokeApiKey, type ApiKeyTier } from '../db/api-keys.js';
 import { getRecentAuditEntries, getAuditStats } from '../db/audit.js';
-import { getAllCountries, getDataVersion } from '../data/loader.js';
+import { getAllCountries, getCountryByCode, getDataVersion } from '../data/loader.js';
 import { getDb } from '../db/database.js';
+import { calculateSimulation } from '../core/simulations.js';
+import { listSimulations, saveSimulation, deleteSimulation } from '../db/simulations-db.js';
+import type { SimulationParameters, TargetGroup } from '../core/types.js';
 
 function getAdminPassword(): string {
   return process.env.ADMIN_PASSWORD ?? 'admin';
@@ -123,5 +127,105 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
   app.get('/audit/table', async (_request, reply) => {
     const entries = getRecentAuditEntries(100);
     return reply.type('text/html').send(renderAuditTable(entries));
+  });
+
+  // Simulate page
+  app.get('/simulate', async (request, reply) => {
+    const countries = getAllCountries();
+    const { simulations } = listSimulations(20, 0);
+    const url = new URL(request.url, 'http://localhost');
+    const flash = url.searchParams.get('flash') ?? undefined;
+    return reply.type('text/html').send(renderSimulatePage(countries, simulations, flash));
+  });
+
+  // HTMX partial: run simulation and return preview fragment
+  app.post<{
+    Body: { country?: string; coverage?: string; durationMonths?: string; targetGroup?: string };
+  }>('/simulate/preview', async (request, reply) => {
+    const body = request.body ?? {};
+    const countryCode = (body.country ?? '').toUpperCase();
+    const coverage = Math.min(1, Math.max(0, parseFloat(body.coverage ?? '20') / 100));
+    const durationMonths = Math.min(120, Math.max(1, parseInt(body.durationMonths ?? '12', 10)));
+    const targetGroup = (body.targetGroup ?? 'all') as TargetGroup;
+
+    const country = getCountryByCode(countryCode);
+    if (!country) {
+      return reply.type('text/html').send(`<p style="color:var(--danger)">Country '${countryCode}' not found</p>`);
+    }
+
+    const params: SimulationParameters = {
+      country: countryCode,
+      coverage,
+      targetGroup,
+      durationMonths,
+      adjustments: { floorOverride: null, householdSize: null },
+    };
+
+    const result = calculateSimulation(country, params, getDataVersion());
+    return reply.type('text/html').send(renderSimulationPreview(result));
+  });
+
+  // HTMX partial: compare multiple countries
+  app.post<{
+    Body: { countries?: string | string[]; coverage?: string; durationMonths?: string };
+  }>('/simulate/compare', async (request, reply) => {
+    const body = request.body ?? {};
+    const rawCountries = Array.isArray(body.countries)
+      ? body.countries
+      : body.countries ? [body.countries] : [];
+    const coverage = Math.min(1, Math.max(0, parseFloat(body.coverage ?? '20') / 100));
+    const durationMonths = Math.min(120, Math.max(1, parseInt(body.durationMonths ?? '12', 10)));
+    const dataVersion = getDataVersion();
+
+    const results = [];
+    for (const code of rawCountries) {
+      const country = getCountryByCode(code.toUpperCase());
+      if (!country) continue;
+      const params: SimulationParameters = {
+        country: country.code,
+        coverage,
+        targetGroup: 'all',
+        durationMonths,
+        adjustments: { floorOverride: null, householdSize: null },
+      };
+      results.push(calculateSimulation(country, params, dataVersion));
+    }
+
+    results.sort((a, b) => a.simulation.cost.annualPppUsd - b.simulation.cost.annualPppUsd);
+    return reply.type('text/html').send(renderComparisonTable(results));
+  });
+
+  // Save a simulation from admin UI
+  app.post<{ Body: { name?: string; simulationJson?: string } }>(
+    '/simulate/save',
+    async (request, reply) => {
+      const { name, simulationJson } = request.body ?? {};
+      if (!simulationJson) {
+        return reply.redirect('/admin/simulate?flash=Missing+simulation+data');
+      }
+
+      try {
+        const result = JSON.parse(simulationJson);
+        const countryCode = result.country?.code ?? 'XX';
+        const params: SimulationParameters = {
+          country: countryCode,
+          coverage: result.simulation?.coverageRate ?? 1,
+          targetGroup: 'all',
+          durationMonths: 12,
+          adjustments: { floorOverride: null, householdSize: null },
+        };
+        saveSimulation(name ?? null, countryCode, params, result);
+        return reply.redirect('/admin/simulate?flash=Simulation+saved');
+      } catch {
+        return reply.redirect('/admin/simulate?flash=Failed+to+save+simulation');
+      }
+    },
+  );
+
+  // Delete a saved simulation
+  app.post<{ Body: { id?: string } }>('/simulate/delete', async (request, reply) => {
+    const id = request.body?.id;
+    if (id) deleteSimulation(id);
+    return reply.redirect('/admin/simulate?flash=Simulation+deleted');
   });
 };

@@ -68,3 +68,53 @@ export interface GlobalIncomeEntitlement {
   /** Which ruleset and data snapshot produced this result */
   meta: RulesetMeta;
 }
+
+/** Target group for budget simulation */
+export type TargetGroup = 'all' | 'bottom_quintile';
+
+/** Parameters for a budget simulation request */
+export interface SimulationParameters {
+  country: string;
+  coverage: number;
+  targetGroup: TargetGroup;
+  durationMonths: number;
+  adjustments: {
+    floorOverride: number | null;
+    householdSize: number | null;
+  };
+}
+
+/** Full result of a budget simulation */
+export interface SimulationResult {
+  country: {
+    code: string;
+    name: string;
+    population: number;
+  };
+  simulation: {
+    recipientCount: number;
+    coverageRate: number;
+    entitlementPerPerson: {
+      pppUsdPerMonth: number;
+      localCurrencyPerMonth: number;
+    };
+    cost: {
+      monthlyLocalCurrency: number;
+      annualLocalCurrency: number;
+      annualPppUsd: number;
+      asPercentOfGdp: number;
+    };
+    meta: RulesetMeta;
+  };
+}
+
+/** A saved simulation record from the database */
+export interface SavedSimulation {
+  id: string;
+  name: string | null;
+  countryCode: string;
+  parameters: SimulationParameters;
+  results: SimulationResult;
+  apiKeyId: string | null;
+  createdAt: string;
+}
