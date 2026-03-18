@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.0.6] - 2026-03-18
+
+### Added
+- `POST /v1/income/batch` endpoint: batch calculate entitlements for multiple countries in a single request, with partial failure handling and configurable max batch size (`BATCH_MAX_ITEMS`, default 50)
+- `GET /v1/income/countries/:code` endpoint: retrieve full country details including all economic stats
+- `GET /v1/income/rulesets/:version` endpoint: retrieve a single ruleset by version string
+- `getRulesetByVersion()` function in `src/core/rulesets.ts`
+- OpenAPI 3.0 spec auto-generated from route definitions via `@fastify/swagger`
+- Swagger UI served at `/docs` via `@fastify/swagger-ui`
+- Security headers via `@fastify/helmet` (X-Content-Type-Options, X-Frame-Options, CSP, HSTS, etc.)
+- CORS support via `@fastify/cors` (configurable via `CORS_ORIGIN` and `CORS_METHODS` env vars)
+- Per-IP rate limiting via `@fastify/rate-limit` (configurable via `RATE_LIMIT_MAX` and `RATE_LIMIT_WINDOW_MS` env vars, `/health` exempt)
+- `RATE_LIMIT_EXCEEDED` and `BATCH_TOO_LARGE` error codes
+- `VALIDATION_ERROR` error code for Fastify schema validation failures
+- `ServerOptions` interface for `buildServer()` to allow test-time configuration overrides
+- Comprehensive tests for all new endpoints, security headers, CORS, rate limiting, and OpenAPI docs (70 total tests)
+
+### Changed
+- `buildServer()` now accepts optional `ServerOptions` parameter for rate limit configuration
+- Error handler enhanced to correctly handle 429 rate limit responses and Fastify validation errors
+
 ## [0.0.5] - 2026-03-17
 
 ### Added

@@ -55,3 +55,8 @@ export function getActiveRulesets(): RulesetInfo[] {
 export function getAllRulesets(): RulesetInfo[] {
   return RULESETS;
 }
+
+/** Get a single ruleset by version string */
+export function getRulesetByVersion(version: string): RulesetInfo | undefined {
+  return RULESETS.find((r) => r.version === version);
+}
