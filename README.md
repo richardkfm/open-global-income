@@ -105,10 +105,52 @@ curl http://localhost:3333/v1/income/calc?country=KE
 ```bash
 git clone https://github.com/alcoolio/open-global-income.git
 cd open-global-income
-docker compose up
+docker compose up --build
 ```
 
-This builds the image and starts the API on port `3333`. No other dependencies required.
+This builds the image and starts the API on port `3333`. No other dependencies required — the Dockerfile uses a multi-stage build with `node:20-slim`.
+
+Once the container is running, the following URLs are available:
+
+| URL | Description |
+|-----|-------------|
+| `http://localhost:3333/health` | Health check — verify the server is up |
+| `http://localhost:3333/docs` | Swagger UI — interactive API documentation |
+| `http://localhost:3333/docs/json` | Raw OpenAPI spec (JSON) |
+| `http://localhost:3333/v1/income/calc?country=KE` | Example: calculate Kenya's entitlement |
+| `http://localhost:3333/admin` | Admin UI (requires `ENABLE_ADMIN=true`) |
+| `http://localhost:3333/metrics` | Prometheus metrics |
+
+#### Docker with environment variables
+
+Pass environment variables to configure the container:
+
+```bash
+docker compose up --build -e ENABLE_ADMIN=true -e ADMIN_PASSWORD=changeme
+```
+
+Or edit `docker-compose.yml` to add them:
+
+```yaml
+services:
+  api:
+    build: .
+    ports:
+      - "3333:3333"
+    environment:
+      - NODE_ENV=production
+      - PORT=3333
+      - ENABLE_ADMIN=true
+      - ADMIN_PASSWORD=changeme
+      - API_KEY_REQUIRED=false
+```
+
+#### Docker build only
+
+```bash
+docker build -t open-global-income .
+docker run -p 3333:3333 open-global-income
+```
 
 ### Useful commands
 

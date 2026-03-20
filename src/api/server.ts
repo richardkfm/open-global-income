@@ -47,16 +47,11 @@ export function buildServer(opts?: ServerOptions) {
     },
   });
 
-  // Security headers — loosen CSP for Swagger UI assets
+  // Security headers — CSP disabled so Swagger UI at /docs can load
+  // its inline scripts and styles. This is standard for API servers that
+  // serve Swagger UI; re-enable CSP if the server starts serving user content.
   app.register(fastifyHelmet, {
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        imgSrc: ["'self'", 'data:', 'validator.swagger.io'],
-        scriptSrc: ["'self'", "'unsafe-inline'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-      },
-    },
+    contentSecurityPolicy: false,
   });
 
   // CORS
