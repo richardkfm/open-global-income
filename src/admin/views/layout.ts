@@ -1,5 +1,5 @@
 /** Server-rendered HTML layout for the admin UI */
-export function layout(title: string, content: string): string {
+export function layout(title: string, content: string, username?: string): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -48,6 +48,7 @@ export function layout(title: string, content: string): string {
       <a href="/admin/audit">Audit Log</a>
       <a href="/admin/simulate">Simulate</a>
       <a href="/admin/pilots">Pilots</a>
+      ${username ? `<span style="opacity:0.6;font-size:0.85rem">${escapeHtml(username)}</span>` : ''}
       <a href="/admin/logout">Logout</a>
     </div>
   </nav>

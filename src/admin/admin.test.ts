@@ -8,7 +8,8 @@ let app: FastifyInstance;
 beforeAll(async () => {
   getTestDb();
   process.env.ENABLE_ADMIN = 'true';
-  process.env.ADMIN_PASSWORD = 'test-pass';
+  process.env.ADMIN_USERNAME = 'testadmin';
+  process.env.ADMIN_PASSWORD = 'test-pass-123';
   app = buildServer();
   await app.ready();
 });
@@ -17,8 +18,20 @@ afterAll(async () => {
   await app.close();
   closeDb();
   delete process.env.ENABLE_ADMIN;
+  delete process.env.ADMIN_USERNAME;
   delete process.env.ADMIN_PASSWORD;
 });
+
+/** Helper: login and return the session cookie */
+async function login(username = 'testadmin', password = 'test-pass-123'): Promise<string> {
+  const res = await app.inject({
+    method: 'POST',
+    url: '/admin/login',
+    payload: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`,
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+  });
+  return res.headers['set-cookie'] as string;
+}
 
 describe('Admin UI', () => {
   it('redirects unauthenticated users to login', async () => {
@@ -27,40 +40,61 @@ describe('Admin UI', () => {
     expect(res.headers.location).toBe('/admin/login');
   });
 
-  it('shows login page', async () => {
+  it('shows login page with username and password fields', async () => {
     const res = await app.inject({ method: 'GET', url: '/admin/login' });
     expect(res.statusCode).toBe(200);
     expect(res.body).toContain('OGI Admin');
+    expect(res.body).toContain('username');
     expect(res.body).toContain('password');
+    expect(res.body).toContain('rememberMe');
   });
 
   it('rejects wrong password', async () => {
     const res = await app.inject({
       method: 'POST',
       url: '/admin/login',
-      payload: 'password=wrong',
+      payload: 'username=testadmin&password=wrong',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
     });
     expect(res.statusCode).toBe(200);
-    expect(res.body).toContain('Invalid password');
+    expect(res.body).toContain('Invalid username or password');
   });
 
-  it('authenticates with correct password and shows dashboard', async () => {
-    // Login
+  it('rejects unknown username', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/admin/login',
+      payload: 'username=nobody&password=test-pass-123',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toContain('Invalid username or password');
+  });
+
+  it('pre-fills username after failed login', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/admin/login',
+      payload: 'username=testadmin&password=wrong',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    });
+    expect(res.body).toContain('value="testadmin"');
+  });
+
+  it('authenticates with correct credentials and shows dashboard', async () => {
     const loginRes = await app.inject({
       method: 'POST',
       url: '/admin/login',
-      payload: 'password=test-pass',
+      payload: 'username=testadmin&password=test-pass-123',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
     });
     expect(loginRes.statusCode).toBe(302);
     expect(loginRes.headers.location).toBe('/admin');
 
-    // Extract session cookie
     const cookie = loginRes.headers['set-cookie'] as string;
     expect(cookie).toContain('ogi_session=');
+    expect(cookie).toContain('Max-Age=86400');
 
-    // Access dashboard with cookie
     const dashRes = await app.inject({
       method: 'GET',
       url: '/admin',
@@ -71,15 +105,20 @@ describe('Admin UI', () => {
     expect(dashRes.body).toContain('Countries');
   });
 
-  it('shows API keys page when authenticated', async () => {
+  it('sets longer Max-Age with remember-me', async () => {
     const loginRes = await app.inject({
       method: 'POST',
       url: '/admin/login',
-      payload: 'password=test-pass',
+      payload: 'username=testadmin&password=test-pass-123&rememberMe=1',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
     });
+    expect(loginRes.statusCode).toBe(302);
     const cookie = loginRes.headers['set-cookie'] as string;
+    expect(cookie).toContain('Max-Age=604800');
+  });
 
+  it('shows API keys page when authenticated', async () => {
+    const cookie = await login();
     const res = await app.inject({
       method: 'GET',
       url: '/admin/api-keys',
@@ -91,14 +130,7 @@ describe('Admin UI', () => {
   });
 
   it('shows audit log page when authenticated', async () => {
-    const loginRes = await app.inject({
-      method: 'POST',
-      url: '/admin/login',
-      payload: 'password=test-pass',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    });
-    const cookie = loginRes.headers['set-cookie'] as string;
-
+    const cookie = await login();
     const res = await app.inject({
       method: 'GET',
       url: '/admin/audit',
@@ -106,5 +138,46 @@ describe('Admin UI', () => {
     });
     expect(res.statusCode).toBe(200);
     expect(res.body).toContain('Audit Log');
+  });
+
+  it('logout clears session and redirects to login', async () => {
+    const cookie = await login();
+    const logoutRes = await app.inject({
+      method: 'GET',
+      url: '/admin/logout',
+      headers: { cookie },
+    });
+    expect(logoutRes.statusCode).toBe(302);
+    expect(logoutRes.headers.location).toBe('/admin/login');
+
+    // Session should now be invalid
+    const dashRes = await app.inject({
+      method: 'GET',
+      url: '/admin',
+      headers: { cookie },
+    });
+    expect(dashRes.statusCode).toBe(302);
+    expect(dashRes.headers.location).toBe('/admin/login');
+  });
+
+  it('blocks login after 5 failed attempts', async () => {
+    // Make 5 failed attempts
+    for (let i = 0; i < 5; i++) {
+      await app.inject({
+        method: 'POST',
+        url: '/admin/login',
+        payload: 'username=testadmin&password=wrongpassword',
+        headers: { 'content-type': 'application/x-www-form-urlencoded', 'x-forwarded-for': '10.0.0.99' },
+      });
+    }
+    // 6th attempt should be rate-limited (even with correct credentials)
+    const res = await app.inject({
+      method: 'POST',
+      url: '/admin/login',
+      payload: 'username=testadmin&password=test-pass-123',
+      headers: { 'content-type': 'application/x-www-form-urlencoded', 'x-forwarded-for': '10.0.0.99' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toContain('Too many failed attempts');
   });
 });

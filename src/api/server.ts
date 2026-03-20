@@ -168,8 +168,8 @@ export function buildServer(opts?: ServerOptions) {
   app.register(disbursementsRoute, { prefix: '/v1' });
   app.register(pilotsRoute, { prefix: '/v1' });
 
-  // Admin UI (feature-flagged)
-  if (process.env.ENABLE_ADMIN === 'true') {
+  // Admin UI (disabled only if ENABLE_ADMIN=false explicitly)
+  if (process.env.ENABLE_ADMIN !== 'false') {
     app.register(adminRoutes, { prefix: '/admin' });
   }
 

@@ -1,5 +1,4 @@
 import type { FastifyPluginAsync } from 'fastify';
-import { randomUUID, createHash } from 'node:crypto';
 import { renderLogin } from './views/login.js';
 import { renderDashboard, type DashboardData } from './views/dashboard.js';
 import { renderApiKeys } from './views/api-keys.js';
@@ -14,68 +13,153 @@ import { calculateSimulation } from '../core/simulations.js';
 import { listSimulations, saveSimulation, deleteSimulation, getSimulationById } from '../db/simulations-db.js';
 import { createPilot, getPilotById, listPilots, updatePilot, linkDisbursement, getPilotDisbursementIds } from '../db/pilots-db.js';
 import { getDisbursementById } from '../db/disbursements-db.js';
+import {
+  ensureDefaultAdmin,
+  findAdminUser,
+  verifyPassword,
+  createSession,
+  findSession,
+  deleteSession,
+  deleteExpiredSessions,
+  SESSION_TTL_STANDARD,
+  SESSION_TTL_REMEMBER,
+} from '../db/admin-auth.js';
 import type { SimulationParameters, TargetGroup, PilotStatus } from '../core/types.js';
 
-function getAdminPassword(): string {
-  return process.env.ADMIN_PASSWORD ?? 'admin';
-}
-const sessions = new Map<string, { createdAt: number }>();
+// ---------------------------------------------------------------------------
+// Brute-force protection — in-memory per-IP attempt tracker
+// ---------------------------------------------------------------------------
 
-function hashSession(token: string): string {
-  return createHash('sha256').update(token).digest('hex');
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
+
+interface AttemptRecord { count: number; resetAt: number }
+const loginAttempts = new Map<string, AttemptRecord>();
+
+function getClientIp(request: { ip?: string; headers: Record<string, string | string[] | undefined> }): string {
+  const forwarded = request.headers['x-forwarded-for'];
+  if (forwarded) return (Array.isArray(forwarded) ? forwarded[0] : forwarded).split(',')[0].trim();
+  return request.ip ?? 'unknown';
 }
 
-function isAuthenticated(request: { headers: Record<string, string | string[] | undefined> }): boolean {
+function isRateLimited(ip: string): boolean {
+  const rec = loginAttempts.get(ip);
+  if (!rec) return false;
+  if (Date.now() > rec.resetAt) { loginAttempts.delete(ip); return false; }
+  return rec.count >= MAX_LOGIN_ATTEMPTS;
+}
+
+function recordFailedAttempt(ip: string): void {
+  const rec = loginAttempts.get(ip);
+  if (!rec || Date.now() > rec.resetAt) {
+    loginAttempts.set(ip, { count: 1, resetAt: Date.now() + LOCKOUT_MS });
+  } else {
+    rec.count += 1;
+  }
+}
+
+function clearAttempts(ip: string): void {
+  loginAttempts.delete(ip);
+}
+
+// ---------------------------------------------------------------------------
+// Session helpers
+// ---------------------------------------------------------------------------
+
+function getSessionToken(request: { headers: Record<string, string | string[] | undefined> }): string | null {
   const cookie = request.headers.cookie as string | undefined;
-  if (!cookie) return false;
-
+  if (!cookie) return null;
   const match = cookie.match(/ogi_session=([^;]+)/);
-  if (!match) return false;
-
-  const sessionHash = hashSession(match[1]);
-  return sessions.has(sessionHash);
+  return match ? match[1] : null;
 }
+
+function getAuthenticatedUserId(request: { headers: Record<string, string | string[] | undefined> }): string | null {
+  const token = getSessionToken(request);
+  if (!token) return null;
+  const session = findSession(token);
+  return session ? session.userId : null;
+}
+
+// ---------------------------------------------------------------------------
+// Plugin
+// ---------------------------------------------------------------------------
 
 export const adminRoutes: FastifyPluginAsync = async (app) => {
-  // Login page
+  // Seed the default admin user from env vars on startup
+  ensureDefaultAdmin();
+
+  // ── Login page ─────────────────────────────────────────────────────────────
+
   app.get('/login', async (request, reply) => {
-    if (isAuthenticated(request)) {
+    if (getAuthenticatedUserId(request)) {
       return reply.redirect('/admin');
     }
     return reply.type('text/html').send(renderLogin());
   });
 
-  // Login handler
-  app.post<{ Body: { password?: string } }>('/login', async (request, reply) => {
-    const password = request.body?.password;
-    if (password === getAdminPassword()) {
-      const token = randomUUID();
-      const sessionHash = hashSession(token);
-      sessions.set(sessionHash, { createdAt: Date.now() });
+  // ── Login handler ──────────────────────────────────────────────────────────
+
+  app.post<{ Body: { username?: string; password?: string; rememberMe?: string } }>(
+    '/login',
+    async (request, reply) => {
+      const ip = getClientIp(request);
+      const username = (request.body?.username ?? '').trim();
+      const password = request.body?.password ?? '';
+      const rememberMe = request.body?.rememberMe === '1';
+
+      // Rate limit check
+      if (isRateLimited(ip)) {
+        return reply
+          .type('text/html')
+          .send(renderLogin('Too many failed attempts. Please wait 15 minutes before trying again.', username));
+      }
+
+      // Validate credentials
+      const user = findAdminUser(username);
+      const valid = user !== null && verifyPassword(password, user.passwordHash);
+
+      if (!valid) {
+        recordFailedAttempt(ip);
+        return reply
+          .type('text/html')
+          .send(renderLogin('Invalid username or password.', username));
+      }
+
+      // Success
+      clearAttempts(ip);
+      deleteExpiredSessions();
+
+      const token = createSession(user.id, rememberMe);
+      const maxAge = rememberMe ? SESSION_TTL_REMEMBER : SESSION_TTL_STANDARD;
 
       return reply
-        .header('set-cookie', `ogi_session=${token}; Path=/admin; HttpOnly; SameSite=Strict`)
+        .header('set-cookie', `ogi_session=${token}; Path=/admin; HttpOnly; SameSite=Strict; Max-Age=${maxAge}`)
         .redirect('/admin');
-    }
-    return reply.type('text/html').send(renderLogin('Invalid password'));
-  });
+    },
+  );
 
-  // Logout
-  app.get('/logout', async (_request, reply) => {
+  // ── Logout ─────────────────────────────────────────────────────────────────
+
+  app.get('/logout', async (request, reply) => {
+    const token = getSessionToken(request);
+    if (token) deleteSession(token);
     return reply
       .header('set-cookie', 'ogi_session=; Path=/admin; HttpOnly; Max-Age=0')
       .redirect('/admin/login');
   });
 
-  // Auth guard for all other admin routes
+  // ── Auth guard for all other admin routes ──────────────────────────────────
+
   app.addHook('onRequest', async (request, reply) => {
     if (request.url === '/admin/login' || request.url === '/admin/logout') return;
-    if (!isAuthenticated(request)) {
+    const userId = getAuthenticatedUserId(request);
+    if (!userId) {
       return reply.redirect('/admin/login');
     }
   });
 
-  // Dashboard
+  // ── Dashboard ──────────────────────────────────────────────────────────────
+
   app.get('/', async (_request, reply) => {
     const db = getDb();
     const userCount = (db.prepare('SELECT COUNT(*) as count FROM users').get() as { count: number }).count;
@@ -95,7 +179,8 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     return reply.type('text/html').send(renderDashboard(data));
   });
 
-  // API Keys management
+  // ── API Keys ───────────────────────────────────────────────────────────────
+
   app.get('/api-keys', async (request, reply) => {
     const keys = listApiKeys();
     const url = new URL(request.url, 'http://localhost');
@@ -120,19 +205,20 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     return reply.redirect('/admin/api-keys?flash=Key+revoked');
   });
 
-  // Audit log
+  // ── Audit log ──────────────────────────────────────────────────────────────
+
   app.get('/audit', async (_request, reply) => {
     const entries = getRecentAuditEntries(100);
     return reply.type('text/html').send(renderAuditLog(entries));
   });
 
-  // Partial for htmx live-refresh
   app.get('/audit/table', async (_request, reply) => {
     const entries = getRecentAuditEntries(100);
     return reply.type('text/html').send(renderAuditTable(entries));
   });
 
-  // Simulate page
+  // ── Simulate ───────────────────────────────────────────────────────────────
+
   app.get('/simulate', async (request, reply) => {
     const countries = getAllCountries();
     const { simulations } = listSimulations(20, 0);
@@ -141,7 +227,6 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     return reply.type('text/html').send(renderSimulatePage(countries, simulations, flash));
   });
 
-  // HTMX partial: run simulation and return preview fragment
   app.post<{
     Body: { country?: string; coverage?: string; durationMonths?: string; targetGroup?: string };
   }>('/simulate/preview', async (request, reply) => {
@@ -153,7 +238,9 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
 
     const country = getCountryByCode(countryCode);
     if (!country) {
-      return reply.type('text/html').send(`<p style="color:var(--danger)">Country '${countryCode}' not found</p>`);
+      return reply
+        .type('text/html')
+        .send(`<p style="color:var(--danger)">Country '${countryCode}' not found</p>`);
     }
 
     const params: SimulationParameters = {
@@ -168,14 +255,15 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     return reply.type('text/html').send(renderSimulationPreview(result));
   });
 
-  // HTMX partial: compare multiple countries
   app.post<{
     Body: { countries?: string | string[]; coverage?: string; durationMonths?: string };
   }>('/simulate/compare', async (request, reply) => {
     const body = request.body ?? {};
     const rawCountries = Array.isArray(body.countries)
       ? body.countries
-      : body.countries ? [body.countries] : [];
+      : body.countries
+        ? [body.countries]
+        : [];
     const coverage = Math.min(1, Math.max(0, parseFloat(body.coverage ?? '20') / 100));
     const durationMonths = Math.min(120, Math.max(1, parseInt(body.durationMonths ?? '12', 10)));
     const dataVersion = getDataVersion();
@@ -198,7 +286,6 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     return reply.type('text/html').send(renderComparisonTable(results));
   });
 
-  // Save a simulation from admin UI
   app.post<{ Body: { name?: string; simulationJson?: string } }>(
     '/simulate/save',
     async (request, reply) => {
@@ -225,14 +312,13 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  // Delete a saved simulation
   app.post<{ Body: { id?: string } }>('/simulate/delete', async (request, reply) => {
     const id = request.body?.id;
     if (id) deleteSimulation(id);
     return reply.redirect('/admin/simulate?flash=Simulation+deleted');
   });
 
-  // ── Pilots ──────────────────────────────────────────────────────────────────
+  // ── Pilots ─────────────────────────────────────────────────────────────────
 
   app.get('/pilots', async (request, reply) => {
     const { pilots } = listPilots({ limit: 100, offset: 0 });
@@ -255,28 +341,37 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     const simulation = pilot.simulationId ? getSimulationById(pilot.simulationId) : null;
     const url = new URL(request.url, 'http://localhost');
     const flash = url.searchParams.get('flash') ?? undefined;
-    return reply.type('text/html').send(renderPilotDetailPage(pilot, disbursements, simulation, flash));
+    return reply
+      .type('text/html')
+      .send(renderPilotDetailPage(pilot, disbursements, simulation, flash));
   });
 
-  app.post<{ Body: { name?: string; countryCode?: string; simulationId?: string; description?: string; startDate?: string; endDate?: string; targetRecipients?: string } }>(
-    '/pilots/create',
-    async (request, reply) => {
-      const body = request.body ?? {};
-      if (!body.name?.trim() || !body.countryCode?.trim()) {
-        return reply.redirect('/admin/pilots?flash=Name+and+country+are+required');
-      }
-      createPilot({
-        name: body.name.trim(),
-        countryCode: body.countryCode.toUpperCase(),
-        description: body.description?.trim() || null,
-        simulationId: body.simulationId?.trim() || null,
-        startDate: body.startDate?.trim() || null,
-        endDate: body.endDate?.trim() || null,
-        targetRecipients: body.targetRecipients ? parseInt(body.targetRecipients, 10) || null : null,
-      });
-      return reply.redirect('/admin/pilots?flash=Pilot+created');
-    },
-  );
+  app.post<{
+    Body: {
+      name?: string;
+      countryCode?: string;
+      simulationId?: string;
+      description?: string;
+      startDate?: string;
+      endDate?: string;
+      targetRecipients?: string;
+    };
+  }>('/pilots/create', async (request, reply) => {
+    const body = request.body ?? {};
+    if (!body.name?.trim() || !body.countryCode?.trim()) {
+      return reply.redirect('/admin/pilots?flash=Name+and+country+are+required');
+    }
+    createPilot({
+      name: body.name.trim(),
+      countryCode: body.countryCode.toUpperCase(),
+      description: body.description?.trim() || null,
+      simulationId: body.simulationId?.trim() || null,
+      startDate: body.startDate?.trim() || null,
+      endDate: body.endDate?.trim() || null,
+      targetRecipients: body.targetRecipients ? parseInt(body.targetRecipients, 10) || null : null,
+    });
+    return reply.redirect('/admin/pilots?flash=Pilot+created');
+  });
 
   app.post<{ Params: { id: string }; Body: { status?: string } }>(
     '/pilots/:id/status',
@@ -290,7 +385,9 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
         return reply.redirect(`/admin/pilots/${pilot.id}?flash=No+status+provided`);
       }
       updatePilot(pilot.id, { status: newStatus as PilotStatus });
-      return reply.redirect(`/admin/pilots/${pilot.id}?flash=Status+updated+to+${encodeURIComponent(newStatus)}`);
+      return reply.redirect(
+        `/admin/pilots/${pilot.id}?flash=Status+updated+to+${encodeURIComponent(newStatus)}`,
+      );
     },
   );
 
