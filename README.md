@@ -34,9 +34,9 @@ Open Global Income is a stack. Each layer builds on the one below it. The lower 
 └─────────────────────────────────────────────────┘
 ```
 
-### ✅ Built (v0.1.3)
+### ✅ Built (v0.1.4)
 
-Transparent entitlement calculation for **49 countries**. Budget simulation with targeting presets and multi-country comparison. Non-custodial disbursement system with Solana USDC, EVM, and M-Pesa providers. Pilot lifecycle management with donor reporting and variance analysis. Approval workflows, audit trails, admin UI. **233 tests** across 15 suites.
+Transparent entitlement calculation for **49 countries**. Budget simulation with targeting presets and multi-country comparison. Non-custodial disbursement system with Solana USDC, EVM, and M-Pesa providers. Pilot lifecycle management with donor reporting and variance analysis. Secure admin UI with login, approval workflows, audit trails. **240+ tests** across 15 suites.
 
 ### 🔜 Next: Identity, Evidence & Sub-national Data
 
@@ -178,6 +178,7 @@ npm run db:migrate   # Run PostgreSQL migrations
 | `RATE_LIMIT_WINDOW_MS` | `60000` | Rate limit window (ms) |
 | `API_KEY_REQUIRED` | — | Set to `true` to require API keys |
 | `ENABLE_ADMIN` | — | Set to `true` to enable admin UI |
+| `ADMIN_USERNAME` | `admin` | Admin UI login username |
 | `ADMIN_PASSWORD` | `admin` | Admin UI login password |
 | `ENABLE_METRICS` | `true` | Set to `false` to disable Prometheus |
 | `DB_BACKEND` | `sqlite` | Database backend (`sqlite` or `postgres`) |
@@ -294,13 +295,15 @@ Extends v1 with HDI and urbanization factors. Not yet active. See `GET /v1/incom
 
 Server-rendered dashboard using htmx (no SPA). Enable with `ENABLE_ADMIN=true`.
 
+**Login:** Default credentials are username `admin` / password `admin` (both configurable via `ADMIN_USERNAME` and `ADMIN_PASSWORD` env vars).
+
 - **Dashboard** — country count, users, API keys, request stats
 - **API Key Management** — create and revoke keys with tier selection
 - **Audit Log** — recent API requests with live-refresh
 - **Simulate** — budget simulations with live cost preview, comparison, save/delete
 - **Pilots** — create and manage pilots, link disbursements, track status, view variance
 
-Access at `http://localhost:3333/admin`. Login with `ADMIN_PASSWORD`.
+Access at `http://localhost:3333/admin/login`. Sessions are secure (HttpOnly cookies, PBKDF2-hashed passwords) with brute-force protection (15-minute lockout after 5 failed attempts).
 
 ---
 
@@ -388,7 +391,7 @@ See [GOVERNANCE.md](./GOVERNANCE.md) for the decision-making process, API stabil
 
 ## 📋 Current Status
 
-**Version 0.1.3** — Pilot Dashboard. 233 tests across 15 test suites.
+**Version 0.1.4** — Admin UI with secure login. 240+ tests across 15 test suites.
 
 See [CHANGELOG.md](./CHANGELOG.md) for full version history.
 

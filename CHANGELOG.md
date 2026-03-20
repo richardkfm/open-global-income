@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.4] - 2026-03-20
+
+### Added
+- **Admin UI login interface** — secure session-based authentication for admin dashboard
+- **Login page** at `/admin/login` with username/password form and password visibility toggle
+- **Session management** — DB-backed sessions with configurable TTL (24 hours standard, 7 days with "Remember me")
+- **Password security** — PBKDF2 with 100,000 iterations, SHA-512 digest, 32-byte salt, constant-time comparison
+- **Brute-force protection** — 5 failed attempts per IP triggers 15-minute lockout with rate limiting
+- **Default admin credentials** — username `admin` / password `admin` (configurable via `ADMIN_USERNAME` and `ADMIN_PASSWORD` env vars)
+- **Session-based auth** — HttpOnly cookies with SameSite=Strict, automatic expiry and cleanup
+- `src/db/admin-auth.ts` — password hashing, user CRUD, and session management utilities
+- Authentication guard on all admin routes — redirects unauthenticated users to login
+- Logout endpoint at `/admin/logout` with session cleanup
+
+### Changed
+- `ADMIN_PASSWORD` env var now controls the password for the seeded admin user (previously only for basic HTTP auth)
+- Admin routes now require login — no longer accessible without valid session
+- README updated with admin UI login instructions and default credentials
+
 ## [0.1.3] - 2026-03-18
 
 ### Added
