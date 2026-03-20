@@ -47,8 +47,17 @@ export function buildServer(opts?: ServerOptions) {
     },
   });
 
-  // Security headers
-  app.register(fastifyHelmet);
+  // Security headers — loosen CSP for Swagger UI assets
+  app.register(fastifyHelmet, {
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        imgSrc: ["'self'", 'data:', 'validator.swagger.io'],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+      },
+    },
+  });
 
   // CORS
   app.register(fastifyCors, {
