@@ -556,9 +556,26 @@ Extend the `simulations` table or add a `funding_scenarios` table to persist sce
 
 ---
 
-## Phase 16: Economic Impact Simulation
+## Phase 16: Economic Impact Modeling — Complete ✅
 
 **Goal:** Model what UBI *does* to an economy, not just what it *costs*. Answer: *"What happens to poverty, purchasing power, and existing social systems?"*
+
+### What was built
+
+- **`calculateImpactAnalysis()`** in `src/core/impact.ts` — pure function, zero side effects, four dimensions
+- **Poverty reduction model** — World Bank poverty headcount × recipient reach × transfer-vs-line comparison
+- **Purchasing power model** — Lorenz curve approximation (`L(p) = p^(1+2G)`) for bottom quintile income share; validated against World Bank quintile data for 40+ countries
+- **Social coverage model** — ILO social protection coverage + 1.4× poverty concentration factor for bottom-quintile targeting
+- **Fiscal multiplier model** — Keynesian cash-transfer multiplier calibrated by income group (LIC=2.3×, LMC=1.9×, UMC=1.5×, HIC=1.1×)
+- **Policy brief generator** — every assumption explicitly listed, exports as JSON or plain text
+- **5 new API endpoints:** `POST /v1/impact`, `POST /v1/impact/brief` (with `?format=text`), `POST/GET/DELETE /v1/impact-analyses`
+- **Admin UI** at `/admin/impact` with tabbed breakdown, headline cards, data quality indicators, and brief export
+- **`impact_analyses` database table** with full CRUD
+- **`impact_analysis.created` webhook event**
+- **61 new tests** (35 core + 26 API) — all dimensions, edge cases, data quality fallbacks, determinism
+- **[IMPACT_METHODOLOGY.md](./IMPACT_METHODOLOGY.md)** — full model documentation, formulas, sources, interpretation guide
+
+
 
 ### 16.1 — Poverty reduction modeling
 
@@ -680,7 +697,7 @@ Phase 14 (Macro-Economic Data) ← enriches country profiles with fiscal + socia
     ↓ country data feeds into
 Phase 15 (Funding Simulation) ✅ ← "where does the money come from?"
     ↓ funding scenarios feed into
-Phase 16 (Economic Impact)    ← "what happens to the economy?"
+Phase 16 (Economic Impact) ✅  ← "what happens to the economy?"
 ```
 
 Phases 14–16 form a coherent batch: richer data enables funding analysis, which feeds into impact modeling. Phase 14 is independently useful (better country profiles). Phase 15 requires Phase 14's fiscal data. Phase 16 requires both.

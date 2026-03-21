@@ -34,13 +34,14 @@ Open Global Income is a stack. Each layer builds on the one below it. The lower 
 └─────────────────────────────────────────────────┘
 ```
 
-### ✅ Built (v0.1.5)
+### ✅ Built (v0.1.6)
 
-Transparent entitlement calculation for **49 countries**. Budget simulation with targeting presets and multi-country comparison. Non-custodial disbursement system with Solana USDC, EVM, and M-Pesa providers. Pilot lifecycle management with donor reporting and variance analysis. Enriched country profiles with 17+ macro-economic indicators from World Bank, ILO, and IMF. **Funding scenario builder** with 6 funding mechanisms, fiscal context analysis, and interactive admin UI. Secure admin UI with login, approval workflows, audit trails. **288 tests** across 18 suites.
+Transparent entitlement calculation for **49 countries**. Budget simulation with targeting presets and multi-country comparison. Non-custodial disbursement system with Solana USDC, EVM, and M-Pesa providers. Pilot lifecycle management with donor reporting and variance analysis. Enriched country profiles with 17+ macro-economic indicators from World Bank, ILO, and IMF. **Funding scenario builder** with 6 funding mechanisms, fiscal context analysis, and interactive admin UI. **Economic impact modeling** — poverty reduction, purchasing power, social coverage, and GDP stimulus estimates with exportable policy briefs. Secure admin UI with login, approval workflows, audit trails. **349 tests** across 20 suites.
 
-### 🔜 Next: Economic Impact Modeling (Phase 16)
+### 🔜 Next
 
-- **📈 Economic impact modeling** — poverty reduction estimates, purchasing power effects, social security interaction analysis, fiscal multiplier effects. Exportable policy briefs that sell the concept to policymakers
+- **Sub-national data** — regional cost-of-living adjustments, district-level targeting
+- **Evidence layer** — outcome metrics, pre/post analysis, control groups, research-grade exports
 
 ### 🌐 Future
 
@@ -244,6 +245,25 @@ All responses follow a consistent shape:
 
 **Supported funding mechanisms:** income tax surcharge, VAT increase, carbon tax, wealth tax, financial transaction tax, redirect social spending. Each returns explicit assumptions and revenue estimates.
 
+### Economic Impact
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/v1/impact` | Run a full economic impact analysis (not saved) |
+| `POST` | `/v1/impact/brief` | Generate exportable policy brief (`?format=json` or `?format=text`) |
+| `POST` | `/v1/impact-analyses` | Run and save an impact analysis |
+| `GET` | `/v1/impact-analyses` | List saved analyses (paginated) |
+| `GET` | `/v1/impact-analyses/:id` | Retrieve a saved analysis |
+| `DELETE` | `/v1/impact-analyses/:id` | Delete a saved analysis |
+
+**Four impact dimensions — every assumption explicitly listed:**
+- **Poverty reduction** — how many people lifted above the $2.15/day extreme poverty line
+- **Purchasing power** — % income increase for the bottom quintile (Lorenz curve model)
+- **Social coverage** — people currently uncovered by social protection, newly reached
+- **GDP stimulus** — Keynesian fiscal multiplier calibrated by income group (LIC=2.3×, LMC=1.9×, UMC=1.5×, HIC=1.1×)
+
+See [IMPACT_METHODOLOGY.md](./IMPACT_METHODOLOGY.md) for full model documentation.
+
 ### Pilots
 
 | Method | Endpoint | Description |
@@ -313,6 +333,7 @@ Server-rendered dashboard using htmx (no SPA). Enable with `ENABLE_ADMIN=true`.
 - **Audit Log** — recent API requests with live-refresh
 - **Simulate** — budget simulations with live cost preview, comparison, save/delete
 - **Funding** — interactive scenario builder with slider controls for 6 funding mechanisms, stacked bar chart, fiscal context panel, and assumption transparency
+- **Impact** — economic impact analyzer with poverty reduction, purchasing power, social coverage, and GDP stimulus estimates; tabbed breakdown, policy brief export
 - **Pilots** — create and manage pilots, link disbursements, track status, view variance
 - **Countries** — economic dashboards with data completeness indicators
 
@@ -347,7 +368,7 @@ Non-custodial — calculates and prepares payment instructions, never holds or m
 
 Subscribe to events and receive HMAC-SHA256 signed payloads:
 
-`entitlement.calculated` · `user.created` · `api_key.created` · `api_key.revoked` · `data.updated` · `simulation.created` · `disbursement.created` · `disbursement.approved` · `disbursement.completed` · `disbursement.failed` · `pilot.created` · `pilot.status_changed` · `pilot.report_generated` · `funding_scenario.created`
+`entitlement.calculated` · `user.created` · `api_key.created` · `api_key.revoked` · `data.updated` · `simulation.created` · `disbursement.created` · `disbursement.approved` · `disbursement.completed` · `disbursement.failed` · `pilot.created` · `pilot.status_changed` · `pilot.report_generated` · `funding_scenario.created` · `impact_analysis.created`
 
 See `src/webhooks/` for the dispatcher and type definitions.
 

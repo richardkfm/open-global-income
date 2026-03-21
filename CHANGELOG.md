@@ -4,6 +4,48 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.6] - 2026-03-21
+
+### Added
+
+- **Economic impact modeling** — the "sell it" layer that translates budget simulations into policy-relevant impact estimates
+- **4 impact dimensions** in `src/core/impact.ts` (pure functions, no side effects):
+  - **Poverty reduction** — estimates people lifted above the $2.15/day extreme poverty line; handles transfer > line (all covered poor lifted) and transfer < line (uniform distribution partial lift model)
+  - **Purchasing power** — estimates % income increase for the bottom quintile using the Lorenz curve approximation `L(p) = p^(1+2G)`, validated against World Bank quintile data for 40+ countries
+  - **Social security coverage** — estimates newly reached people currently excluded from formal social protection; applies 1.4× poverty concentration factor for bottom-quintile targeting (ILO exclusion research)
+  - **Fiscal multiplier** — Keynesian demand-side GDP stimulus, calibrated by income group: LIC=2.3×, LMC=1.9×, UMC=1.5×, HIC=1.1×; based on IMF/World Bank cash-transfer research
+- **Policy brief generator** — every assumption explicitly listed in a deduplicated flat list; exports as JSON or plain text
+- **5 new API endpoints:**
+  - `POST /v1/impact` — run full impact analysis inline (not saved)
+  - `POST /v1/impact/brief` — generate exportable policy brief (JSON or `?format=text` for plain text)
+  - `POST /v1/impact-analyses` — run and save an impact analysis
+  - `GET /v1/impact-analyses` / `GET /v1/impact-analyses/:id` — list and retrieve saved analyses
+  - `DELETE /v1/impact-analyses/:id` — delete a saved analysis
+- **Interactive admin UI** at `/admin/impact`:
+  - Configure via country selector or saved simulation link, coverage slider, duration slider, target group
+  - Analyze & save in one click
+  - Headline cards with data quality indicators (high/medium/low) for each dimension
+  - Tabbed breakdown: Poverty / Purchasing Power / Social Coverage / GDP Stimulus / Policy Brief
+  - Policy brief tab: methodology paragraphs, full assumptions list, caveats, data sources (all collapsible)
+  - Export brief as JSON file
+- **`impact_analyses` database table** (SQLite schema + indexed on country and simulation)
+- **`impact_analysis.created` webhook event**
+- **61 new tests** across 2 new suites:
+  - `src/core/impact.test.ts` — 35 tests: all four calculation functions, full analysis, edge cases, missing data, determinism, Lorenz validation, multiplier calibration
+  - `src/api/routes/impact.test.ts` — 26 tests: all endpoints, error handling, save/retrieve/delete, brief export, text format
+- `src/db/impact-db.ts` — CRUD helpers for the impact_analyses table
+- `ImpactParameters`, `PovertyReductionEstimate`, `PurchasingPowerEstimate`, `SocialCoverageEstimate`, `FiscalMultiplierEstimate`, `ImpactAnalysisResult`, `PolicyBrief`, `SavedImpactAnalysis` types in `src/core/types.ts`
+- **[IMPACT_METHODOLOGY.md](./IMPACT_METHODOLOGY.md)** — full documentation of models, formulas, assumptions, data sources, and interpretation guide
+
+### Changed
+
+- Admin nav updated with **Impact** link
+- OpenAPI spec version bumped to `0.1.6`
+- Phase 16 marked complete in `ROADMAP.md`
+- README updated with Impact API section, admin UI entry, new webhook event, and current status
+- Test count: **349 tests** across **20 suites** (up from 288 across 18 suites)
+- `WebhookEvent` type extended with `'impact_analysis.created'`
+
 ## [0.1.5] - 2026-03-21
 
 ### Added

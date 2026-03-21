@@ -13,7 +13,8 @@ export type WebhookEvent =
   | 'pilot.created'
   | 'pilot.status_changed'
   | 'pilot.report_generated'
-  | 'funding_scenario.created';
+  | 'funding_scenario.created'
+  | 'impact_analysis.created';
 
 /** Webhook subscription stored in the database */
 export interface WebhookSubscription {

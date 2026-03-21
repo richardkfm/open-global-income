@@ -301,6 +301,143 @@ export interface SavedFundingScenario {
   createdAt: string;
 }
 
+// ── Economic Impact types ─────────────────────────────────────────────────
+
+/** Parameters for an economic impact analysis request */
+export interface ImpactParameters {
+  country: string;
+  coverage: number;
+  targetGroup: TargetGroup;
+  durationMonths: number;
+  floorOverride: number | null;
+  /** If set, pulls program params from a saved simulation */
+  simulationId: string | null;
+}
+
+/** Poverty reduction estimate — how many people lifted above the extreme poverty line */
+export interface PovertyReductionEstimate {
+  /** Count of people in extreme poverty BEFORE the program ($2.15/day line) */
+  extremePoorBaseline: number;
+  /** Estimated count lifted above the extreme poverty line by this program */
+  estimatedLifted: number;
+  /** Share of extreme poor reached and lifted (0–100) */
+  liftedAsPercentOfPoor: number;
+  /** Poverty line used in PPP-USD per month ($2.15/day × 30) */
+  povertyLineMonthlyPppUsd: number;
+  /** Whether the transfer amount alone exceeds the poverty line */
+  transferExceedsPovertyLine: boolean;
+  /** Data quality flag based on availability of povertyHeadcountRatio */
+  dataQuality: 'high' | 'medium' | 'low';
+  assumptions: string[];
+}
+
+/** Purchasing power analysis for the poorest quintile */
+export interface PurchasingPowerEstimate {
+  /** Count of people in the bottom 20% income group */
+  bottomQuintilePopulation: number;
+  /** Estimated average monthly income per person in the bottom quintile (USD) */
+  estimatedMonthlyIncomeUsd: number;
+  /** UBI transfer amount in PPP-USD per month */
+  ubiMonthlyPppUsd: number;
+  /** Percentage income increase the UBI represents for the bottom quintile */
+  incomeIncreasePercent: number;
+  /** Estimated income share held by the bottom quintile (0–1) */
+  incomeShareQ1: number;
+  dataQuality: 'high' | 'medium' | 'low';
+  assumptions: string[];
+}
+
+/** Social security interaction — gap between existing coverage and new reach */
+export interface SocialCoverageEstimate {
+  /** Estimated count with NO existing social protection benefit */
+  populationCurrentlyUncovered: number;
+  /** Of the program's recipients, how many are estimated to be currently uncovered */
+  estimatedNewlyCovered: number;
+  /** % of total population currently without social protection */
+  uncoverageRatePercent: number;
+  /** % of program recipients who are estimated to lack prior coverage */
+  recipientUncoverageRatePercent: number;
+  dataQuality: 'high' | 'medium' | 'low';
+  assumptions: string[];
+}
+
+/** Fiscal multiplier / GDP stimulus estimate */
+export interface FiscalMultiplierEstimate {
+  /** Multiplier applied (income-group calibrated Keynesian cash-transfer multiplier) */
+  multiplier: number;
+  /** Annual transfer amount in PPP-USD (the injection) */
+  annualTransferPppUsd: number;
+  /** Estimated total GDP stimulus: transfer × multiplier */
+  estimatedGdpStimulusPppUsd: number;
+  /** GDP stimulus as % of GDP */
+  stimulusAsPercentOfGdp: number;
+  /** Income group used to calibrate the multiplier */
+  incomeGroup: IncomeGroup;
+  assumptions: string[];
+}
+
+/** A complete economic impact analysis result */
+export interface ImpactAnalysisResult {
+  country: {
+    code: string;
+    name: string;
+    population: number;
+    incomeGroup: IncomeGroup;
+  };
+  program: {
+    recipientCount: number;
+    coverageRate: number;
+    monthlyAmountPppUsd: number;
+    annualCostPppUsd: number;
+    durationMonths: number;
+    targetGroup: TargetGroup;
+  };
+  povertyReduction: PovertyReductionEstimate;
+  purchasingPower: PurchasingPowerEstimate;
+  socialCoverage: SocialCoverageEstimate;
+  fiscalMultiplier: FiscalMultiplierEstimate;
+  policyBrief: PolicyBrief;
+  meta: RulesetMeta & { generatedAt: string };
+}
+
+/** Exportable policy brief — every assumption explicitly listed */
+export interface PolicyBrief {
+  title: string;
+  subtitle: string;
+  generatedAt: string;
+  /** Headline statistics — the "sell it" numbers */
+  headline: {
+    povertyReduction: { value: number; formatted: string; label: string };
+    purchasingPower: { value: number; formatted: string; label: string };
+    socialCoverage: { value: number; formatted: string; label: string };
+    gdpStimulus: { value: number; formatted: string; label: string };
+  };
+  programDescription: string;
+  /** Summary methodology paragraphs — one per dimension */
+  methodology: {
+    povertyModel: string;
+    incomeDistributionModel: string;
+    socialCoverageModel: string;
+    fiscalMultiplierModel: string;
+  };
+  /** Complete flat list of every assumption, explicitly stated */
+  assumptions: string[];
+  dataSources: string[];
+  caveats: string[];
+}
+
+/** A saved impact analysis record from the database */
+export interface SavedImpactAnalysis {
+  id: string;
+  name: string | null;
+  simulationId: string | null;
+  countryCode: string;
+  parameters: ImpactParameters;
+  results: ImpactAnalysisResult;
+  apiKeyId: string | null;
+  createdAt: string;
+}
+
 export interface PilotReport {
   pilot: {
     id: string;

@@ -7,6 +7,7 @@ import { renderSimulatePage, renderSimulationPreview, renderComparisonTable } fr
 import { renderPilotsPage, renderPilotDetailPage } from './views/pilots.js';
 import { renderCountryList, renderCountryDetail, type CountryListItem } from './views/countries.js';
 import { renderFundingPage, renderFundingPreview } from './views/funding.js';
+import { renderImpactPage, renderImpactPreview, renderAnalysesTable } from './views/impact.js';
 import { listApiKeys, createApiKey, revokeApiKey, type ApiKeyTier } from '../db/api-keys.js';
 import { getRecentAuditEntries, getAuditStats } from '../db/audit.js';
 import { getAllCountries, getCountryByCode, getDataVersion, getCountryDataCompleteness } from '../data/loader.js';
@@ -17,6 +18,8 @@ import { createPilot, getPilotById, listPilots, updatePilot, linkDisbursement, g
 import { getDisbursementById } from '../db/disbursements-db.js';
 import { calculateFundingScenario } from '../core/funding.js';
 import { listFundingScenarios, saveFundingScenario, deleteFundingScenario } from '../db/funding-db.js';
+import { calculateImpactAnalysis } from '../core/impact.js';
+import { listImpactAnalyses, saveImpactAnalysis, deleteImpactAnalysis } from '../db/impact-db.js';
 import {
   ensureDefaultAdmin,
   findAdminUser,
@@ -28,7 +31,7 @@ import {
   SESSION_TTL_STANDARD,
   SESSION_TTL_REMEMBER,
 } from '../db/admin-auth.js';
-import type { SimulationParameters, TargetGroup, PilotStatus } from '../core/types.js';
+import type { SimulationParameters, TargetGroup, PilotStatus, ImpactParameters } from '../core/types.js';
 
 // ---------------------------------------------------------------------------
 // Brute-force protection — in-memory per-IP attempt tracker
@@ -612,6 +615,112 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       return reply
         .header('content-type', 'application/json')
         .header('content-disposition', `attachment; filename="funding-scenario-${data.country?.code ?? 'export'}.json"`)
+        .send(JSON.stringify(data, null, 2));
+    } catch {
+      return reply.status(400).send({ ok: false, error: { message: 'Invalid data' } });
+    }
+  });
+
+  // ── Economic Impact ────────────────────────────────────────────────────────
+
+  app.get('/impact', async (request, reply) => {
+    const countries = getAllCountries();
+    const { simulations } = listSimulations(100, 0);
+    const { analyses } = listImpactAnalyses(100, 0);
+    const url = new URL(request.url, 'http://localhost');
+    const flash = url.searchParams.get('flash') ?? undefined;
+    return reply.type('text/html').send(renderImpactPage(countries, simulations, analyses, flash));
+  });
+
+  app.post<{ Body: Record<string, unknown>; Querystring: { save?: string } }>(
+    '/impact/preview',
+    async (request, reply) => {
+      const body = (request.body ?? {}) as Record<string, unknown>;
+      const shouldSave = (request.query as Record<string, string>).save === '1';
+
+      const simulationId = typeof body.simulationId === 'string' ? body.simulationId : null;
+      const countryCode = typeof body.country === 'string' ? (body.country as string).toUpperCase() : '';
+      const coverage = typeof body.coverage === 'number' ? body.coverage : 0.2;
+      const targetGroup = (typeof body.targetGroup === 'string' ? body.targetGroup : 'bottom_quintile') as TargetGroup;
+      const durationMonths = typeof body.durationMonths === 'number' ? body.durationMonths : 12;
+      const name = typeof body.name === 'string' ? body.name || null : null;
+
+      let simulation;
+      let country;
+      let resolvedSimulationId: string | null = simulationId;
+
+      if (simulationId) {
+        const saved = getSimulationById(simulationId);
+        if (!saved) {
+          return reply.type('text/html').send('<p style="color:var(--danger)">Simulation not found.</p>');
+        }
+        country = getCountryByCode(saved.countryCode);
+        if (!country) {
+          return reply.type('text/html').send('<p style="color:var(--danger)">Country data not found.</p>');
+        }
+        simulation = saved.results;
+      } else {
+        if (!countryCode) {
+          return reply.type('text/html').send('<p style="color:var(--danger)">Country required.</p>');
+        }
+        country = getCountryByCode(countryCode);
+        if (!country) {
+          return reply.type('text/html').send(`<p style="color:var(--danger)">Country '${countryCode}' not found.</p>`);
+        }
+        const params: SimulationParameters = {
+          country: country.code,
+          coverage: Math.min(1, Math.max(0, coverage)),
+          targetGroup,
+          durationMonths: Math.min(120, Math.max(1, durationMonths)),
+          adjustments: { floorOverride: null, householdSize: null },
+        };
+        simulation = calculateSimulation(country, params, getDataVersion());
+        resolvedSimulationId = null;
+      }
+
+      const impactParams: ImpactParameters = {
+        country: country.code,
+        coverage: Math.min(1, Math.max(0, coverage)),
+        targetGroup,
+        durationMonths: Math.min(120, Math.max(1, durationMonths)),
+        floorOverride: null,
+        simulationId: resolvedSimulationId,
+      };
+
+      const result = calculateImpactAnalysis(country, simulation, impactParams, getDataVersion());
+
+      let savedFlag = false;
+      if (shouldSave) {
+        saveImpactAnalysis(name, resolvedSimulationId, country.code, impactParams, result);
+        savedFlag = true;
+      }
+
+      return reply.type('text/html').send(renderImpactPreview(result, savedFlag));
+    },
+  );
+
+  app.get('/impact/table', async (_request, reply) => {
+    const { analyses } = listImpactAnalyses(100, 0);
+    return reply.type('text/html').send(renderAnalysesTable(analyses));
+  });
+
+  app.post<{ Body: { id?: string } }>('/impact/delete', async (request, reply) => {
+    const id = request.body?.id;
+    if (id) deleteImpactAnalysis(id);
+    return reply.redirect('/admin/impact?flash=Analysis+deleted');
+  });
+
+  app.post<{ Body: { resultJson?: string } }>('/impact/export', async (request, reply) => {
+    const { resultJson } = request.body ?? {};
+    if (!resultJson) {
+      return reply.status(400).send({ ok: false, error: { message: 'No data' } });
+    }
+    try {
+      const data = JSON.parse(resultJson);
+      const code = (data.country?.code ?? 'export').toLowerCase();
+      return reply
+        .header('content-type', 'application/json')
+        .header('content-disposition', `attachment; filename="impact-brief-${code}.json"`)
         .send(JSON.stringify(data, null, 2));
     } catch {
       return reply.status(400).send({ ok: false, error: { message: 'Invalid data' } });

@@ -138,6 +138,22 @@ const SCHEMA = `
   CREATE INDEX IF NOT EXISTS idx_funding_scenarios_country ON funding_scenarios(country_code);
   CREATE INDEX IF NOT EXISTS idx_funding_scenarios_simulation ON funding_scenarios(simulation_id);
 
+  CREATE TABLE IF NOT EXISTS impact_analyses (
+    id TEXT PRIMARY KEY,
+    name TEXT,
+    simulation_id TEXT,
+    country_code TEXT NOT NULL,
+    parameters TEXT NOT NULL,
+    results TEXT NOT NULL,
+    api_key_id TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (simulation_id) REFERENCES simulations(id),
+    FOREIGN KEY (api_key_id) REFERENCES api_keys(id)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_impact_analyses_country ON impact_analyses(country_code);
+  CREATE INDEX IF NOT EXISTS idx_impact_analyses_simulation ON impact_analyses(simulation_id);
+
   CREATE TABLE IF NOT EXISTS admin_users (
     id TEXT PRIMARY KEY,
     username TEXT NOT NULL UNIQUE,

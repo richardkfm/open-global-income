@@ -18,6 +18,7 @@ import { simulationsRoute } from './routes/simulations.js';
 import { disbursementsRoute } from './routes/disbursements.js';
 import { pilotsRoute } from './routes/pilots.js';
 import { fundingRoute } from './routes/funding.js';
+import { impactRoute } from './routes/impact.js';
 import { adminRoutes } from '../admin/routes.js';
 
 export interface ServerOptions {
@@ -86,7 +87,7 @@ export function buildServer(opts?: ServerOptions) {
         title: 'Open Global Income API',
         description:
           'Open standard and reference implementation for a global income entitlement calculation model',
-        version: '0.1.3',
+        version: '0.1.6',
       },
       servers: [{ url: '/' }],
     },
@@ -169,6 +170,7 @@ export function buildServer(opts?: ServerOptions) {
   app.register(disbursementsRoute, { prefix: '/v1' });
   app.register(pilotsRoute, { prefix: '/v1' });
   app.register(fundingRoute, { prefix: '/v1' });
+  app.register(impactRoute, { prefix: '/v1' });
 
   // Admin UI (disabled only if ENABLE_ADMIN=false explicitly)
   if (process.env.ENABLE_ADMIN !== 'false') {
