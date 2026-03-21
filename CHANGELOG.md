@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.7] - 2026-03-21
+
+### Added
+
+- **Sub-national data layer** — regional cost-of-living adjustments for entitlement calculations. National averages hide enormous variation; a basic income floor in Nairobi (COL 1.35×) versus rural Turkana (COL 0.68×) should not be the same amount.
+- **Region types** in `src/core/types.ts`: `Region`, `RegionStats`, `RegionalIncomeEntitlement`
+- **Pure region functions** in `src/core/regions.ts`:
+  - `buildRegionAdjustedCountry()` — multiplies national PPP conversion factor by a region's cost-of-living index and substitutes regional population. All existing formulas (rules, simulations, funding, impact) work transparently via this pattern — zero formula changes needed.
+  - `toRegionalEntitlement()` — wraps a regional entitlement with comparison metadata (national baseline, COL index)
+- **Kenya seed data** — all 47 counties in `src/data/regions.json` with population, cost-of-living index, urban/rural classification, and poverty headcount ratios (KNBS 2019 Census)
+- **Region data loader** in `src/data/loader.ts`: `getAllRegions()`, `getRegionById()`, `getRegionsByCountry()`, `getRegionsDataVersion()`
+- **4 new API endpoints:**
+  - `GET /v1/income/regions` — list all regions (filterable by `?country=KE`)
+  - `GET /v1/income/regions/:id` — region detail
+  - `GET /v1/income/calc/regional?country=KE&region=KE-NAI` — calculate regionally-adjusted entitlement with national comparison
+  - `POST /v1/income/simulate/regional` — run a budget simulation for a specific region (uses regional population and adjusted PPP)
+- **Admin UI** at `/admin/regions`:
+  - Region list grouped by country with COL index badges, urban/rural type, poverty rates
+  - Region detail page with entitlement comparison table (national vs. regional) and % difference
+- **38 new tests** across 3 new suites:
+  - `src/core/regions.test.ts` — pure function tests: PPP adjustment, population substitution, immutability, score invariance, COL edge cases
+  - `src/data/regions.test.ts` — loader tests: lookup, filtering, case-insensitivity, data integrity validation
+  - `src/api/routes/regions.test.ts` — API integration tests: all 4 endpoints, error handling, country-region mismatch
+
+### Changed
+
+- Admin nav updated with **Regions** link
+- Test count: **387 tests** across **23 suites** (up from 349 across 20 suites)
+
 ## [0.1.6] - 2026-03-21
 
 ### Added

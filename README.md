@@ -34,15 +34,15 @@ Open Global Income is a stack. Each layer builds on the one below it. The lower 
 └─────────────────────────────────────────────────┘
 ```
 
-### ✅ Built (v0.1.6)
+### ✅ Built (v0.1.7)
 
 **The API is the product.** Everything below is exposed through a REST API with OpenAPI docs, a generated TypeScript SDK, and webhook events — not locked behind a UI.
 
 | Layer | What it does | Phase |
 |-------|-------------|-------|
-| **Data** | 49 countries with 17+ macro-economic indicators from World Bank, ILO, and IMF | 14 |
-| **Calculation** | Entitlement formulas (v1 active, v2 preview), scoring, country comparison | 1–10 |
-| **Simulation** | Budget modeling with targeting presets, multi-country comparison, saved scenarios | 11 |
+| **Data** | 49 countries with 17+ macro-economic indicators from World Bank, ILO, and IMF; sub-national data for Kenya (47 counties) | 14, 17 |
+| **Calculation** | Entitlement formulas (v1 active, v2 preview), scoring, country comparison, regional COL adjustments | 1–10, 17 |
+| **Simulation** | Budget modeling with targeting presets, multi-country comparison, regional simulation, saved scenarios | 11, 17 |
 | **Disbursement** | Non-custodial payment rails — Solana USDC, EVM USDC, M-Pesa (stub) — with approval workflow and audit trail | 12 |
 | **Pilots** | Lifecycle management (planning → active → completed), variance analysis, structured donor reports | 13 |
 | **Funding** | 6 funding mechanisms (income tax, VAT, carbon tax, wealth tax, FTT, redirect social spending), fiscal context analysis | 15 |
@@ -50,11 +50,13 @@ Open Global Income is a stack. Each layer builds on the one below it. The lower 
 
 The funding and impact layers (Phases 14–16) are not a departure from the API — they are the **demand-side tools** that make the API worth building. A calculation engine answers "how much per person?" but nobody funds a program based on that alone. Governments need to see where the money comes from. Donors need to see what happens to poverty. NGOs need a policy brief they can attach to a grant proposal. These layers turn the API into a tool that **sells basic income to policymakers**.
 
-Secure admin UI with login, approval workflows, and audit trails. **349 tests** across 20 suites.
+The sub-national data layer (Phase 17) brings precision where it matters most. A basic income floor in Nairobi (COL 1.35×) should not be the same local-currency amount as in rural Turkana (COL 0.68×). Regional cost-of-living indices adjust the national PPP conversion factor, and existing formulas work transparently via the "adjusted Country" pattern — zero formula changes needed.
+
+Secure admin UI with login, approval workflows, and audit trails. **387 tests** across 23 suites.
 
 ### 🔜 Next
 
-- **Sub-national data** — regional cost-of-living adjustments, district-level targeting. National averages hide enormous variation; a basic income floor in Nairobi versus rural Turkana should not be the same amount.
+- **More countries** — add sub-national data for additional countries beyond Kenya. The region data format and loader are country-agnostic; each country needs a curated `regions.json` entry with cost-of-living indices sourced from national statistics bureaus.
 - **Evidence layer** — outcome metrics, pre/post analysis, control groups, research-grade exports. Programs live or die on evidence, and this is the layer that closes the loop between "we projected X impact" and "here's what actually happened."
 
 ### 🌐 Future
@@ -216,6 +218,10 @@ All responses follow a consistent shape:
 | `POST` | `/v1/income/batch` | Batch calculate (up to 50 countries) |
 | `GET` | `/v1/income/countries` | List supported countries |
 | `GET` | `/v1/income/countries/:code` | Full country details |
+| `GET` | `/v1/income/regions` | List regions (`?country=KE` to filter) |
+| `GET` | `/v1/income/regions/:id` | Region detail |
+| `GET` | `/v1/income/calc/regional` | Regional entitlement (`?country=KE&region=KE-NAI`) |
+| `POST` | `/v1/income/simulate/regional` | Budget simulation for a specific region |
 | `GET` | `/v1/income/rulesets` | List all rulesets |
 | `GET` | `/v1/income/rulesets/:version` | Get a single ruleset |
 | `POST` | `/v1/users` | Register a user with a country code |
@@ -348,6 +354,7 @@ Server-rendered dashboard using htmx (no SPA). Enable with `ENABLE_ADMIN=true`.
 - **Impact** — economic impact analyzer with poverty reduction, purchasing power, social coverage, and GDP stimulus estimates; tabbed breakdown, policy brief export
 - **Pilots** — create and manage pilots, link disbursements, track status, view variance
 - **Countries** — economic dashboards with data completeness indicators
+- **Regions** — sub-national data browser with COL index badges, entitlement comparison (national vs. regional)
 
 Access at `http://localhost:3333/admin/login`. Sessions are secure (HttpOnly cookies, PBKDF2-hashed passwords) with brute-force protection (15-minute lockout after 5 failed attempts).
 
@@ -437,7 +444,7 @@ See [GOVERNANCE.md](./GOVERNANCE.md) for the decision-making process, API stabil
 
 ## 📋 Current Status
 
-**Version 0.1.6** — Six phases complete (simulation, disbursement, pilots, macro-economic data, funding, impact). 349 tests across 20 suites. The platform now covers the full workflow from "how much per person?" through "where does the money come from?" to "what happens to poverty?" — all as API endpoints with OpenAPI docs.
+**Version 0.1.7** — Seven phases complete (simulation, disbursement, pilots, macro-economic data, funding, impact, sub-national data). 387 tests across 23 suites. The platform now covers the full workflow from "how much per person?" through "where does the money come from?" to "what happens to poverty?" — with regional precision that reflects actual cost-of-living differences within countries.
 
 See [CHANGELOG.md](./CHANGELOG.md) for full version history.
 
