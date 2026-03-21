@@ -5,6 +5,7 @@ import {
   calcCarbonTax,
   calcWealthTax,
   calcFinancialTransactionTax,
+  calcAutomationTax,
   calcRedirectSocialSpending,
   calculateFundingMechanism,
   calculateFiscalContext,
@@ -170,6 +171,39 @@ describe('calcFinancialTransactionTax', () => {
     expect(est.mechanism).toBe('financial_transaction_tax');
     expect(est.annualRevenuePppUsd).toBeGreaterThan(0);
     expect(est.label).toContain('0.10%');
+  });
+});
+
+describe('calcAutomationTax', () => {
+  it('calculates automation tax revenue for LMC', () => {
+    const est = calcAutomationTax(kenya, 0.03);
+    expect(est.mechanism).toBe('automation_tax');
+    const gdp = kenya.stats.gdpPerCapitaUsd * kenya.stats.population;
+    const expected = 0.03 * gdp * 0.25; // LMC automation share
+    expect(est.annualRevenuePppUsd).toBe(Math.round(expected));
+    expect(est.label).toContain('3.0%');
+  });
+
+  it('HIC countries have higher automation-exposed GDP share', () => {
+    const estKe = calcAutomationTax(kenya, 0.03);
+    const estDe = calcAutomationTax(germany, 0.03);
+    // Germany (HIC, 45% share) should raise relatively more per GDP than Kenya (LMC, 25%)
+    const ratioKe = estKe.annualRevenuePppUsd / (kenya.stats.gdpPerCapitaUsd * kenya.stats.population);
+    const ratioDe = estDe.annualRevenuePppUsd / (germany.stats.gdpPerCapitaUsd * germany.stats.population);
+    expect(ratioDe).toBeGreaterThan(ratioKe);
+  });
+
+  it('scales linearly with rate', () => {
+    const est1 = calcAutomationTax(kenya, 0.01);
+    const est2 = calcAutomationTax(kenya, 0.03);
+    expect(Math.round(est2.annualRevenuePppUsd / est1.annualRevenuePppUsd)).toBe(3);
+  });
+
+  it('includes assumptions about AI and robotics', () => {
+    const est = calcAutomationTax(kenya, 0.05);
+    expect(est.assumptions.some((a) => a.includes('AI'))).toBe(true);
+    expect(est.assumptions.some((a) => a.includes('robotics'))).toBe(true);
+    expect(est.assumptions.length).toBeGreaterThanOrEqual(4);
   });
 });
 

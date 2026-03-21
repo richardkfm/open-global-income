@@ -443,6 +443,8 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       wealth_rate?: string;
       enable_ftt?: string;
       ftt_rate?: string;
+      enable_automation?: string;
+      automation_rate?: string;
       enable_redirect?: string;
       redirect_pct?: string;
     };
@@ -480,6 +482,12 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       mechanisms.push({
         type: 'financial_transaction_tax',
         rate: parseFloat(body.ftt_rate ?? '0.1') / 100,
+      });
+    }
+    if (body.enable_automation === '1') {
+      mechanisms.push({
+        type: 'automation_tax',
+        rate: parseFloat(body.automation_rate ?? '3') / 100,
       });
     }
     if (body.enable_redirect === '1') {
@@ -568,6 +576,8 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
               return { type: 'wealth_tax' as const, rate: 0 };
             case 'financial_transaction_tax':
               return { type: 'financial_transaction_tax' as const, rate: 0 };
+            case 'automation_tax':
+              return { type: 'automation_tax' as const, rate: 0 };
             case 'redirect_social_spending':
               return { type: 'redirect_social_spending' as const, percent: 0 };
           }

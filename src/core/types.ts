@@ -245,6 +245,7 @@ export type FundingMechanismType =
   | 'carbon_tax'
   | 'wealth_tax'
   | 'financial_transaction_tax'
+  | 'automation_tax'
   | 'redirect_social_spending';
 
 /** Parameters for a specific funding mechanism */
@@ -254,6 +255,7 @@ export type FundingMechanismInput =
   | { type: 'carbon_tax'; dollarPerTon: number }
   | { type: 'wealth_tax'; rate: number }
   | { type: 'financial_transaction_tax'; rate: number }
+  | { type: 'automation_tax'; rate: number }
   | { type: 'redirect_social_spending'; percent: number };
 
 /** Result of a single funding mechanism estimate */

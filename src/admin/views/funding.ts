@@ -274,6 +274,21 @@ export function renderFundingPage(
 
         <div class="mechanism-card">
           <div style="display:flex;justify-content:space-between;align-items:center">
+            <h3>Automation Tax</h3>
+            <label class="slider-row" style="gap:0.4rem"><input type="checkbox" name="enable_automation" value="1"> Enable</label>
+          </div>
+          <div class="desc">A levy on companies that use AI, robotics, or automated systems in production. Captures a share of automation-driven productivity gains to fund basic income — ensuring the benefits of technological progress are broadly shared.</div>
+          <div class="slider-row">
+            <span style="font-size:0.8rem">0.5%</span>
+            <input type="range" name="automation_rate" min="0.5" max="15" step="0.5" value="3"
+              oninput="this.nextElementSibling.textContent = this.value + '%'">
+            <span class="slider-val">3%</span>
+            <span style="font-size:0.8rem">15%</span>
+          </div>
+        </div>
+
+        <div class="mechanism-card">
+          <div style="display:flex;justify-content:space-between;align-items:center">
             <h3>Redirect Social Spending</h3>
             <label class="slider-row" style="gap:0.4rem"><input type="checkbox" name="enable_redirect" value="1" checked> Enable</label>
           </div>

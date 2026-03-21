@@ -42,6 +42,23 @@ const STOCK_TURNOVER_PCT_GDP: Record<string, number> = {
   LIC: 2,
 };
 
+/**
+ * Estimated automation-exposed GDP share by income group.
+ *
+ * Represents the portion of GDP produced by industries with high automation
+ * potential (manufacturing, logistics, financial services, IT, agriculture).
+ * Higher-income countries have larger automated sectors.
+ *
+ * Source: McKinsey Global Institute automation potential estimates and
+ * OECD employment-by-sector data, aggregated by income group.
+ */
+const AUTOMATION_GDP_SHARE: Record<string, number> = {
+  HIC: 0.45,
+  UMC: 0.35,
+  LMC: 0.25,
+  LIC: 0.15,
+};
+
 // ── Individual mechanism calculators ───────────────────────────────────────
 
 /**
@@ -223,6 +240,47 @@ export function calcFinancialTransactionTax(
 }
 
 /**
+ * Automation tax.
+ *
+ * A tax on companies that deploy AI systems, robotics, or automated processes
+ * to replace human labor. As automation displaces workers, this mechanism
+ * captures a share of the productivity gains to fund universal basic income —
+ * ensuring that the economic benefits of automation are broadly distributed.
+ *
+ * Revenue ≈ rate × GDP × automation-exposed sector share
+ *
+ * The tax base is estimated from the share of GDP produced by industries
+ * with high automation potential: manufacturing, logistics, financial
+ * services, IT, and industrialized agriculture. The rate represents a
+ * levy on the revenue of companies in those sectors that use AI or
+ * robotic systems in production.
+ */
+export function calcAutomationTax(
+  country: Country,
+  rate: number,
+): FundingEstimate {
+  const gdpTotal = country.stats.gdpPerCapitaUsd * country.stats.population;
+  const automationShare = AUTOMATION_GDP_SHARE[country.stats.incomeGroup] ?? 0.25;
+  const taxableBase = gdpTotal * automationShare;
+  const revenueUsd = rate * taxableBase;
+
+  return {
+    mechanism: 'automation_tax',
+    label: `${(rate * 100).toFixed(1)}% automation tax`,
+    annualRevenueLocal: Math.round(revenueUsd * country.stats.pppConversionFactor),
+    annualRevenuePppUsd: Math.round(revenueUsd),
+    coversPercentOfUbiCost: 0,
+    assumptions: [
+      `Automation tax of ${(rate * 100).toFixed(1)}% on revenue from AI and robotics-intensive production`,
+      `Automation-exposed GDP share: ${(automationShare * 100).toFixed(0)}% (${country.stats.incomeGroup} income group estimate)`,
+      'Covers manufacturing, logistics, financial services, IT, and industrialized agriculture',
+      'Based on McKinsey/OECD automation potential estimates; actual exposure varies by country',
+      'Assumes companies self-report or are classified by sector automation intensity',
+    ],
+  };
+}
+
+/**
  * Redirect existing social spending.
  *
  * Revenue = redirectPercent × social protection spending.
@@ -288,6 +346,8 @@ export function calculateFundingMechanism(
       return calcWealthTax(country, input.rate);
     case 'financial_transaction_tax':
       return calcFinancialTransactionTax(country, input.rate);
+    case 'automation_tax':
+      return calcAutomationTax(country, input.rate);
     case 'redirect_social_spending':
       return calcRedirectSocialSpending(country, input.percent);
   }

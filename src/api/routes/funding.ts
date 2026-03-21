@@ -13,6 +13,7 @@ const VALID_MECHANISM_TYPES = [
   'carbon_tax',
   'wealth_tax',
   'financial_transaction_tax',
+  'automation_tax',
   'redirect_social_spending',
 ] as const;
 
@@ -62,6 +63,12 @@ function validateMechanisms(raw: unknown): { ok: true; mechanisms: FundingMechan
       case 'financial_transaction_tax':
         if (typeof item.rate !== 'number' || item.rate <= 0 || item.rate > 0.05) {
           return { ok: false, message: "'financial_transaction_tax.rate' must be between 0 and 0.05 (5%)" };
+        }
+        mechanisms.push({ type, rate: item.rate });
+        break;
+      case 'automation_tax':
+        if (typeof item.rate !== 'number' || item.rate <= 0 || item.rate > 0.2) {
+          return { ok: false, message: "'automation_tax.rate' must be between 0 and 0.2 (20%)" };
         }
         mechanisms.push({ type, rate: item.rate });
         break;
