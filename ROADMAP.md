@@ -684,6 +684,25 @@ The centerpiece of the "sell the concept" vision. New `/admin/simulate/:id/impac
 
 ---
 
+## Phase 17: Sub-national Data — Complete ✅
+
+**Goal:** National averages hide enormous variation. A basic income floor in Nairobi versus rural Turkana should not be the same amount. Answer: *"What should the entitlement be in this specific region?"*
+
+### What was built
+
+- **"Adjusted Country" pattern** — `buildRegionAdjustedCountry()` in `src/core/regions.ts` multiplies the national PPP conversion factor by a region's cost-of-living index and substitutes regional population. All existing formulas (rules, simulations, funding, impact) work transparently — zero formula changes needed.
+- **Kenya seed data** — all 47 counties in `src/data/regions.json` with population, COL index, urban/rural classification, and poverty headcount ratios (KNBS 2019 Census)
+- **Region data loader** — `getAllRegions()`, `getRegionById()`, `getRegionsByCountry()` in `src/data/loader.ts`
+- **4 new API endpoints:**
+  - `GET /v1/income/regions` — list all regions (filterable by `?country=KE`)
+  - `GET /v1/income/regions/:id` — region detail
+  - `GET /v1/income/calc/regional?country=KE&region=KE-NAI` — regionally-adjusted entitlement with national comparison
+  - `POST /v1/income/simulate/regional` — budget simulation for a specific region
+- **Admin UI** at `/admin/regions` — region list grouped by country, detail page with entitlement comparison
+- **38 new tests** across 3 suites
+
+---
+
 ## Dependency chain
 
 ```
@@ -693,22 +712,24 @@ Phase 12 (Disbursement) ✅ ← uses adapters (Solana, EVM)
     ↓ disbursement_id
 Phase 13 (Pilot Dashboard) ✅
     ↓
-Phase 14 (Macro-Economic Data) ← enriches country profiles with fiscal + social data
+Phase 14 (Macro-Economic Data) ✅ ← enriches country profiles with fiscal + social data
     ↓ country data feeds into
 Phase 15 (Funding Simulation) ✅ ← "where does the money come from?"
     ↓ funding scenarios feed into
 Phase 16 (Economic Impact) ✅  ← "what happens to the economy?"
+    ↓
+Phase 17 (Sub-national Data) ✅ ← regional precision for all layers above
 ```
 
-Phases 14–16 form a coherent batch: richer data enables funding analysis, which feeds into impact modeling. Phase 14 is independently useful (better country profiles). Phase 15 requires Phase 14's fiscal data. Phase 16 requires both.
+All seven phases complete. The platform covers end-to-end: calculate → simulate → fund → measure impact → disburse → track — with regional precision.
 
 ---
 
 ## Future phases
 
-These are deferred in favor of simulation depth, but remain on the roadmap:
+These remain on the roadmap:
 
-- **Sub-national data** — regional cost-of-living adjustments, district-level targeting
+- **More sub-national data** — expand regional coverage beyond Kenya (Tanzania, Uganda, Ghana, Nigeria, India)
 - **Evidence layer** — outcome metrics, pre/post analysis, control groups, research exports
 - **Identity & enrollment** — pluggable verification, deduplication
 - **Live M-Pesa** — real Safaricom B2C integration
