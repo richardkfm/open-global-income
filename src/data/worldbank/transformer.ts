@@ -40,6 +40,22 @@ const REQUIRED_FIELDS: IndicatorField[] = [
   'population',
 ];
 
+/** New macro-economic fields — all optional/nullable */
+const OPTIONAL_NUMERIC_FIELDS: IndicatorField[] = [
+  'taxRevenuePercentGdp',
+  'socialProtectionSpendingPercentGdp',
+  'inflationRate',
+  'laborForceParticipation',
+  'unemploymentRate',
+  'governmentDebtPercentGdp',
+  'socialContributionsPercentRevenue',
+  'povertyHeadcountRatio',
+  'gdpGrowthRate',
+  'healthExpenditurePercentGdp',
+  'educationExpenditurePercentGdp',
+  'urbanizationRate',
+];
+
 /**
  * Transform raw API data into the Country[] format for countries.json.
  *
@@ -71,26 +87,26 @@ export function transformCountries(
 
     const gdpPerCapitaUsd = roundValue(
       raw.values.gdpPerCapitaUsd!.value!,
-      config.output.roundDecimals.gdpPerCapitaUsd,
+      config.output.roundDecimals.gdpPerCapitaUsd ?? 0,
     );
     const gniPerCapitaUsd = roundValue(
       raw.values.gniPerCapitaUsd!.value!,
-      config.output.roundDecimals.gniPerCapitaUsd,
+      config.output.roundDecimals.gniPerCapitaUsd ?? 0,
     );
     const pppConversionFactor = roundValue(
       raw.values.pppConversionFactor!.value!,
-      config.output.roundDecimals.pppConversionFactor,
+      config.output.roundDecimals.pppConversionFactor ?? 2,
     );
     const population = roundValue(
       raw.values.population!.value!,
-      config.output.roundDecimals.population,
+      config.output.roundDecimals.population ?? 0,
     );
 
     let giniIndex: number | null = null;
     if (raw.values.giniIndex?.value !== undefined && raw.values.giniIndex.value !== null) {
       giniIndex = roundValue(
         raw.values.giniIndex.value,
-        config.output.roundDecimals.giniIndex,
+        config.output.roundDecimals.giniIndex ?? 1,
       );
     } else if (!config.giniIndex.nullable) {
       warnings.push(
@@ -104,6 +120,18 @@ export function transformCountries(
       config.incomeGroupThresholds,
     );
 
+    // Build optional numeric fields — all nullable, graceful on missing data
+    const optionalFields: Partial<Record<IndicatorField, number | null>> = {};
+    for (const field of OPTIONAL_NUMERIC_FIELDS) {
+      const iv = raw.values[field];
+      if (iv?.value !== undefined && iv.value !== null) {
+        const decimals = config.output.roundDecimals[field] ?? 1;
+        optionalFields[field] = roundValue(iv.value, decimals);
+      } else {
+        optionalFields[field] = null;
+      }
+    }
+
     countries.push({
       code: iso2,
       name: raw.countryName || iso2,
@@ -114,6 +142,18 @@ export function transformCountries(
         giniIndex,
         population,
         incomeGroup,
+        taxRevenuePercentGdp: optionalFields.taxRevenuePercentGdp,
+        socialProtectionSpendingPercentGdp: optionalFields.socialProtectionSpendingPercentGdp,
+        inflationRate: optionalFields.inflationRate,
+        laborForceParticipation: optionalFields.laborForceParticipation,
+        unemploymentRate: optionalFields.unemploymentRate,
+        governmentDebtPercentGdp: optionalFields.governmentDebtPercentGdp,
+        socialContributionsPercentRevenue: optionalFields.socialContributionsPercentRevenue,
+        povertyHeadcountRatio: optionalFields.povertyHeadcountRatio,
+        gdpGrowthRate: optionalFields.gdpGrowthRate,
+        healthExpenditurePercentGdp: optionalFields.healthExpenditurePercentGdp,
+        educationExpenditurePercentGdp: optionalFields.educationExpenditurePercentGdp,
+        urbanizationRate: optionalFields.urbanizationRate,
       },
     });
   }

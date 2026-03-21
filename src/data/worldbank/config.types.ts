@@ -5,7 +5,19 @@ export type IndicatorField =
   | 'gniPerCapitaUsd'
   | 'pppConversionFactor'
   | 'giniIndex'
-  | 'population';
+  | 'population'
+  | 'taxRevenuePercentGdp'
+  | 'socialProtectionSpendingPercentGdp'
+  | 'inflationRate'
+  | 'laborForceParticipation'
+  | 'unemploymentRate'
+  | 'governmentDebtPercentGdp'
+  | 'socialContributionsPercentRevenue'
+  | 'povertyHeadcountRatio'
+  | 'gdpGrowthRate'
+  | 'healthExpenditurePercentGdp'
+  | 'educationExpenditurePercentGdp'
+  | 'urbanizationRate';
 
 export interface ImporterConfig {
   source: {
@@ -16,6 +28,8 @@ export interface ImporterConfig {
     retryDelayMs: number;
   };
   indicators: Record<IndicatorField, string>;
+  /** Indicators that report infrequently — use multi-year lookback when fetching */
+  sparseIndicators?: Partial<Record<IndicatorField, { lookbackYears: number }>>;
   countries: {
     mode: 'explicit' | 'all';
     codes: string[];
@@ -26,6 +40,7 @@ export interface ImporterConfig {
     snapshotDir: string;
   };
   incomeGroupThresholds: Record<string, { min?: number; max?: number }>;
+  /** Legacy — Gini lookback config. Prefer sparseIndicators. */
   giniIndex: {
     lookbackYears: number;
     nullable: boolean;
@@ -33,7 +48,7 @@ export interface ImporterConfig {
   output: {
     path: string;
     dataVersionPrefix: string;
-    roundDecimals: Record<IndicatorField, number>;
+    roundDecimals: Partial<Record<IndicatorField, number>>;
   };
   validation: {
     minCountries: number;

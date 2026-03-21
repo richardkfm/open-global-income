@@ -5,9 +5,10 @@ import { renderApiKeys } from './views/api-keys.js';
 import { renderAuditLog, renderAuditTable } from './views/audit.js';
 import { renderSimulatePage, renderSimulationPreview, renderComparisonTable } from './views/simulate.js';
 import { renderPilotsPage, renderPilotDetailPage } from './views/pilots.js';
+import { renderCountryList, renderCountryDetail, type CountryListItem } from './views/countries.js';
 import { listApiKeys, createApiKey, revokeApiKey, type ApiKeyTier } from '../db/api-keys.js';
 import { getRecentAuditEntries, getAuditStats } from '../db/audit.js';
-import { getAllCountries, getCountryByCode, getDataVersion } from '../data/loader.js';
+import { getAllCountries, getCountryByCode, getDataVersion, getCountryDataCompleteness } from '../data/loader.js';
 import { getDb } from '../db/database.js';
 import { calculateSimulation } from '../core/simulations.js';
 import { listSimulations, saveSimulation, deleteSimulation, getSimulationById } from '../db/simulations-db.js';
@@ -410,4 +411,40 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       return reply.redirect(`/admin/pilots/${pilot.id}?flash=Disbursement+linked`);
     },
   );
+
+  // ── Countries ──────────────────────────────────────────────────────────────
+
+  app.get('/countries', async (_request, reply) => {
+    const countries = getAllCountries();
+    const items: CountryListItem[] = countries.map((c) => ({
+      country: c,
+      completeness: getCountryDataCompleteness(c.code) ?? {
+        total: 17,
+        available: 0,
+        missingFields: [],
+        presentFields: [],
+      },
+    }));
+    return reply
+      .type('text/html')
+      .send(renderCountryList(items, getDataVersion()));
+  });
+
+  app.get<{ Params: { code: string } }>('/countries/:code', async (request, reply) => {
+    const code = request.params.code.toUpperCase();
+    const country = getCountryByCode(code);
+    if (!country) {
+      return reply.redirect('/admin/countries?flash=Country+not+found');
+    }
+    const completeness = getCountryDataCompleteness(code) ?? {
+      total: 17,
+      available: 0,
+      missingFields: [],
+      presentFields: [],
+    };
+    const allCountries = getAllCountries();
+    return reply
+      .type('text/html')
+      .send(renderCountryDetail(country, completeness, allCountries, getDataVersion()));
+  });
 };

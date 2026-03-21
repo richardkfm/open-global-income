@@ -5,6 +5,8 @@ import type { Country } from '../core/types.js';
 
 interface CountryDataFile {
   dataVersion: string;
+  source?: string;
+  completeness?: string[];
   countries: Country[];
 }
 
@@ -106,6 +108,69 @@ export function validateCountryData(data: CountryDataFile): {
   }
 
   return { valid: errors.length === 0, errors };
+}
+
+/**
+ * The full list of optional macro-economic fields that Phase 14 introduces.
+ * Used to compute per-country data completeness scores.
+ */
+const OPTIONAL_STAT_FIELDS: ReadonlyArray<keyof Country['stats']> = [
+  'taxRevenuePercentGdp',
+  'socialProtectionSpendingPercentGdp',
+  'inflationRate',
+  'laborForceParticipation',
+  'unemploymentRate',
+  'governmentDebtPercentGdp',
+  'socialContributionsPercentRevenue',
+  'povertyHeadcountRatio',
+  'gdpGrowthRate',
+  'healthExpenditurePercentGdp',
+  'educationExpenditurePercentGdp',
+  'urbanizationRate',
+  'socialProtectionCoveragePercent',
+  'socialProtectionExpenditureIloPercentGdp',
+  'pensionCoveragePercent',
+  'childBenefitCoveragePercent',
+  'taxBreakdown',
+];
+
+export interface DataCompleteness {
+  /** Total optional fields tracked */
+  total: number;
+  /** Fields with non-null values */
+  available: number;
+  /** Which fields are missing (null/undefined) */
+  missingFields: string[];
+  /** Which fields have data */
+  presentFields: string[];
+}
+
+/**
+ * Return a completeness report for a single country's optional macro-economic data.
+ * Core fields (GDP, GNI, PPP, Gini, population, incomeGroup) are always present.
+ */
+export function getCountryDataCompleteness(code: string): DataCompleteness | null {
+  const country = getCountryByCode(code);
+  if (!country) return null;
+
+  const presentFields: string[] = [];
+  const missingFields: string[] = [];
+
+  for (const field of OPTIONAL_STAT_FIELDS) {
+    const val = country.stats[field];
+    if (val !== null && val !== undefined) {
+      presentFields.push(field as string);
+    } else {
+      missingFields.push(field as string);
+    }
+  }
+
+  return {
+    total: OPTIONAL_STAT_FIELDS.length,
+    available: presentFields.length,
+    missingFields,
+    presentFields,
+  };
 }
 
 /** Reset the cache (for testing) */

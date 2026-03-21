@@ -181,3 +181,71 @@ describe('Admin UI', () => {
     expect(res.body).toContain('Too many failed attempts');
   });
 });
+
+describe('Admin Countries (Phase 14)', () => {
+  it('shows countries list page when authenticated', async () => {
+    const cookie = await login();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/admin/countries',
+      headers: { cookie },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toContain('Country Economic Profiles');
+    expect(res.body).toContain('Income Group');
+    expect(res.body).toContain('Macro Coverage');
+  });
+
+  it('countries list includes a Countries nav link', async () => {
+    const cookie = await login();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/admin/countries',
+      headers: { cookie },
+    });
+    expect(res.body).toContain('href="/admin/countries"');
+  });
+
+  it('shows country detail page for a valid country code', async () => {
+    const cookie = await login();
+    // 'US' is in the dataset and should have data
+    const res = await app.inject({
+      method: 'GET',
+      url: '/admin/countries/US',
+      headers: { cookie },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toContain('United States');
+    expect(res.body).toContain('Core Economics');
+    expect(res.body).toContain('Fiscal Capacity');
+    expect(res.body).toContain('Data Completeness');
+  });
+
+  it('handles lowercase country code in URL', async () => {
+    const cookie = await login();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/admin/countries/us',
+      headers: { cookie },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toContain('United States');
+  });
+
+  it('redirects to countries list for unknown country code', async () => {
+    const cookie = await login();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/admin/countries/ZZ',
+      headers: { cookie },
+    });
+    expect(res.statusCode).toBe(302);
+    expect(res.headers.location).toContain('/admin/countries');
+  });
+
+  it('redirects to login when not authenticated', async () => {
+    const res = await app.inject({ method: 'GET', url: '/admin/countries' });
+    expect(res.statusCode).toBe(302);
+    expect(res.headers.location).toBe('/admin/login');
+  });
+});

@@ -74,6 +74,37 @@ export function validateOutput(
         );
       }
     }
+
+    // Range checks for new optional percentage indicators (0–100)
+    const percentageFields = [
+      'taxRevenuePercentGdp',
+      'socialProtectionSpendingPercentGdp',
+      'laborForceParticipation',
+      'unemploymentRate',
+      'socialContributionsPercentRevenue',
+      'povertyHeadcountRatio',
+      'urbanizationRate',
+      'healthExpenditurePercentGdp',
+      'educationExpenditurePercentGdp',
+    ] as const;
+
+    for (const field of percentageFields) {
+      const val = country.stats[field];
+      if (val !== null && val !== undefined && (val < 0 || val > 100)) {
+        errors.push(`${prefix}: ${field} ${val} outside range [0, 100]`);
+      }
+    }
+
+    const inflationVal = country.stats.inflationRate;
+    if (
+      inflationVal !== null &&
+      inflationVal !== undefined &&
+      (inflationVal < -50 || inflationVal > 10000)
+    ) {
+      errors.push(
+        `${prefix}: inflationRate ${inflationVal} outside plausible range [-50, 10000]`,
+      );
+    }
   }
 
   return {

@@ -1,0 +1,28 @@
+{
+  "_comment": "IMF Government Finance Statistics importer configuration. The IMF SDMX JSON API is publicly accessible. Indicator codes reference the GFS dataset.",
+
+  "source": {
+    "_comment": "IMF SDMX JSON REST API base URL.",
+    "baseUrl": "https://dataservices.imf.org/REST/SDMX_JSON.svc",
+    "dataset": "GFS",
+    "retries": 3,
+    "retryDelayMs": 1500
+  },
+
+  "indicators": {
+    "_comment": "Map from internal field name to IMF GFS indicator code. These represent tax revenue components as % of GDP.",
+    "incomeTaxPercentGdp": "G_X1_G01_GDP_PT",
+    "vatPercentGdp": "G_X1_G12_GDP_PT",
+    "tradeTaxPercentGdp": "G_X1_G15_GDP_PT"
+  },
+
+  "output": {
+    "_comment": "Path to write the enrichment JSON cache file, relative to this config file.",
+    "path": "../imf-enrichment.json",
+    "roundDecimals": 1
+  },
+
+  "validation": {
+    "percentRange": [0, 60]
+  }
+}

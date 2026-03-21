@@ -4,6 +4,18 @@ export type CountryCode = string;
 /** World Bank income group classification */
 export type IncomeGroup = 'HIC' | 'UMC' | 'LMC' | 'LIC';
 
+/** Tax revenue breakdown by type, sourced from IMF Government Finance Statistics */
+export interface TaxBreakdown {
+  /** Personal and corporate income taxes as % of GDP */
+  incomeTaxPercentGdp: number | null;
+  /** VAT / sales taxes as % of GDP */
+  vatPercentGdp: number | null;
+  /** Import/export duties and trade taxes as % of GDP */
+  tradeTaxPercentGdp: number | null;
+  /** All other taxes as % of GDP */
+  otherTaxPercentGdp: number | null;
+}
+
 export interface CountryStats {
   /** GDP per capita in current USD */
   gdpPerCapitaUsd: number;
@@ -17,6 +29,50 @@ export interface CountryStats {
   population: number;
   /** World Bank income group */
   incomeGroup: IncomeGroup;
+
+  // ── Fiscal indicators (World Bank) ───────────────────────────────────────
+  /** Total tax revenue as % of GDP */
+  taxRevenuePercentGdp?: number | null;
+  /** Central government spending on social protection / compensation as % of GDP */
+  socialProtectionSpendingPercentGdp?: number | null;
+  /** Central government debt as % of GDP */
+  governmentDebtPercentGdp?: number | null;
+  /** Social security contributions as % of revenue */
+  socialContributionsPercentRevenue?: number | null;
+  /** GDP growth rate (annual %) */
+  gdpGrowthRate?: number | null;
+
+  // ── Social & labor indicators (World Bank) ────────────────────────────────
+  /** Consumer price inflation rate (annual %) */
+  inflationRate?: number | null;
+  /** Labor force participation rate (% of working-age population) */
+  laborForceParticipation?: number | null;
+  /** Unemployment rate (% of labor force) */
+  unemploymentRate?: number | null;
+  /** Population below $2.15/day poverty line (%) */
+  povertyHeadcountRatio?: number | null;
+  /** Urban population as % of total */
+  urbanizationRate?: number | null;
+
+  // ── Expenditure indicators (World Bank) ───────────────────────────────────
+  /** Current health expenditure as % of GDP */
+  healthExpenditurePercentGdp?: number | null;
+  /** Government education expenditure as % of GDP */
+  educationExpenditurePercentGdp?: number | null;
+
+  // ── ILO Social Protection Data Dashboard ─────────────────────────────────
+  /** % of population covered by at least one social protection benefit (ILO) */
+  socialProtectionCoveragePercent?: number | null;
+  /** Social protection expenditure excluding health as % of GDP (ILO) */
+  socialProtectionExpenditureIloPercentGdp?: number | null;
+  /** % of elderly receiving a pension (ILO) */
+  pensionCoveragePercent?: number | null;
+  /** % of children receiving child/family benefit (ILO) */
+  childBenefitCoveragePercent?: number | null;
+
+  // ── IMF Government Finance Statistics ────────────────────────────────────
+  /** Tax revenue breakdown by type (IMF GFS) */
+  taxBreakdown?: TaxBreakdown | null;
 }
 
 export interface Country {

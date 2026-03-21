@@ -4,6 +4,7 @@ import {
   getAllCountries,
   getDataVersion,
   validateCountryData,
+  getCountryDataCompleteness,
 } from './loader.js';
 
 describe('data loader', () => {
@@ -80,5 +81,36 @@ describe('validateCountryData', () => {
     });
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) => e.includes('Duplicate'))).toBe(true);
+  });
+});
+
+describe('getCountryDataCompleteness', () => {
+  it('returns null for unknown country code', () => {
+    expect(getCountryDataCompleteness('ZZ')).toBeNull();
+  });
+
+  it('returns a completeness report with total and available counts', () => {
+    const result = getCountryDataCompleteness('US');
+    expect(result).not.toBeNull();
+    expect(result!.total).toBeGreaterThan(0);
+    expect(result!.available).toBeGreaterThanOrEqual(0);
+    expect(result!.available).toBeLessThanOrEqual(result!.total);
+  });
+
+  it('tracks missingFields and presentFields', () => {
+    const result = getCountryDataCompleteness('US');
+    expect(Array.isArray(result!.missingFields)).toBe(true);
+    expect(Array.isArray(result!.presentFields)).toBe(true);
+    expect(result!.missingFields.length + result!.presentFields.length).toBe(result!.total);
+  });
+
+  it('works for a country with likely sparse data', () => {
+    // Burundi (BI) is known to have sparse macro data
+    const result = getCountryDataCompleteness('BI');
+    if (result) {
+      expect(result.total).toBe(17);
+      // At least some fields are expected to be available or null — just no crash
+      expect(result.available + result.missingFields.length).toBe(result.total);
+    }
   });
 });

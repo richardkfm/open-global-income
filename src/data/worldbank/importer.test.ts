@@ -15,6 +15,18 @@ const testConfig: ImporterConfig = {
     pppConversionFactor: 'PA.NUS.PPP',
     giniIndex: 'SI.POV.GINI',
     population: 'SP.POP.TOTL',
+    taxRevenuePercentGdp: 'GC.TAX.TOTL.GD.ZS',
+    socialProtectionSpendingPercentGdp: 'GC.XPN.COMP.ZS',
+    inflationRate: 'FP.CPI.TOTL.ZG',
+    laborForceParticipation: 'SL.TLF.CACT.ZS',
+    unemploymentRate: 'SL.UEM.TOTL.ZS',
+    governmentDebtPercentGdp: 'GC.DOD.TOTL.GD.ZS',
+    socialContributionsPercentRevenue: 'GC.REV.SOCL.ZS',
+    povertyHeadcountRatio: 'SI.POV.DDAY',
+    gdpGrowthRate: 'NY.GDP.MKTP.KD.ZG',
+    healthExpenditurePercentGdp: 'SH.XPD.CHEX.GD.ZS',
+    educationExpenditurePercentGdp: 'SE.XPD.TOTL.GD.ZS',
+    urbanizationRate: 'SP.URB.TOTL.IN.ZS',
   },
   countries: { mode: 'explicit', codes: ['DE', 'NG'] },
   incomeGroupThresholds: {
@@ -272,5 +284,103 @@ describe('validateConfig', () => {
     };
     const errors = validateConfig(bad);
     expect(errors.some((e) => e.includes('gniPerCapitaUsd'))).toBe(true);
+  });
+});
+
+// --- new optional macro-economic fields ---
+
+describe('transformCountries — optional fields', () => {
+  it('sets optional fields to null when absent from raw data', () => {
+    const rawData = new Map([
+      ['KE', {
+        iso2Code: 'KE',
+        countryName: 'Kenya',
+        values: {
+          gdpPerCapitaUsd: { value: 2099, year: '2023' },
+          gniPerCapitaUsd: { value: 2010, year: '2023' },
+          pppConversionFactor: { value: 49.37, year: '2023' },
+          giniIndex: { value: 38.7, year: '2020' },
+          population: { value: 54030000, year: '2023' },
+          // no macro fields
+        },
+      }],
+    ]);
+
+    const { countries } = transformCountries(rawData, testConfig);
+    expect(countries).toHaveLength(1);
+    const s = countries[0].stats;
+    expect(s.taxRevenuePercentGdp).toBeNull();
+    expect(s.inflationRate).toBeNull();
+    expect(s.laborForceParticipation).toBeNull();
+    expect(s.povertyHeadcountRatio).toBeNull();
+    expect(s.urbanizationRate).toBeNull();
+  });
+
+  it('populates optional fields when present in raw data', () => {
+    const rawData = new Map([
+      ['KE', {
+        iso2Code: 'KE',
+        countryName: 'Kenya',
+        values: {
+          gdpPerCapitaUsd: { value: 2099, year: '2023' },
+          gniPerCapitaUsd: { value: 2010, year: '2023' },
+          pppConversionFactor: { value: 49.37, year: '2023' },
+          giniIndex: { value: 38.7, year: '2020' },
+          population: { value: 54030000, year: '2023' },
+          taxRevenuePercentGdp: { value: 16.123, year: '2022' },
+          inflationRate: { value: 7.7, year: '2022' },
+          unemploymentRate: { value: 5.7, year: '2022' },
+          urbanizationRate: { value: 29.5, year: '2022' },
+        },
+      }],
+    ]);
+
+    const { countries } = transformCountries(rawData, testConfig);
+    const s = countries[0].stats;
+    expect(s.taxRevenuePercentGdp).toBe(16.1); // rounded to 1 decimal
+    expect(s.inflationRate).toBe(7.7);
+    expect(s.unemploymentRate).toBe(5.7);
+    expect(s.urbanizationRate).toBe(29.5);
+    // Fields not provided should still be null
+    expect(s.laborForceParticipation).toBeNull();
+  });
+});
+
+describe('validateOutput — optional field range checks', () => {
+  it('flags unemployment rate out of range', () => {
+    const bad: Country[] = [
+      {
+        code: 'DE',
+        name: 'Germany',
+        stats: {
+          gdpPerCapitaUsd: 51384, gniPerCapitaUsd: 51640, pppConversionFactor: 0.78,
+          giniIndex: 31.7, population: 83800000, incomeGroup: 'HIC',
+          unemploymentRate: 150, // invalid
+        },
+      },
+    ];
+    const config = { ...testConfig, validation: { ...testConfig.validation, requiredIncomeGroups: ['HIC'] } };
+    const result = validateOutput(bad, config);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.includes('unemploymentRate'))).toBe(true);
+  });
+
+  it('allows null optional fields without errors', () => {
+    const good: Country[] = [
+      {
+        code: 'DE',
+        name: 'Germany',
+        stats: {
+          gdpPerCapitaUsd: 51384, gniPerCapitaUsd: 51640, pppConversionFactor: 0.78,
+          giniIndex: 31.7, population: 83800000, incomeGroup: 'HIC',
+          taxRevenuePercentGdp: null,
+          inflationRate: null,
+          laborForceParticipation: null,
+        },
+      },
+    ];
+    const config = { ...testConfig, validation: { ...testConfig.validation, requiredIncomeGroups: ['HIC'] } };
+    const result = validateOutput(good, config);
+    expect(result.valid).toBe(true);
   });
 });

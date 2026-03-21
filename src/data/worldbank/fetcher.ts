@@ -61,8 +61,13 @@ export async function fetchIndicator(
       ? 'all'
       : config.countries.codes.join(';');
 
-  // For Gini, request more years since data is sparse
-  const mrnev = field === 'giniIndex' ? config.giniIndex.lookbackYears : 1;
+  // For sparse indicators (infrequent reporters), request more years of history
+  const sparseConfig = config.sparseIndicators?.[field];
+  const mrnev = sparseConfig
+    ? sparseConfig.lookbackYears
+    : field === 'giniIndex'
+      ? config.giniIndex.lookbackYears
+      : 1;
 
   const url =
     `${config.source.baseUrl}/country/${countryCodes}/indicator/${indicatorCode}` +

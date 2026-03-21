@@ -16,7 +16,33 @@
     "gniPerCapitaUsd": "NY.GNP.PCAP.CD",
     "pppConversionFactor": "PA.NUS.PPP",
     "giniIndex": "SI.POV.GINI",
-    "population": "SP.POP.TOTL"
+    "population": "SP.POP.TOTL",
+    "taxRevenuePercentGdp": "GC.TAX.TOTL.GD.ZS",
+    "socialProtectionSpendingPercentGdp": "GC.XPN.COMP.ZS",
+    "inflationRate": "FP.CPI.TOTL.ZG",
+    "laborForceParticipation": "SL.TLF.CACT.ZS",
+    "unemploymentRate": "SL.UEM.TOTL.ZS",
+    "governmentDebtPercentGdp": "GC.DOD.TOTL.GD.ZS",
+    "socialContributionsPercentRevenue": "GC.REV.SOCL.ZS",
+    "povertyHeadcountRatio": "SI.POV.DDAY",
+    "gdpGrowthRate": "NY.GDP.MKTP.KD.ZG",
+    "healthExpenditurePercentGdp": "SH.XPD.CHEX.GD.ZS",
+    "educationExpenditurePercentGdp": "SE.XPD.TOTL.GD.ZS",
+    "urbanizationRate": "SP.URB.TOTL.IN.ZS"
+  },
+
+  "sparseIndicators": {
+    "_comment": "Indicators with infrequent reporting. Each entry specifies how many years back to search for the most recent value.",
+    "giniIndex": { "lookbackYears": 10 },
+    "povertyHeadcountRatio": { "lookbackYears": 10 },
+    "taxRevenuePercentGdp": { "lookbackYears": 5 },
+    "socialProtectionSpendingPercentGdp": { "lookbackYears": 5 },
+    "governmentDebtPercentGdp": { "lookbackYears": 5 },
+    "socialContributionsPercentRevenue": { "lookbackYears": 5 },
+    "healthExpenditurePercentGdp": { "lookbackYears": 5 },
+    "educationExpenditurePercentGdp": { "lookbackYears": 5 },
+    "laborForceParticipation": { "lookbackYears": 3 },
+    "unemploymentRate": { "lookbackYears": 3 }
   },
 
   "countries": {
@@ -35,7 +61,7 @@
   },
 
   "giniIndex": {
-    "_comment": "Gini data is sparse — many countries only report every few years. lookbackYears controls how far back to search for the most recent value. Set nullable to false to exclude countries without Gini data.",
+    "_comment": "Legacy config kept for backward compatibility. Gini lookback is now controlled via sparseIndicators above.",
     "lookbackYears": 10,
     "nullable": true
   },
@@ -55,7 +81,19 @@
       "gniPerCapitaUsd": 0,
       "pppConversionFactor": 2,
       "giniIndex": 1,
-      "population": 0
+      "population": 0,
+      "taxRevenuePercentGdp": 1,
+      "socialProtectionSpendingPercentGdp": 1,
+      "inflationRate": 1,
+      "laborForceParticipation": 1,
+      "unemploymentRate": 1,
+      "governmentDebtPercentGdp": 1,
+      "socialContributionsPercentRevenue": 1,
+      "povertyHeadcountRatio": 1,
+      "gdpGrowthRate": 1,
+      "healthExpenditurePercentGdp": 1,
+      "educationExpenditurePercentGdp": 1,
+      "urbanizationRate": 1
     }
   },
 

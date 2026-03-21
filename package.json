@@ -17,7 +17,10 @@
     "lint:fix": "eslint src/ --fix",
     "format": "prettier --write 'src/**/*.ts'",
     "format:check": "prettier --check 'src/**/*.ts'",
-    "data:update": "tsx src/data/worldbank/importer.ts",
+    "data:update": "tsx src/data/importer.ts",
+    "data:update:wb": "tsx src/data/worldbank/importer.ts",
+    "data:update:ilo": "tsx src/data/ilo/importer.ts",
+    "data:update:imf": "tsx src/data/imf/importer.ts",
     "db:migrate": "tsx src/db/migrate.ts",
     "sdk:generate": "tsx scripts/generate-sdk.ts"
   },

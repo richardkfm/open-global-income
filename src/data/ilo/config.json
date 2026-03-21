@@ -1,0 +1,30 @@
+{
+  "_comment": "ILO Social Protection Data Dashboard importer configuration. The ILO SDMX API is publicly accessible. Edit indicator codes or countries to change what data is fetched.",
+
+  "source": {
+    "_comment": "ILO SDMX REST API base URL.",
+    "baseUrl": "https://sdmx.ilo.org/rest",
+    "dataflow": "ILO,DF_SOC_PROT,1.0",
+    "format": "json",
+    "retries": 3,
+    "retryDelayMs": 1000
+  },
+
+  "indicators": {
+    "_comment": "Map from internal field name to ILO series reference area + indicator combination. Values are SDMX indicator codes within the SOC_PROT dataflow.",
+    "socialProtectionCoveragePercent": "SPR_FTPT_POP_SP",
+    "socialProtectionExpenditureIloPercentGdp": "SPR_XPNS_XPNS_GDPSH",
+    "pensionCoveragePercent": "SPR_FTPT_POP_OAP",
+    "childBenefitCoveragePercent": "SPR_FTPT_POP_CHB"
+  },
+
+  "output": {
+    "_comment": "Path to write the enrichment JSON file, relative to this config file.",
+    "path": "../ilo-enrichment.json",
+    "roundDecimals": 1
+  },
+
+  "validation": {
+    "coverageRange": [0, 100]
+  }
+}
