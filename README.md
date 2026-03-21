@@ -36,20 +36,32 @@ Open Global Income is a stack. Each layer builds on the one below it. The lower 
 
 ### ✅ Built (v0.1.6)
 
-Transparent entitlement calculation for **49 countries**. Budget simulation with targeting presets and multi-country comparison. Non-custodial disbursement system with Solana USDC, EVM, and M-Pesa providers. Pilot lifecycle management with donor reporting and variance analysis. Enriched country profiles with 17+ macro-economic indicators from World Bank, ILO, and IMF. **Funding scenario builder** with 6 funding mechanisms, fiscal context analysis, and interactive admin UI. **Economic impact modeling** — poverty reduction, purchasing power, social coverage, and GDP stimulus estimates with exportable policy briefs. Secure admin UI with login, approval workflows, audit trails. **349 tests** across 20 suites.
+**The API is the product.** Everything below is exposed through a REST API with OpenAPI docs, a generated TypeScript SDK, and webhook events — not locked behind a UI.
+
+| Layer | What it does | Phase |
+|-------|-------------|-------|
+| **Data** | 49 countries with 17+ macro-economic indicators from World Bank, ILO, and IMF | 14 |
+| **Calculation** | Entitlement formulas (v1 active, v2 preview), scoring, country comparison | 1–10 |
+| **Simulation** | Budget modeling with targeting presets, multi-country comparison, saved scenarios | 11 |
+| **Disbursement** | Non-custodial payment rails — Solana USDC, EVM USDC, M-Pesa (stub) — with approval workflow and audit trail | 12 |
+| **Pilots** | Lifecycle management (planning → active → completed), variance analysis, structured donor reports | 13 |
+| **Funding** | 6 funding mechanisms (income tax, VAT, carbon tax, wealth tax, FTT, redirect social spending), fiscal context analysis | 15 |
+| **Impact** | Poverty reduction, purchasing power, social coverage, GDP stimulus estimates — with exportable policy briefs | 16 |
+
+The funding and impact layers (Phases 14–16) are not a departure from the API — they are the **demand-side tools** that make the API worth building. A calculation engine answers "how much per person?" but nobody funds a program based on that alone. Governments need to see where the money comes from. Donors need to see what happens to poverty. NGOs need a policy brief they can attach to a grant proposal. These layers turn the API into a tool that **sells basic income to policymakers**.
+
+Secure admin UI with login, approval workflows, and audit trails. **349 tests** across 20 suites.
 
 ### 🔜 Next
 
-- **Sub-national data** — regional cost-of-living adjustments, district-level targeting
-- **Evidence layer** — outcome metrics, pre/post analysis, control groups, research-grade exports
+- **Sub-national data** — regional cost-of-living adjustments, district-level targeting. National averages hide enormous variation; a basic income floor in Nairobi versus rural Turkana should not be the same amount.
+- **Evidence layer** — outcome metrics, pre/post analysis, control groups, research-grade exports. Programs live or die on evidence, and this is the layer that closes the loop between "we projected X impact" and "here's what actually happened."
 
 ### 🌐 Future
 
-- **Sub-national data** — regional cost-of-living adjustments, district-level targeting
-- **Evidence layer** — outcome metrics, pre/post analysis, control groups, research-grade exports
-- **Identity & enrollment** — pluggable verification, deduplication
-- **Live M-Pesa** — real Safaricom B2C integration
-- **Multi-currency settlement** — cross-rail reconciliation
+- **Identity & enrollment** — pluggable verification (`IdentityProvider` interface), deduplication across programs
+- **Live M-Pesa** — real Safaricom B2C integration (the stub provider documents the full interface)
+- **Multi-currency settlement** — cross-rail reconciliation with live exchange rates
 - **Federation** — multi-program interop, cross-border portability, open evidence base
 
 See [CLAUDE.md](./CLAUDE.md) for the full vision. See [ROADMAP.md](./ROADMAP.md) for technical details on completed phases.
@@ -425,7 +437,7 @@ See [GOVERNANCE.md](./GOVERNANCE.md) for the decision-making process, API stabil
 
 ## 📋 Current Status
 
-**Version 0.1.5** — Funding scenario builder with interactive UI. 288 tests across 18 test suites.
+**Version 0.1.6** — Six phases complete (simulation, disbursement, pilots, macro-economic data, funding, impact). 349 tests across 20 suites. The platform now covers the full workflow from "how much per person?" through "where does the money come from?" to "what happens to poverty?" — all as API endpoints with OpenAPI docs.
 
 See [CHANGELOG.md](./CHANGELOG.md) for full version history.
 
