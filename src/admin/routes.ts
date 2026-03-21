@@ -6,6 +6,7 @@ import { renderAuditLog, renderAuditTable } from './views/audit.js';
 import { renderSimulatePage, renderSimulationPreview, renderComparisonTable } from './views/simulate.js';
 import { renderPilotsPage, renderPilotDetailPage } from './views/pilots.js';
 import { renderCountryList, renderCountryDetail, type CountryListItem } from './views/countries.js';
+import { renderFundingPage, renderFundingPreview } from './views/funding.js';
 import { listApiKeys, createApiKey, revokeApiKey, type ApiKeyTier } from '../db/api-keys.js';
 import { getRecentAuditEntries, getAuditStats } from '../db/audit.js';
 import { getAllCountries, getCountryByCode, getDataVersion, getCountryDataCompleteness } from '../data/loader.js';
@@ -14,6 +15,8 @@ import { calculateSimulation } from '../core/simulations.js';
 import { listSimulations, saveSimulation, deleteSimulation, getSimulationById } from '../db/simulations-db.js';
 import { createPilot, getPilotById, listPilots, updatePilot, linkDisbursement, getPilotDisbursementIds } from '../db/pilots-db.js';
 import { getDisbursementById } from '../db/disbursements-db.js';
+import { calculateFundingScenario } from '../core/funding.js';
+import { listFundingScenarios, saveFundingScenario, deleteFundingScenario } from '../db/funding-db.js';
 import {
   ensureDefaultAdmin,
   findAdminUser,
@@ -411,6 +414,199 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       return reply.redirect(`/admin/pilots/${pilot.id}?flash=Disbursement+linked`);
     },
   );
+
+  // ── Funding Scenario Builder ───────────────────────────────────────────────
+
+  app.get('/funding', async (request, reply) => {
+    const countries = getAllCountries();
+    const { simulations } = listSimulations(100, 0);
+    const { scenarios } = listFundingScenarios(100, 0);
+    const url = new URL(request.url, 'http://localhost');
+    const flash = url.searchParams.get('flash') ?? undefined;
+    return reply.type('text/html').send(renderFundingPage(countries, simulations, scenarios, flash));
+  });
+
+  app.post<{
+    Body: {
+      simulationId?: string;
+      country?: string;
+      coverage?: string;
+      durationMonths?: string;
+      targetGroup?: string;
+      enable_income_tax?: string;
+      income_tax_rate?: string;
+      enable_vat?: string;
+      vat_points?: string;
+      enable_carbon?: string;
+      carbon_rate?: string;
+      enable_wealth?: string;
+      wealth_rate?: string;
+      enable_ftt?: string;
+      ftt_rate?: string;
+      enable_redirect?: string;
+      redirect_pct?: string;
+    };
+  }>('/funding/preview', async (request, reply) => {
+    const body = request.body ?? {};
+
+    // Build mechanisms from form inputs
+    const mechanisms: Array<import('../core/types.js').FundingMechanismInput> = [];
+
+    if (body.enable_income_tax === '1') {
+      mechanisms.push({
+        type: 'income_tax_surcharge',
+        rate: parseFloat(body.income_tax_rate ?? '3') / 100,
+      });
+    }
+    if (body.enable_vat === '1') {
+      mechanisms.push({
+        type: 'vat_increase',
+        points: parseFloat(body.vat_points ?? '2'),
+      });
+    }
+    if (body.enable_carbon === '1') {
+      mechanisms.push({
+        type: 'carbon_tax',
+        dollarPerTon: parseFloat(body.carbon_rate ?? '25'),
+      });
+    }
+    if (body.enable_wealth === '1') {
+      mechanisms.push({
+        type: 'wealth_tax',
+        rate: parseFloat(body.wealth_rate ?? '1') / 100,
+      });
+    }
+    if (body.enable_ftt === '1') {
+      mechanisms.push({
+        type: 'financial_transaction_tax',
+        rate: parseFloat(body.ftt_rate ?? '0.1') / 100,
+      });
+    }
+    if (body.enable_redirect === '1') {
+      mechanisms.push({
+        type: 'redirect_social_spending',
+        percent: parseFloat(body.redirect_pct ?? '30') / 100,
+      });
+    }
+
+    if (mechanisms.length === 0) {
+      return reply
+        .type('text/html')
+        .send('<p style="color:var(--danger);margin-top:1rem">Please enable at least one funding mechanism.</p>');
+    }
+
+    // Resolve simulation
+    let simulation;
+    let country;
+    let simulationId: string | null = null;
+
+    if (body.simulationId) {
+      const saved = getSimulationById(body.simulationId);
+      if (!saved) {
+        return reply
+          .type('text/html')
+          .send('<p style="color:var(--danger);margin-top:1rem">Simulation not found.</p>');
+      }
+      simulationId = saved.id;
+      country = getCountryByCode(saved.countryCode);
+      if (!country) {
+        return reply
+          .type('text/html')
+          .send('<p style="color:var(--danger);margin-top:1rem">Country data not found for simulation.</p>');
+      }
+      simulation = saved.results;
+    } else {
+      const countryCode = (body.country ?? '').toUpperCase();
+      country = getCountryByCode(countryCode);
+      if (!country) {
+        return reply
+          .type('text/html')
+          .send(`<p style="color:var(--danger);margin-top:1rem">Country '${countryCode}' not found.</p>`);
+      }
+      const coverage = Math.min(1, Math.max(0, parseFloat(body.coverage ?? '20') / 100));
+      const durationMonths = Math.min(120, Math.max(1, parseInt(body.durationMonths ?? '12', 10)));
+      const targetGroup = (body.targetGroup ?? 'all') as TargetGroup;
+      const params: SimulationParameters = {
+        country: country.code,
+        coverage,
+        targetGroup,
+        durationMonths,
+        adjustments: { floorOverride: null, householdSize: null },
+      };
+      simulation = calculateSimulation(country, params, getDataVersion());
+    }
+
+    const result = calculateFundingScenario(
+      country,
+      simulation,
+      mechanisms,
+      getDataVersion(),
+      simulationId,
+    );
+
+    return reply.type('text/html').send(renderFundingPreview(result));
+  });
+
+  app.post<{ Body: { name?: string; resultJson?: string } }>(
+    '/funding/save',
+    async (request, reply) => {
+      const { name, resultJson } = request.body ?? {};
+      if (!resultJson) {
+        return reply.redirect('/admin/funding?flash=Missing+scenario+data');
+      }
+      try {
+        const result = JSON.parse(resultJson) as import('../core/types.js').FundingScenarioResult;
+        const mechanisms = result.mechanisms.map((m) => {
+          switch (m.mechanism) {
+            case 'income_tax_surcharge':
+              return { type: 'income_tax_surcharge' as const, rate: 0 };
+            case 'vat_increase':
+              return { type: 'vat_increase' as const, points: 0 };
+            case 'carbon_tax':
+              return { type: 'carbon_tax' as const, dollarPerTon: 0 };
+            case 'wealth_tax':
+              return { type: 'wealth_tax' as const, rate: 0 };
+            case 'financial_transaction_tax':
+              return { type: 'financial_transaction_tax' as const, rate: 0 };
+            case 'redirect_social_spending':
+              return { type: 'redirect_social_spending' as const, percent: 0 };
+          }
+        });
+        saveFundingScenario(
+          name ?? null,
+          result.simulationId ?? null,
+          result.country.code,
+          mechanisms,
+          result,
+        );
+        return reply.redirect('/admin/funding?flash=Scenario+saved');
+      } catch {
+        return reply.redirect('/admin/funding?flash=Failed+to+save+scenario');
+      }
+    },
+  );
+
+  app.post<{ Body: { id?: string } }>('/funding/delete', async (request, reply) => {
+    const id = request.body?.id;
+    if (id) deleteFundingScenario(id);
+    return reply.redirect('/admin/funding?flash=Scenario+deleted');
+  });
+
+  app.post<{ Body: { resultJson?: string } }>('/funding/export', async (request, reply) => {
+    const { resultJson } = request.body ?? {};
+    if (!resultJson) {
+      return reply.status(400).send({ ok: false, error: { message: 'No data' } });
+    }
+    try {
+      const data = JSON.parse(resultJson);
+      return reply
+        .header('content-type', 'application/json')
+        .header('content-disposition', `attachment; filename="funding-scenario-${data.country?.code ?? 'export'}.json"`)
+        .send(JSON.stringify(data, null, 2));
+    } catch {
+      return reply.status(400).send({ ok: false, error: { message: 'Invalid data' } });
+    }
+  });
 
   // ── Countries ──────────────────────────────────────────────────────────────
 

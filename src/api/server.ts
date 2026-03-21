@@ -17,6 +17,7 @@ import { simulateRoute } from './routes/simulate.js';
 import { simulationsRoute } from './routes/simulations.js';
 import { disbursementsRoute } from './routes/disbursements.js';
 import { pilotsRoute } from './routes/pilots.js';
+import { fundingRoute } from './routes/funding.js';
 import { adminRoutes } from '../admin/routes.js';
 
 export interface ServerOptions {
@@ -167,6 +168,7 @@ export function buildServer(opts?: ServerOptions) {
   app.register(simulationsRoute, { prefix: '/v1' });
   app.register(disbursementsRoute, { prefix: '/v1' });
   app.register(pilotsRoute, { prefix: '/v1' });
+  app.register(fundingRoute, { prefix: '/v1' });
 
   // Admin UI (disabled only if ENABLE_ADMIN=false explicitly)
   if (process.env.ENABLE_ADMIN !== 'false') {

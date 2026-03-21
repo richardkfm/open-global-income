@@ -236,6 +236,69 @@ export interface Pilot {
   createdAt: string;
 }
 
+// ── Funding types ─────────────────────────────────────────────────────────
+
+/** Supported funding mechanism types */
+export type FundingMechanismType =
+  | 'income_tax_surcharge'
+  | 'vat_increase'
+  | 'carbon_tax'
+  | 'wealth_tax'
+  | 'financial_transaction_tax'
+  | 'redirect_social_spending';
+
+/** Parameters for a specific funding mechanism */
+export type FundingMechanismInput =
+  | { type: 'income_tax_surcharge'; rate: number }
+  | { type: 'vat_increase'; points: number }
+  | { type: 'carbon_tax'; dollarPerTon: number }
+  | { type: 'wealth_tax'; rate: number }
+  | { type: 'financial_transaction_tax'; rate: number }
+  | { type: 'redirect_social_spending'; percent: number };
+
+/** Result of a single funding mechanism estimate */
+export interface FundingEstimate {
+  mechanism: FundingMechanismType;
+  label: string;
+  annualRevenueLocal: number;
+  annualRevenuePppUsd: number;
+  coversPercentOfUbiCost: number;
+  assumptions: string[];
+}
+
+/** Fiscal context for a country relative to a UBI cost */
+export interface FiscalContext {
+  totalTaxRevenue: { percentGdp: number | null; absolutePppUsd: number | null };
+  currentSocialSpending: { percentGdp: number | null; absolutePppUsd: number | null };
+  governmentDebt: { percentGdp: number | null };
+  ubiAsPercentOfTaxRevenue: number | null;
+  ubiAsPercentOfSocialSpending: number | null;
+}
+
+/** Combined funding scenario: multiple mechanisms applied together */
+export interface FundingScenarioResult {
+  simulationId: string | null;
+  country: { code: string; name: string; population: number };
+  ubiCost: { annualPppUsd: number; asPercentOfGdp: number };
+  fiscalContext: FiscalContext;
+  mechanisms: FundingEstimate[];
+  totalRevenuePppUsd: number;
+  coverageOfUbiCost: number;
+  gapPppUsd: number;
+  meta: RulesetMeta;
+}
+
+/** A saved funding scenario record */
+export interface SavedFundingScenario {
+  id: string;
+  name: string | null;
+  simulationId: string | null;
+  countryCode: string;
+  mechanisms: FundingMechanismInput[];
+  results: FundingScenarioResult;
+  createdAt: string;
+}
+
 export interface PilotReport {
   pilot: {
     id: string;
