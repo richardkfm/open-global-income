@@ -54,42 +54,84 @@ Open Global Income is a stack. Each layer builds on the one below it. The lower 
 
 | Layer | Question it answers | Status |
 |-------|-------------------|--------|
-| **Data** | What are the economic facts? | Done — 49 countries, World Bank 2023 |
-| **Calculation** | How much per person? How urgent is the need? | Done — Ruleset v1 active, v2 preview |
-| **Simulation** | What will it cost to cover X% of the population? | Next — Phase 11 |
-| **Distribution** | How does money reach people? | Next — Phase 12–13 |
-| **Evidence** | Is it working? Can we prove it? | Future |
+| **Data** | What are the economic facts? | Done — 49 countries, World Bank 2023 + ILO + IMF; sub-national data for Kenya (47 counties) |
+| **Calculation** | How much per person? How urgent is the need? | Done — Ruleset v1 active, v2 preview; regional COL adjustments |
+| **Simulation** | What will it cost to cover X% of the population? | Done — Phase 11; national + regional simulation |
+| **Distribution** | How does money reach people? | Done — Phase 12–13; Solana, EVM, M-Pesa (stub) |
+| **Evidence** | Is it working? Can we prove it? | Next |
 | **Federation** | Can programs share infrastructure across borders? | Future |
 
 Each layer is independently useful. A government can use just Data + Calculation to inform policy. An NGO can add Simulation to write grant proposals. A DAO can plug in Distribution to move funds. The full stack, once complete, supports end-to-end basic income delivery with built-in accountability.
 
 ---
 
-## Near Term: Simulation, Disbursement & Pilots (Phases 11–13)
+## What's Built (v0.1.7)
 
-These three phases transform the project from a calculator into an operational platform. See [ROADMAP.md](./ROADMAP.md) for full technical details.
+All seven phases are complete. The platform covers the full workflow from "how much per person?" through "where does the money come from?" to "what happens to poverty?" — with regional precision.
 
-**Phase 11 — Budget Simulation Engine**
-Answer: *"What would it actually cost?"*
+**Phase 11 — Budget Simulation Engine** ✅
 - `POST /v1/simulate` — model cost for a country with coverage %, targeting presets, duration
 - Multi-country comparison — side-by-side cost analysis for pilot site selection
 - Saved simulations — persist and share scenarios
 - Admin UI with live cost preview
 
-**Phase 12 — Disbursement Integration**
-Answer: *"How does the money move?"*
+**Phase 12 — Disbursement Integration** ✅
 - Provider interface — pluggable payment rails (crypto, mobile money, bank)
 - Solana USDC & EVM providers — non-custodial, generates unsigned transactions
 - M-Pesa stub — documented interface ready for real integration
 - Approval workflow — draft → approved → submitted → completed
 - Full audit trail on every disbursement
 
-**Phase 13 — Pilot Dashboard**
-Answer: *"Is it working?"*
+**Phase 13 — Pilot Dashboard** ✅
 - Pilot lifecycle — planning → active → paused → completed
 - Links simulations to disbursements — tracks actual vs. projected spend
 - Structured reports for donors and auditors
 - Admin UI with timeline, summary cards, and variance analysis
+
+**Phase 14 — Macro-Economic Data Expansion** ✅
+- 17+ indicators per country from World Bank, ILO, and IMF
+- Fiscal, social, labor, and expenditure data
+- Admin country dashboards with data completeness indicators
+
+**Phase 15 — Funding & Fiscal Simulation** ✅
+- 6 funding mechanism calculators (income tax, VAT, carbon tax, wealth tax, FTT, redirect)
+- Fiscal context analysis and coverage gap assessment
+- Interactive admin scenario builder with live preview
+
+**Phase 16 — Economic Impact Modeling** ✅
+- 4 impact dimensions: poverty reduction, purchasing power, social coverage, GDP stimulus
+- Exportable policy briefs with every assumption explicitly listed
+- See [IMPACT_METHODOLOGY.md](./IMPACT_METHODOLOGY.md) for full model documentation
+
+**Phase 17 — Sub-national Data** ✅
+- Regional cost-of-living adjustments via the "adjusted Country" pattern
+- Kenya seed data: all 47 counties with COL indices, population, urban/rural, poverty rates
+- 4 new API endpoints: `GET /regions`, `GET /regions/:id`, `GET /calc/regional`, `POST /simulate/regional`
+- Admin region list and detail pages with national vs. regional entitlement comparison
+
+**387 tests** across 23 suites. Typecheck clean. CI green.
+
+---
+
+## Near Term: Expanding Coverage & Evidence
+
+### More Countries (Sub-national)
+
+The region data format and loader are country-agnostic. Each country needs a curated entry in `src/data/regions.json` with cost-of-living indices sourced from national statistics bureaus. Priority countries:
+
+- Tanzania, Uganda, Mozambique (East Africa pilots)
+- Ghana, Nigeria (West Africa scale)
+- India (largest potential beneficiary population)
+
+### Evidence Layer
+
+Programs live or die on evidence. This is the layer that closes the loop between "we projected X impact" and "here's what actually happened."
+
+- **Pre/post metrics** — track economic indicators for recipient populations over time
+- **Control group support** — structured comparison between recipient and non-recipient cohorts
+- **Outcome surveys** — configurable survey instruments delivered through the same channels as payments
+- **Research-grade exports** — anonymized, aggregated datasets in formats academic partners can use directly (CSV, Parquet, SPSS)
+- **Impact dashboards** — visual summaries for non-technical stakeholders
 
 ---
 
@@ -107,24 +149,9 @@ The platform defines **integration points**, not implementations. Different cont
 
 OGI provides the `IdentityProvider` interface. Implementers plug in their own verification. The platform never stores biometric data — it stores verified claims (e.g., "this person was verified by provider X at time T").
 
-### Evidence & Impact
+### Live M-Pesa Integration
 
-Basic income programs live or die on evidence. Funders need proof. Policymakers need data. Researchers need rigor.
-
-- **Pre/post metrics** — track economic indicators for recipient populations over time
-- **Control group support** — structured comparison between recipient and non-recipient cohorts
-- **Outcome surveys** — configurable survey instruments delivered through the same channels as payments
-- **Research-grade exports** — anonymized, aggregated datasets in formats academic partners can use directly (CSV, Parquet, SPSS)
-- **Impact dashboards** — visual summaries for non-technical stakeholders
-
-### Sub-national Data
-
-National averages hide enormous variation. A basic income floor in Nairobi versus rural Turkana should not be the same amount.
-
-- Regional cost-of-living indices
-- District-level population and income data
-- Urban/rural adjustment factors
-- Integration with national statistics bureaus
+The stub provider (`src/disbursements/providers/mpesa.ts`) documents the full Safaricom B2C interface. Real integration requires API credentials and compliance approvals.
 
 ### Multi-currency Settlement
 
@@ -216,7 +243,7 @@ Track where money goes. Verify it reaches recipients. Compare program efficiency
 - **API:** Fastify with OpenAPI/Swagger at `/docs`
 - **Database:** SQLite (default) / PostgreSQL (production)
 - **Admin UI:** Server-rendered HTML + htmx (no SPA)
-- **Testing:** Vitest — 105 tests across 8 suites
+- **Testing:** Vitest — 387 tests across 23 suites
 - **Metrics:** Prometheus via prom-client at `/metrics`
 - **CI:** GitHub Actions (typecheck + test on every push)
 
@@ -241,12 +268,13 @@ npm run db:migrate   # Run PostgreSQL migrations
 
 ```
 src/
-├── core/        Pure domain logic — types, rules, constants (NO I/O)
-├── data/        Data loading, World Bank snapshot
+├── core/        Pure domain logic — types, rules, simulations, funding, impact, regions (NO I/O)
+├── data/        Data loading, World Bank/ILO/IMF snapshots, countries.json, regions.json
 ├── api/         Fastify routes, middleware, OpenAPI
 ├── db/          SQLite + PostgreSQL persistence
 ├── admin/       Server-rendered admin UI (htmx)
 ├── adapters/    Chain/currency adapters (Solana, EVM)
+├── disbursements/ Payment providers (Solana USDC, EVM USDC, M-Pesa stub)
 └── webhooks/    Event dispatch, HMAC signatures
 ```
 
@@ -257,7 +285,12 @@ src/
 | `src/core/rules.ts` | The entitlement formula — pure function, no side effects |
 | `src/core/rulesets.ts` | Registry of all formula versions (v1 active, v2 preview) |
 | `src/core/constants.ts` | Named constants: income floor ($210), weights |
+| `src/core/simulations.ts` | Budget simulation math — pure function |
+| `src/core/funding.ts` | 6 funding mechanism calculators — pure functions |
+| `src/core/impact.ts` | 4-dimension economic impact analysis — pure functions |
+| `src/core/regions.ts` | Regional COL adjustment via "adjusted Country" pattern |
 | `src/data/countries.json` | World Bank snapshot — 49 countries |
+| `src/data/regions.json` | Sub-national data — Kenya 47 counties |
 | `src/api/server.ts` | Fastify server factory |
 | `src/db/database.ts` | SQLite schema and connection |
 | `src/adapters/types.ts` | `ChainAdapter<TConfig>` interface |
@@ -273,6 +306,19 @@ All API responses follow:
 ### Adding a Country
 
 Edit `src/data/worldbank/config.json`, run `npm run data:update`. The importer fetches from the World Bank API, validates, and writes to `countries.json`.
+
+### Adding Regions for a Country
+
+Edit `src/data/regions.json` and add entries following the existing Kenya format. Each region needs:
+
+- `id` — `{countryCode}-{regionCode}`, e.g. `"TZ-DAR"`
+- `countryCode` — must exist in `countries.json`
+- `stats.costOfLivingIndex` — relative to national average (1.0 = same)
+- `stats.population` — regional population
+- `stats.urbanRural` — `"urban"` | `"rural"` | `"mixed"`
+- `stats.dataAsOf` and `stats.dataSource` — provenance
+
+No code changes needed — the loader picks up new entries automatically. Write tests to validate the new data.
 
 ### Adding a Ruleset
 
