@@ -1,6 +1,7 @@
 import { layout } from './layout.js';
 import { escapeHtml, formatNumber, formatCompact, formatPercent } from './helpers.js';
-import { stackedBarChart, doughnutChart } from './chart-helpers.js';
+import { stackedBarChart, lineChart } from './chart-helpers.js';
+import { projectYearly, yearLabels } from '../../core/projections.js';
 import { t } from '../../i18n/index.js';
 import { getCurrencyForCountry, formatLocalCurrency } from '../../data/currencies.js';
 import type {
@@ -213,7 +214,7 @@ export function renderFundingPage(
 
 const BAR_COLORS = ['#4f46e5', '#7c3aed', '#db2777', '#ea580c', '#059669', '#0284c7'];
 
-export function renderFundingPreview(result: FundingScenarioResult): string {
+export function renderFundingPreview(result: FundingScenarioResult, fullCountry?: Country): string {
   const { mechanisms, totalRevenuePppUsd, coverageOfUbiCost, gapPppUsd, ubiCost, fiscalContext, country } = result;
 
   // Summary stat cards
@@ -247,12 +248,25 @@ export function renderFundingPreview(result: FundingScenarioResult): string {
     )
     .join('');
 
-  // Chart
+  // Chart — stacked bar: funding mechanisms vs UBI cost
   const chart = mechanisms.length > 0
-    ? doughnutChart(
-        mechanisms.map((m) => m.label),
-        mechanisms.map((m) => m.annualRevenuePppUsd),
-        { height: 220, exportFilename: 'funding-breakdown' },
+    ? stackedBarChart(
+        ['Funding Raised', 'UBI Cost'],
+        [
+          ...mechanisms.map((m, i) => ({
+            label: m.label,
+            data: [m.annualRevenuePppUsd, 0],
+            backgroundColor: BAR_COLORS[i % 6],
+            stack: 'funding',
+          })),
+          {
+            label: 'UBI Annual Cost',
+            data: [0, ubiCost.annualPppUsd],
+            backgroundColor: '#e5e7eb',
+            stack: 'cost',
+          },
+        ],
+        { height: 280, exportFilename: 'funding-breakdown', chartOptions: { indexAxis: 'y', plugins: { legend: { position: 'bottom' } } } },
       )
     : '';
 
@@ -343,6 +357,28 @@ export function renderFundingPreview(result: FundingScenarioResult): string {
         </ul>
         <p class="text-xs text-muted mt-1" style="font-style:italic">${t('funding.assumptionsDisclaimer')}</p>
       </div>` : ''}
+
+      ${(() => {
+        const gdpGrowth = fullCountry?.stats.gdpGrowthRate ?? 3;
+        const inflRate = fullCountry?.stats.inflationRate ?? 4;
+        const projYears = 10;
+        const labels = yearLabels(projYears);
+        const costGrowth = (inflRate + 1.5) / 100; // cost grows with inflation + population growth (~1.5%)
+        const revenueGrowth = gdpGrowth / 100;
+        const costProj = projectYearly(ubiCost.annualPppUsd, costGrowth, projYears);
+        const revProj = projectYearly(totalRevenuePppUsd, revenueGrowth, projYears);
+        return `
+        <h3 class="section-title">10-Year Funding Projection</h3>
+        <p class="text-xs text-muted mb-1">Assumes GDP growth ${gdpGrowth.toFixed(1)}%/yr for revenue, inflation ${inflRate.toFixed(1)}% + 1.5% population growth for costs</p>
+        ${lineChart(
+          labels,
+          [
+            { label: 'Projected Revenue', data: revProj, borderColor: '#059669', backgroundColor: '#ecfdf5', fill: true },
+            { label: 'Projected UBI Cost', data: costProj, borderColor: '#ef4444', backgroundColor: '#fef2f2', fill: true },
+          ],
+          { height: 280, exportFilename: 'funding-projection', chartOptions: { plugins: { legend: { position: 'bottom' } } } },
+        )}`;
+      })()}
 
       <div class="flex gap-1 mt-2">
         <form method="post" action="/admin/funding/save" class="form-inline" style="flex:1">

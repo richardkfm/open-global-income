@@ -73,6 +73,7 @@ export function layout(title: string, content: string, usernameOrOptions?: strin
         <div class="sidebar-section-label">${t('nav.sectionData')}</div>
         ${navLink('/admin/countries', t('nav.countries'), 'countries')}
         ${navLink('/admin/regions', t('nav.regions'), 'regions')}
+        ${navLink('/admin/data-sources', t('nav.dataSources'), 'data-sources')}
       </div>
       <div class="sidebar-section">
         <div class="sidebar-section-label">${t('nav.sectionAdmin')}</div>

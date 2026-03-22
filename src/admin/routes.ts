@@ -23,6 +23,8 @@ import { calculateFundingScenario } from '../core/funding.js';
 import { listFundingScenarios, saveFundingScenario, deleteFundingScenario } from '../db/funding-db.js';
 import { calculateImpactAnalysis } from '../core/impact.js';
 import { listImpactAnalyses, saveImpactAnalysis, deleteImpactAnalysis } from '../db/impact-db.js';
+import { renderDataSourcesPage, renderDataSourceDetail } from './views/data-sources.js';
+import { listDataSources, getDataSourceById, createDataSource, updateDataSource, deleteDataSource, seedDefaultDataSources } from '../db/data-sources-db.js';
 import {
   ensureDefaultAdmin,
   findAdminUser,
@@ -262,7 +264,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     };
 
     const result = calculateSimulation(country, params, getDataVersion());
-    return reply.type('text/html').send(renderSimulationPreview(result));
+    return reply.type('text/html').send(renderSimulationPreview(result, undefined, country));
   });
 
   app.post<{
@@ -558,7 +560,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       simulationId,
     );
 
-    return reply.type('text/html').send(renderFundingPreview(result));
+    return reply.type('text/html').send(renderFundingPreview(result, country));
   });
 
   app.post<{ Body: { name?: string; resultJson?: string } }>(
@@ -797,5 +799,76 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
         regionalEntitlement.localCurrencyPerMonth,
         getRegionsDataVersion(),
       ));
+  });
+
+  // ── Data Sources ──────────────────────────────────────────────────────────
+
+  app.get<{ Querystring: { flash?: string } }>('/data-sources', async (request, reply) => {
+    seedDefaultDataSources();
+    const sources = listDataSources();
+    return reply.type('text/html').send(renderDataSourcesPage(sources, request.query.flash));
+  });
+
+  app.get<{ Params: { id: string } }>('/data-sources/:id', async (request, reply) => {
+    const source = getDataSourceById(request.params.id);
+    if (!source) {
+      return reply.redirect('/admin/data-sources?flash=Source+not+found');
+    }
+    return reply.type('text/html').send(renderDataSourceDetail(source));
+  });
+
+  app.post<{ Body: { name?: string; type?: string; provider?: string; url?: string; description?: string; data_year?: string } }>(
+    '/data-sources',
+    async (request, reply) => {
+      const { name, type, provider, url, description, data_year } = request.body ?? {};
+      if (!name || !type || !provider) {
+        return reply.redirect('/admin/data-sources?flash=Name,+type,+and+provider+are+required');
+      }
+      createDataSource({
+        name,
+        type: type as 'api' | 'upload' | 'manual',
+        provider,
+        url: url || undefined,
+        description: description || undefined,
+        data_year: data_year || undefined,
+      });
+      return reply.redirect('/admin/data-sources?flash=Data+source+added');
+    },
+  );
+
+  app.post<{ Params: { id: string }; Body: { name?: string; url?: string; description?: string; data_year?: string; status?: string } }>(
+    '/data-sources/:id/edit',
+    async (request, reply) => {
+      const { name, url, description, data_year, status } = request.body ?? {};
+      const source = getDataSourceById(request.params.id);
+      if (!source) {
+        return reply.redirect('/admin/data-sources?flash=Source+not+found');
+      }
+      updateDataSource(request.params.id, {
+        ...(name ? { name } : {}),
+        ...(url !== undefined ? { url } : {}),
+        ...(description !== undefined ? { description } : {}),
+        ...(data_year !== undefined ? { data_year } : {}),
+        ...(status ? { status: status as 'active' | 'disabled' } : {}),
+      });
+      return reply.redirect(`/admin/data-sources/${request.params.id}`);
+    },
+  );
+
+  app.post<{ Params: { id: string } }>('/data-sources/:id/refresh', async (request, reply) => {
+    const source = getDataSourceById(request.params.id);
+    if (!source) {
+      return reply.redirect('/admin/data-sources?flash=Source+not+found');
+    }
+    // Update last_fetched_at timestamp (actual fetch integration is provider-specific)
+    updateDataSource(request.params.id, {
+      last_fetched_at: new Date().toISOString(),
+    });
+    return reply.redirect(`/admin/data-sources?flash=Data+refresh+triggered+for+${encodeURIComponent(source.name)}`);
+  });
+
+  app.post<{ Params: { id: string } }>('/data-sources/:id/delete', async (request, reply) => {
+    deleteDataSource(request.params.id);
+    return reply.redirect('/admin/data-sources?flash=Data+source+deleted');
   });
 };
