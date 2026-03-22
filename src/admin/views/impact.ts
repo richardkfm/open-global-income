@@ -1,4 +1,7 @@
 import { layout } from './layout.js';
+import { escapeHtml, formatNumber, formatCompact, formatPercent } from './helpers.js';
+import { horizontalBarChart } from './chart-helpers.js';
+import { t } from '../../i18n/index.js';
 import type {
   Country,
   SavedSimulation,
@@ -10,40 +13,24 @@ import type {
   FiscalMultiplierEstimate,
 } from '../../core/types.js';
 
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-function formatNumber(n: number): string {
-  return n.toLocaleString('en-US');
-}
-
-function formatLarge(n: number): string {
+function fmtLarge(n: number): string {
   if (Math.abs(n) >= 1e9) return `${(n / 1e9).toFixed(1)}B`;
   if (Math.abs(n) >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
   if (Math.abs(n) >= 1e3) return `${(n / 1e3).toFixed(0)}K`;
   return formatNumber(Math.round(n));
 }
 
-function formatCurrency(n: number): string {
-  return `$${formatLarge(n)}`;
-}
-
-function formatPercent(n: number, decimals = 1): string {
-  return `${n.toFixed(decimals)}%`;
+function fmtCurrency(n: number): string {
+  return `$${fmtLarge(n)}`;
 }
 
 function dataQualityBadge(q: 'high' | 'medium' | 'low'): string {
-  const colors: Record<string, string> = {
-    high: 'background:#d1e7dd;color:#0f5132',
-    medium: 'background:#fff3cd;color:#664d03',
-    low: 'background:#f8d7da;color:#842029',
+  const cls: Record<string, string> = {
+    high: 'badge-success',
+    medium: 'badge-warning',
+    low: 'badge-danger',
   };
-  return `<span style="${colors[q]};padding:0.1rem 0.4rem;border-radius:0.25rem;font-size:0.75rem;font-weight:600">${q}</span>`;
+  return `<span class="badge ${cls[q] ?? 'badge-neutral'}">${q}</span>`;
 }
 
 function countryOptions(countries: Country[], selected?: string): string {
@@ -60,29 +47,29 @@ function simulationOptions(sims: SavedSimulation[], selected?: string): string {
     (s) =>
       `<option value="${escapeHtml(s.id)}"${s.id === selected ? ' selected' : ''}>${s.name ? escapeHtml(s.name) : escapeHtml(s.id.slice(0, 8))} — ${escapeHtml(s.countryCode)} (${(s.results.simulation.coverageRate * 100).toFixed(0)}% cov.)</option>`,
   );
-  return `<option value="">Run new simulation inline</option>` + rows.join('');
+  return `<option value="">${t('impact.inlineSimRunNew')}</option>` + rows.join('');
 }
 
 // ── Saved analyses table ────────────────────────────────────────────────
 
 function savedAnalysesTable(analyses: SavedImpactAnalysis[]): string {
   if (analyses.length === 0) {
-    return '<tr><td colspan="7" style="color:var(--muted)">No saved analyses yet</td></tr>';
+    return `<tr><td colspan="7" class="text-muted">${t('impact.noSavedAnalyses')}</td></tr>`;
   }
   return analyses
     .map(
       (a) => `
     <tr>
-      <td>${escapeHtml(a.id.slice(0, 8))}&hellip;</td>
-      <td>${a.name ? escapeHtml(a.name) : '&mdash;'}</td>
+      <td class="mono">${escapeHtml(a.id.slice(0, 8))}${t('common.ellipsis')}</td>
+      <td>${a.name ? escapeHtml(a.name) : t('common.none')}</td>
       <td>${escapeHtml(a.countryCode)}</td>
-      <td>${formatLarge(a.results.povertyReduction.estimatedLifted)}</td>
+      <td>${fmtLarge(a.results.povertyReduction.estimatedLifted)}</td>
       <td>${a.results.purchasingPower.incomeIncreasePercent.toFixed(0)}%</td>
-      <td>${formatLarge(a.results.socialCoverage.estimatedNewlyCovered)}</td>
+      <td>${fmtLarge(a.results.socialCoverage.estimatedNewlyCovered)}</td>
       <td>
-        <form method="post" action="/admin/impact/delete" style="display:inline">
+        <form method="post" action="/admin/impact/delete" class="form-inline">
           <input type="hidden" name="id" value="${escapeHtml(a.id)}">
-          <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+          <button type="submit" class="btn btn-danger btn-sm">${t('impact.deleteButton')}</button>
         </form>
       </td>
     </tr>`,
@@ -102,146 +89,144 @@ export function renderImpactPage(
   const simOpts = simulationOptions(savedSims);
   const rows = savedAnalysesTable(savedAnalyses);
 
-  const content = `
-    <h1 style="margin:1.5rem 0 0.5rem">Economic Impact Modeling</h1>
-    <p style="color:var(--muted);margin-bottom:1.5rem">
-      Model the real-world impact of a basic income program: poverty reduction,
-      purchasing power increase, social coverage gap, and GDP stimulus.
-      Every assumption is listed explicitly. Export as a policy brief.
-    </p>
+  return layout(
+    t('impact.title'),
+    `
+    <div class="page-header">
+      <h1>${t('impact.title')}</h1>
+      <p class="text-muted">${t('impact.subtitle')}</p>
+    </div>
 
     ${flash ? `<div class="flash">${escapeHtml(flash)}</div>` : ''}
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+    <div class="two-col">
       <!-- Config panel -->
       <div class="card">
-        <h2>Configure Analysis</h2>
+        <div class="card-header">
+          <h2 class="card-title">${t('impact.configureAnalysis')}</h2>
+        </div>
 
-        <div style="margin-bottom:1rem">
-          <label style="display:block;font-weight:600;margin-bottom:0.25rem">Link to saved simulation (optional)</label>
-          <select name="simulationId" id="sim-select" style="width:100%"
+        <div class="form-group mb-2">
+          <label>${t('impact.linkSimulation')}</label>
+          <select name="simulationId" id="sim-select"
             hx-on:change="document.getElementById('inline-params').style.display = this.value ? 'none' : 'block'">
             ${simOpts}
           </select>
         </div>
 
         <div id="inline-params">
-          <div style="margin-bottom:0.75rem">
-            <label style="display:block;font-weight:600;margin-bottom:0.25rem">Country</label>
-            <select name="country" id="country-select" style="width:100%">
-              ${opts}
-            </select>
+          <div class="form-group mb-2">
+            <label>${t('impact.country')}</label>
+            <select name="country" id="country-select">${opts}</select>
           </div>
 
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.75rem">
-            <div>
-              <label style="display:block;font-weight:600;margin-bottom:0.25rem">Coverage (%)</label>
+          <div class="grid grid-2 mb-2">
+            <div class="form-group">
+              <label>${t('impact.coveragePct')}</label>
               <input type="range" name="coverage" id="cov-range" min="1" max="100" value="20"
-                style="width:100%"
                 oninput="document.getElementById('cov-val').textContent=this.value+'%'">
-              <div style="font-size:0.85rem;color:var(--muted)">Value: <span id="cov-val">20%</span></div>
+              <div class="form-help">${t('common.value')} <span id="cov-val">20%</span></div>
             </div>
-            <div>
-              <label style="display:block;font-weight:600;margin-bottom:0.25rem">Duration (months)</label>
+            <div class="form-group">
+              <label>${t('impact.durationMonths')}</label>
               <input type="range" name="durationMonths" id="dur-range" min="1" max="60" value="12"
-                style="width:100%"
                 oninput="document.getElementById('dur-val').textContent=this.value+' mo'">
-              <div style="font-size:0.85rem;color:var(--muted)">Value: <span id="dur-val">12 mo</span></div>
+              <div class="form-help">${t('common.value')} <span id="dur-val">12 mo</span></div>
             </div>
           </div>
 
-          <div style="margin-bottom:0.75rem">
-            <label style="display:block;font-weight:600;margin-bottom:0.25rem">Target group</label>
-            <select name="targetGroup" style="width:100%">
-              <option value="all">All population</option>
-              <option value="bottom_quintile" selected>Bottom quintile (poorest 20%)</option>
+          <div class="form-group mb-2">
+            <label>${t('impact.targetGroup')}</label>
+            <select name="targetGroup">
+              <option value="all">${t('impact.targetGroupAll')}</option>
+              <option value="bottom_quintile" selected>${t('impact.targetGroupBottomQuintile')}</option>
             </select>
           </div>
         </div>
 
-        <div style="margin-top:1rem">
-          <label style="display:block;font-weight:600;margin-bottom:0.25rem">Analysis name (optional)</label>
-          <input type="text" name="name" id="analysis-name" placeholder="e.g. Kenya pilot 2026"
-            style="width:100%">
+        <div class="form-group mb-2">
+          <label>${t('impact.analysisName')}</label>
+          <input type="text" name="name" id="analysis-name" placeholder="${t('impact.analysisNamePlaceholder')}">
         </div>
 
-        <div style="margin-top:1rem;display:flex;gap:0.5rem;flex-wrap:wrap">
-          <button class="btn btn-primary" onclick="runPreview()">Analyze</button>
-          <button class="btn" style="background:var(--bg);border:1px solid var(--border)"
-            onclick="runPreview(true)">Analyze &amp; Save</button>
+        <div class="flex gap-1 mt-2">
+          <button class="btn btn-primary" onclick="runPreview()">${t('impact.analyzeButton')}</button>
+          <button class="btn btn-secondary" onclick="runPreview(true)">${t('impact.analyzeAndSaveButton')}</button>
         </div>
       </div>
 
       <!-- Preview panel -->
       <div>
         <div id="impact-preview">
-          <div class="card" style="background:var(--bg);color:var(--muted);text-align:center;padding:2rem">
-            Configure parameters and click "Analyze" to see results
+          <div class="card empty-state">
+            <p class="empty-state-title">${t('impact.configurePrompt')}</p>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Saved analyses -->
-    <div class="card" style="margin-top:1rem">
-      <h2>Saved Analyses</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Country</th>
-            <th>Poverty lifted</th>
-            <th>Income +</th>
-            <th>New coverage</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody id="analyses-table">${rows}</tbody>
-      </table>
+    <div class="card mt-2">
+      <div class="card-header">
+        <h2 class="card-title">${t('impact.savedAnalyses')}</h2>
+      </div>
+      <div class="data-table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>${t('impact.colId')}</th>
+              <th>${t('impact.colName')}</th>
+              <th>${t('impact.colCountry')}</th>
+              <th>${t('impact.colPovertyLifted')}</th>
+              <th>${t('impact.colIncomeIncrease')}</th>
+              <th>${t('impact.colNewCoverage')}</th>
+              <th>${t('impact.colActions')}</th>
+            </tr>
+          </thead>
+          <tbody id="analyses-table">${rows}</tbody>
+        </table>
+      </div>
     </div>
 
     <script>
     function buildFormData() {
-      const simId = document.getElementById('sim-select')?.value || '';
-      const country = document.getElementById('country-select')?.value || '';
-      const coverage = parseInt(document.getElementById('cov-range')?.value || '20') / 100;
-      const duration = parseInt(document.getElementById('dur-range')?.value || '12');
-      const targetGroup = document.querySelector('select[name=targetGroup]')?.value || 'bottom_quintile';
-      const name = document.getElementById('analysis-name')?.value || '';
+      var simId = document.getElementById('sim-select')?.value || '';
+      var country = document.getElementById('country-select')?.value || '';
+      var coverage = parseInt(document.getElementById('cov-range')?.value || '20') / 100;
+      var duration = parseInt(document.getElementById('dur-range')?.value || '12');
+      var targetGroup = document.querySelector('select[name=targetGroup]')?.value || 'bottom_quintile';
+      var name = document.getElementById('analysis-name')?.value || '';
       return { simulationId: simId || undefined, country: simId ? undefined : country,
-               coverage, durationMonths: duration, targetGroup, name };
+               coverage: coverage, durationMonths: duration, targetGroup: targetGroup, name: name };
     }
 
-    function runPreview(save = false) {
-      const data = buildFormData();
-      const url = save ? '/admin/impact/preview?save=1' : '/admin/impact/preview';
+    function runPreview(save) {
+      var data = buildFormData();
+      var url = save ? '/admin/impact/preview?save=1' : '/admin/impact/preview';
       document.getElementById('impact-preview').innerHTML =
-        '<div class="card" style="text-align:center;padding:2rem;color:var(--muted)">Calculating&hellip;</div>';
+        '<div class="card empty-state"><p>${t('impact.calculating')}</p></div>';
       fetch(url, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(data)
       })
-      .then(r => r.text())
-      .then(html => {
+      .then(function(r) { return r.text(); })
+      .then(function(html) {
         document.getElementById('impact-preview').innerHTML = html;
         if (save) {
-          // refresh saved table
           fetch('/admin/impact/table')
-            .then(r => r.text())
-            .then(t => { document.getElementById('analyses-table').innerHTML = t; });
+            .then(function(r) { return r.text(); })
+            .then(function(tbl) { document.getElementById('analyses-table').innerHTML = tbl; });
         }
       })
-      .catch(() => {
+      .catch(function() {
         document.getElementById('impact-preview').innerHTML =
-          '<div class="card" style="color:var(--danger)">Analysis failed. Check parameters.</div>';
+          '<div class="card"><div class="alert alert-danger">${t('impact.analysisFailed')}</div></div>';
       });
     }
     </script>
-  `;
-
-  return layout('Economic Impact', content);
+  `,
+  );
 }
 
 // ── Preview panel (htmx target) ────────────────────────────────────────
@@ -250,38 +235,50 @@ export function renderImpactPreview(result: ImpactAnalysisResult, saved?: boolea
   const { povertyReduction: pov, purchasingPower: pp, socialCoverage: sc, fiscalMultiplier: fm } = result;
   const brief = result.policyBrief;
 
-  const briefJson = escapeHtml(JSON.stringify({ brief, country: result.country, program: result.program, meta: result.meta }, null, 2));
+  // Chart data for headline comparison
+  const chart = horizontalBarChart(
+    [t('impact.povertyReduction'), t('impact.purchasingPower'), t('impact.socialCoverage'), t('impact.gdpStimulus')],
+    [{ label: 'Impact', data: [
+      pov.liftedAsPercentOfPoor,
+      pp.incomeIncreasePercent,
+      sc.estimatedNewlyCovered > 0 ? (sc.estimatedNewlyCovered / sc.populationCurrentlyUncovered) * 100 : 0,
+      fm.stimulusAsPercentOfGdp * 10, // scale up for visibility
+    ], backgroundColor: ['#4f46e5', '#059669', '#7c3aed', '#ea580c'] }],
+    { height: 180, exportFilename: 'impact-comparison', chartOptions: { plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } } },
+  );
 
   return `
     <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-        <h2 style="margin:0">Impact Analysis — ${escapeHtml(result.country.name)}</h2>
-        <div style="display:flex;gap:0.5rem">
-          ${saved ? '<span style="background:#d1e7dd;color:#0f5132;padding:0.2rem 0.6rem;border-radius:0.25rem;font-size:0.8rem">Saved</span>' : ''}
+      <div class="flex-between mb-2">
+        <h2 class="card-title">${t('impact.impactAnalysis')} — ${escapeHtml(result.country.name)}</h2>
+        <div class="flex gap-1">
+          ${saved ? `<span class="badge badge-success">${t('impact.saved')}</span>` : ''}
           <form method="post" action="/admin/impact/export">
             <input type="hidden" name="resultJson" value="${escapeHtml(JSON.stringify({ brief, country: result.country, program: result.program, meta: result.meta }))}">
-            <button type="submit" class="btn btn-sm" style="background:var(--bg);border:1px solid var(--border)">Export brief</button>
+            <button type="submit" class="btn btn-secondary btn-sm">${t('impact.exportBrief')}</button>
           </form>
         </div>
       </div>
 
-      <p style="color:var(--muted);font-size:0.9rem;margin-bottom:1rem">${escapeHtml(brief.subtitle)}</p>
+      <p class="text-muted text-sm mb-2">${escapeHtml(brief.subtitle)}</p>
 
       <!-- Headline cards -->
-      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:0.75rem;margin-bottom:1.25rem">
-        ${headlineCard('Poverty Reduction', brief.headline.povertyReduction.formatted, brief.headline.povertyReduction.label, '#0d6efd', pov.dataQuality)}
-        ${headlineCard('Purchasing Power', brief.headline.purchasingPower.formatted, brief.headline.purchasingPower.label, '#198754', pp.dataQuality)}
-        ${headlineCard('Social Coverage', brief.headline.socialCoverage.formatted, brief.headline.socialCoverage.label, '#6f42c1', sc.dataQuality)}
-        ${headlineCard('GDP Stimulus', brief.headline.gdpStimulus.formatted, brief.headline.gdpStimulus.label, '#fd7e14', 'high')}
+      <div class="grid grid-2 mb-2">
+        ${headlineCard(t('impact.povertyReduction'), brief.headline.povertyReduction.formatted, brief.headline.povertyReduction.label, pov.dataQuality)}
+        ${headlineCard(t('impact.purchasingPower'), brief.headline.purchasingPower.formatted, brief.headline.purchasingPower.label, pp.dataQuality)}
+        ${headlineCard(t('impact.socialCoverage'), brief.headline.socialCoverage.formatted, brief.headline.socialCoverage.label, sc.dataQuality)}
+        ${headlineCard(t('impact.gdpStimulus'), brief.headline.gdpStimulus.formatted, brief.headline.gdpStimulus.label, 'high')}
       </div>
 
-      <!-- Detailed breakdown tabs -->
-      <div style="border-bottom:2px solid var(--border);margin-bottom:1rem;display:flex;gap:1rem">
-        ${tabBtn('tab-poverty', 'Poverty', true)}
-        ${tabBtn('tab-power', 'Purchasing Power', false)}
-        ${tabBtn('tab-social', 'Social Coverage', false)}
-        ${tabBtn('tab-fiscal', 'GDP Stimulus', false)}
-        ${tabBtn('tab-brief', 'Policy Brief', false)}
+      ${chart}
+
+      <!-- Tabs -->
+      <div class="tabs mt-2">
+        ${tabBtn('tab-poverty', t('impact.tabPoverty'), true)}
+        ${tabBtn('tab-power', t('impact.tabPurchasingPower'), false)}
+        ${tabBtn('tab-social', t('impact.tabSocialCoverage'), false)}
+        ${tabBtn('tab-fiscal', t('impact.tabGdpStimulus'), false)}
+        ${tabBtn('tab-brief', t('impact.tabPolicyBrief'), false)}
       </div>
 
       ${povertyTab(pov, result.program.monthlyAmountPppUsd)}
@@ -301,12 +298,11 @@ export function renderImpactPreview(result: ImpactAnalysisResult, saved?: boolea
             var el = document.getElementById(tid);
             var b = document.getElementById('btn-'+tid);
             if (el) el.style.display = 'none';
-            if (b) { b.style.borderBottom='2px solid transparent'; b.style.color='var(--muted)'; }
+            if (b) b.classList.remove('active');
           });
           var active = document.getElementById(id);
           if (active) active.style.display = 'block';
-          btn.style.borderBottom = '2px solid var(--primary)';
-          btn.style.color = 'var(--primary)';
+          btn.classList.add('active');
         });
       });
     })();
@@ -318,48 +314,53 @@ function headlineCard(
   title: string,
   value: string,
   label: string,
-  color: string,
   quality: 'high' | 'medium' | 'low',
 ): string {
   return `
-    <div style="border:1px solid var(--border);border-radius:0.5rem;padding:0.75rem">
-      <div style="font-size:0.8rem;color:var(--muted);margin-bottom:0.25rem;display:flex;justify-content:space-between">
+    <div class="card">
+      <div class="flex-between text-sm text-muted mb-1">
         <span>${escapeHtml(title)}</span>${dataQualityBadge(quality)}
       </div>
-      <div style="font-size:1.6rem;font-weight:700;color:${color};line-height:1.2">${escapeHtml(value)}</div>
-      <div style="font-size:0.8rem;color:var(--muted);margin-top:0.25rem">${escapeHtml(label)}</div>
+      <div class="stat-value">${escapeHtml(value)}</div>
+      <div class="text-sm text-muted mt-1">${escapeHtml(label)}</div>
     </div>`;
 }
 
 function tabBtn(id: string, label: string, active: boolean): string {
-  const style = active
-    ? 'border:none;background:none;cursor:pointer;padding:0.5rem 0;font-weight:600;border-bottom:2px solid var(--primary);color:var(--primary)'
-    : 'border:none;background:none;cursor:pointer;padding:0.5rem 0;border-bottom:2px solid transparent;color:var(--muted)';
-  return `<button id="btn-${id}" style="${style}" type="button">${escapeHtml(label)}</button>`;
+  return `<button id="btn-${id}" class="tab${active ? ' active' : ''}" type="button">${escapeHtml(label)}</button>`;
 }
 
 function assumptionList(assumptions: string[]): string {
-  return `<ol style="padding-left:1.2rem;margin:0">` +
-    assumptions.map((a) => `<li style="font-size:0.82rem;color:var(--muted);margin-bottom:0.4rem">${escapeHtml(a)}</li>`).join('') +
+  return `<ol class="text-sm text-muted" style="padding-left:1.2rem;margin:0">` +
+    assumptions.map((a) => `<li style="margin-bottom:0.4rem">${escapeHtml(a)}</li>`).join('') +
     `</ol>`;
+}
+
+function miniStat(label: string, value: string, sub: string): string {
+  return `
+    <div class="card">
+      <div class="metric-tile-label">${escapeHtml(label)}</div>
+      <div class="stat-value">${escapeHtml(value)}</div>
+      <div class="text-xs text-muted">${escapeHtml(sub)}</div>
+    </div>`;
 }
 
 function povertyTab(pov: PovertyReductionEstimate, floorPpp: number): string {
   return `
     <div id="tab-poverty">
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.75rem;margin-bottom:1rem">
-        ${miniStat('Extreme poor (baseline)', formatLarge(pov.extremePoorBaseline), 'people below $2.15/day')}
-        ${miniStat('Estimated lifted', formatLarge(pov.estimatedLifted), 'people above poverty line')}
-        ${miniStat('% of poor lifted', formatPercent(pov.liftedAsPercentOfPoor), 'share of extreme poor reached')}
+      <div class="grid grid-3 mb-2">
+        ${miniStat(t('impact.extremePoorBaseline'), fmtLarge(pov.extremePoorBaseline), t('impact.extremePoorBaselineSub'))}
+        ${miniStat(t('impact.estimatedLifted'), fmtLarge(pov.estimatedLifted), t('impact.estimatedLiftedSub'))}
+        ${miniStat(t('impact.percentOfPoorLifted'), formatPercent(pov.liftedAsPercentOfPoor), t('impact.percentOfPoorLiftedSub'))}
       </div>
-      <div style="font-size:0.85rem;margin-bottom:0.75rem">
-        <strong>Poverty line:</strong> $${pov.povertyLineMonthlyPppUsd.toFixed(2)}/month (PPP-USD) &nbsp;|&nbsp;
-        <strong>Transfer:</strong> $${floorPpp}/month &nbsp;|&nbsp;
-        <strong>Transfer &gt; line:</strong> ${pov.transferExceedsPovertyLine ? '✓ Yes' : '✗ No'} &nbsp;|&nbsp;
-        Data: ${dataQualityBadge(pov.dataQuality)}
+      <div class="text-sm mb-2">
+        <strong>${t('impact.povertyLine')}</strong> $${pov.povertyLineMonthlyPppUsd.toFixed(2)}${t('impact.povertyLineUnit')} &nbsp;|&nbsp;
+        <strong>${t('impact.transfer')}</strong> $${floorPpp}${t('impact.transferUnit')} &nbsp;|&nbsp;
+        <strong>${t('impact.transferExceedsLine')}</strong> ${pov.transferExceedsPovertyLine ? t('impact.transferExceedsYes') : t('impact.transferExceedsNo')} &nbsp;|&nbsp;
+        ${t('common.data')} ${dataQualityBadge(pov.dataQuality)}
       </div>
-      <details style="font-size:0.85rem">
-        <summary style="cursor:pointer;font-weight:600;margin-bottom:0.5rem">Assumptions</summary>
+      <details class="text-sm">
+        <summary class="text-bold" style="cursor:pointer">${t('impact.assumptions')}</summary>
         ${assumptionList(pov.assumptions)}
       </details>
     </div>`;
@@ -367,18 +368,18 @@ function povertyTab(pov: PovertyReductionEstimate, floorPpp: number): string {
 
 function purchasingPowerTab(pp: PurchasingPowerEstimate): string {
   return `
-    <div id="tab-power" style="display:none">
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.75rem;margin-bottom:1rem">
-        ${miniStat('Bottom quintile', formatLarge(pp.bottomQuintilePopulation), 'people in poorest 20%')}
-        ${miniStat('Their avg monthly income', `$${formatNumber(Math.round(pp.estimatedMonthlyIncomeUsd))}`, 'USD (GNI-based estimate)')}
-        ${miniStat('Income increase', `+${pp.incomeIncreasePercent.toFixed(0)}%`, `UBI = $${pp.ubiMonthlyPppUsd} PPP/month`)}
+    <div id="tab-power" class="hidden">
+      <div class="grid grid-3 mb-2">
+        ${miniStat(t('impact.bottomQuintile'), fmtLarge(pp.bottomQuintilePopulation), t('impact.bottomQuintileSub'))}
+        ${miniStat(t('impact.avgMonthlyIncome'), `$${formatNumber(Math.round(pp.estimatedMonthlyIncomeUsd))}`, t('impact.avgMonthlyIncomeSub'))}
+        ${miniStat(t('impact.incomeIncrease'), `+${pp.incomeIncreasePercent.toFixed(0)}%`, `UBI = $${pp.ubiMonthlyPppUsd} PPP/month`)}
       </div>
-      <div style="font-size:0.85rem;margin-bottom:0.75rem">
-        <strong>Lorenz estimate:</strong> bottom quintile holds ${(pp.incomeShareQ1 * 100).toFixed(1)}% of income &nbsp;|&nbsp;
-        Data: ${dataQualityBadge(pp.dataQuality)}
+      <div class="text-sm mb-2">
+        <strong>${t('impact.lorenzEstimate')}</strong> ${t('impact.bottomQuintileIncomeShare')} ${(pp.incomeShareQ1 * 100).toFixed(1)}${t('impact.ofIncome')} &nbsp;|&nbsp;
+        ${t('common.data')} ${dataQualityBadge(pp.dataQuality)}
       </div>
-      <details style="font-size:0.85rem">
-        <summary style="cursor:pointer;font-weight:600;margin-bottom:0.5rem">Assumptions</summary>
+      <details class="text-sm">
+        <summary class="text-bold" style="cursor:pointer">${t('impact.assumptions')}</summary>
         ${assumptionList(pp.assumptions)}
       </details>
     </div>`;
@@ -386,18 +387,18 @@ function purchasingPowerTab(pp: PurchasingPowerEstimate): string {
 
 function socialCoverageTab(sc: SocialCoverageEstimate): string {
   return `
-    <div id="tab-social" style="display:none">
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.75rem;margin-bottom:1rem">
-        ${miniStat('Currently uncovered', formatLarge(sc.populationCurrentlyUncovered), 'no social protection benefit')}
-        ${miniStat('Uncoverage rate', formatPercent(sc.uncoverageRatePercent), '% of population')}
-        ${miniStat('Newly covered', formatLarge(sc.estimatedNewlyCovered), 'program recipients without prior coverage')}
+    <div id="tab-social" class="hidden">
+      <div class="grid grid-3 mb-2">
+        ${miniStat(t('impact.currentlyUncovered'), fmtLarge(sc.populationCurrentlyUncovered), t('impact.currentlyUncoveredSub'))}
+        ${miniStat(t('impact.uncoverageRate'), formatPercent(sc.uncoverageRatePercent), t('impact.uncoverageRateSub'))}
+        ${miniStat(t('impact.newlyCovered'), fmtLarge(sc.estimatedNewlyCovered), t('impact.newlyCoveredSub'))}
       </div>
-      <div style="font-size:0.85rem;margin-bottom:0.75rem">
-        <strong>Recipient uncoverage rate:</strong> ${formatPercent(sc.recipientUncoverageRatePercent)} &nbsp;|&nbsp;
-        Data: ${dataQualityBadge(sc.dataQuality)}
+      <div class="text-sm mb-2">
+        <strong>${t('impact.recipientUncoverageRate')}</strong> ${formatPercent(sc.recipientUncoverageRatePercent)} &nbsp;|&nbsp;
+        ${t('common.data')} ${dataQualityBadge(sc.dataQuality)}
       </div>
-      <details style="font-size:0.85rem">
-        <summary style="cursor:pointer;font-weight:600;margin-bottom:0.5rem">Assumptions</summary>
+      <details class="text-sm">
+        <summary class="text-bold" style="cursor:pointer">${t('impact.assumptions')}</summary>
         ${assumptionList(sc.assumptions)}
       </details>
     </div>`;
@@ -405,82 +406,65 @@ function socialCoverageTab(sc: SocialCoverageEstimate): string {
 
 function fiscalTab(fm: FiscalMultiplierEstimate): string {
   return `
-    <div id="tab-fiscal" style="display:none">
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.75rem;margin-bottom:1rem">
-        ${miniStat('Fiscal multiplier', fm.multiplier.toFixed(1) + '×', `calibrated for ${fm.incomeGroup}`)}
-        ${miniStat('Annual transfer', formatCurrency(fm.annualTransferPppUsd), 'PPP-USD injected')}
-        ${miniStat('GDP stimulus', formatCurrency(fm.estimatedGdpStimulusPppUsd), `${fm.stimulusAsPercentOfGdp.toFixed(2)}% of GDP`)}
+    <div id="tab-fiscal" class="hidden">
+      <div class="grid grid-3 mb-2">
+        ${miniStat(t('impact.fiscalMultiplier'), fm.multiplier.toFixed(1) + '\u00d7', `${t('impact.calibratedFor')} ${fm.incomeGroup}`)}
+        ${miniStat(t('impact.annualTransfer'), fmtCurrency(fm.annualTransferPppUsd), t('impact.annualTransferSub'))}
+        ${miniStat(t('impact.gdpStimulusLabel'), fmtCurrency(fm.estimatedGdpStimulusPppUsd), `${fm.stimulusAsPercentOfGdp.toFixed(2)}% ${t('impact.ofGdp')}`)}
       </div>
-      <details style="font-size:0.85rem">
-        <summary style="cursor:pointer;font-weight:600;margin-bottom:0.5rem">Assumptions</summary>
+      <details class="text-sm">
+        <summary class="text-bold" style="cursor:pointer">${t('impact.assumptions')}</summary>
         ${assumptionList(fm.assumptions)}
       </details>
     </div>`;
 }
 
 function briefTab(brief: import('../../core/types.js').PolicyBrief): string {
-  const assumptions = brief.assumptions
-    .map((a, i) => `<li style="font-size:0.82rem;margin-bottom:0.35rem"><strong>${i + 1}.</strong> ${escapeHtml(a)}</li>`)
-    .join('');
-  const caveats = brief.caveats
-    .map((c) => `<li style="font-size:0.82rem;margin-bottom:0.35rem">${escapeHtml(c)}</li>`)
-    .join('');
-  const sources = brief.dataSources
-    .map((s) => `<li style="font-size:0.82rem">${escapeHtml(s)}</li>`)
-    .join('');
-
   return `
-    <div id="tab-brief" style="display:none">
-      <div style="background:var(--bg);border-radius:0.4rem;padding:1rem;margin-bottom:0.75rem">
-        <p style="font-size:0.95rem">${escapeHtml(brief.programDescription)}</p>
+    <div id="tab-brief" class="hidden">
+      <div class="card mb-2">
+        <p class="text-sm">${escapeHtml(brief.programDescription)}</p>
       </div>
 
-      <details open style="margin-bottom:0.75rem">
-        <summary style="cursor:pointer;font-weight:600;font-size:0.9rem">Methodology</summary>
-        <div style="margin-top:0.5rem;display:grid;gap:0.5rem">
-          ${methodBlock('Poverty Model', brief.methodology.povertyModel)}
-          ${methodBlock('Income Distribution', brief.methodology.incomeDistributionModel)}
-          ${methodBlock('Social Coverage', brief.methodology.socialCoverageModel)}
-          ${methodBlock('Fiscal Multiplier', brief.methodology.fiscalMultiplierModel)}
+      <details open class="mb-2">
+        <summary class="text-bold" style="cursor:pointer">${t('impact.methodology')}</summary>
+        <div class="grid grid-2 mt-1">
+          ${methodBlock(t('impact.povertyModel'), brief.methodology.povertyModel)}
+          ${methodBlock(t('impact.incomeDistributionModel'), brief.methodology.incomeDistributionModel)}
+          ${methodBlock(t('impact.socialCoverageModel'), brief.methodology.socialCoverageModel)}
+          ${methodBlock(t('impact.fiscalMultiplierModel'), brief.methodology.fiscalMultiplierModel)}
         </div>
       </details>
 
-      <details style="margin-bottom:0.75rem">
-        <summary style="cursor:pointer;font-weight:600;font-size:0.9rem">All Assumptions (${brief.assumptions.length})</summary>
-        <ol style="padding-left:1.2rem;margin-top:0.5rem">${assumptions}</ol>
+      <details class="mb-2">
+        <summary class="text-bold" style="cursor:pointer">${t('impact.allAssumptions')} (${brief.assumptions.length})</summary>
+        <ol class="text-sm text-muted mt-1" style="padding-left:1.2rem">
+          ${brief.assumptions.map((a, i) => `<li style="margin-bottom:0.35rem"><strong>${i + 1}.</strong> ${escapeHtml(a)}</li>`).join('')}
+        </ol>
       </details>
 
-      <details style="margin-bottom:0.75rem">
-        <summary style="cursor:pointer;font-weight:600;font-size:0.9rem">Caveats (${brief.caveats.length})</summary>
-        <ul style="padding-left:1.2rem;margin-top:0.5rem">${caveats}</ul>
+      <details class="mb-2">
+        <summary class="text-bold" style="cursor:pointer">${t('impact.caveats')} (${brief.caveats.length})</summary>
+        <ul class="text-sm text-muted mt-1" style="padding-left:1.2rem">
+          ${brief.caveats.map((c) => `<li style="margin-bottom:0.35rem">${escapeHtml(c)}</li>`).join('')}
+        </ul>
       </details>
 
       <details>
-        <summary style="cursor:pointer;font-weight:600;font-size:0.9rem">Data Sources</summary>
-        <ul style="padding-left:1.2rem;margin-top:0.5rem">${sources}</ul>
+        <summary class="text-bold" style="cursor:pointer">${t('impact.dataSources')}</summary>
+        <ul class="text-sm text-muted mt-1" style="padding-left:1.2rem">
+          ${brief.dataSources.map((s) => `<li>${escapeHtml(s)}</li>`).join('')}
+        </ul>
       </details>
-    </div>`;
-}
-
-function miniStat(label: string, value: string, sub: string): string {
-  return `
-    <div style="border:1px solid var(--border);border-radius:0.4rem;padding:0.6rem">
-      <div style="font-size:0.78rem;color:var(--muted)">${escapeHtml(label)}</div>
-      <div style="font-size:1.25rem;font-weight:700;color:var(--primary)">${escapeHtml(value)}</div>
-      <div style="font-size:0.75rem;color:var(--muted)">${escapeHtml(sub)}</div>
     </div>`;
 }
 
 function methodBlock(title: string, text: string): string {
   return `
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:0.4rem;padding:0.6rem">
-      <strong style="font-size:0.85rem">${escapeHtml(title)}:</strong>
-      <p style="font-size:0.82rem;color:var(--muted);margin:0.25rem 0 0">${escapeHtml(text)}</p>
+    <div class="card">
+      <strong class="text-sm">${escapeHtml(title)}:</strong>
+      <p class="text-sm text-muted mt-1">${escapeHtml(text)}</p>
     </div>`;
-}
-
-function formatCurrencyLocal(n: number): string {
-  return `$${formatLarge(n)}`;
 }
 
 // ── Saved-analyses partial (htmx refresh) ─────────────────────────────

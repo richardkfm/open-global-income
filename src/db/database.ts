@@ -158,7 +158,15 @@ const SCHEMA = `
     id TEXT PRIMARY KEY,
     username TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    email TEXT,
+    display_name TEXT,
+    role TEXT NOT NULL DEFAULT 'admin' CHECK(role IN ('admin','editor','viewer')),
+    active INTEGER NOT NULL DEFAULT 1,
+    locale TEXT DEFAULT 'en',
+    invited_by TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT,
+    FOREIGN KEY (invited_by) REFERENCES admin_users(id)
   );
 
   CREATE TABLE IF NOT EXISTS admin_sessions (
@@ -172,6 +180,20 @@ const SCHEMA = `
 
   CREATE INDEX IF NOT EXISTS idx_admin_sessions_token ON admin_sessions(token_hash);
   CREATE INDEX IF NOT EXISTS idx_admin_sessions_expires ON admin_sessions(expires_at);
+
+  CREATE TABLE IF NOT EXISTS admin_invites (
+    id TEXT PRIMARY KEY,
+    email TEXT NOT NULL,
+    token_hash TEXT NOT NULL UNIQUE,
+    role TEXT NOT NULL DEFAULT 'editor' CHECK(role IN ('admin','editor','viewer')),
+    invited_by TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    accepted_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (invited_by) REFERENCES admin_users(id)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_admin_invites_token ON admin_invites(token_hash);
 `;
 
 export function getDb(dbPath?: string): Database.Database {

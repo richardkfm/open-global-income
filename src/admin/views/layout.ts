@@ -1,72 +1,102 @@
 /** Server-rendered HTML layout for the admin UI */
-export function layout(title: string, content: string, username?: string): string {
+import { escapeHtml } from './helpers.js';
+import { t } from '../../i18n/index.js';
+
+export interface LayoutOptions {
+  activePage?: string;
+  username?: string;
+  role?: string;
+}
+
+export function layout(title: string, content: string, usernameOrOptions?: string | LayoutOptions): string {
+  let activePage = '';
+  let username = '';
+  let role = '';
+
+  if (typeof usernameOrOptions === 'string') {
+    username = usernameOrOptions;
+  } else if (usernameOrOptions) {
+    activePage = usernameOrOptions.activePage ?? '';
+    username = usernameOrOptions.username ?? '';
+    role = usernameOrOptions.role ?? '';
+  }
+
+  function navLink(href: string, label: string, page: string): string {
+    const active = activePage === page ? ' active' : '';
+    return `<a href="${href}" class="sidebar-link${active}">${escapeHtml(label)}</a>`;
+  }
+
+  const avatarInitial = username ? escapeHtml(username.charAt(0).toUpperCase()) : 'A';
+  const userSection = username
+    ? `
+    <div class="sidebar-user">
+      <div class="sidebar-user-avatar">${avatarInitial}</div>
+      <div class="sidebar-user-info">
+        <div class="sidebar-user-name">${escapeHtml(username)}</div>
+        <div class="sidebar-user-role">${escapeHtml(role || 'admin')}</div>
+      </div>
+    </div>`
+    : `<div class="sidebar-user">
+      <div class="sidebar-user-info">
+        <a href="/admin/logout" class="sidebar-link">${t('nav.logout')}</a>
+      </div>
+    </div>`;
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${escapeHtml(title)} — OGI Admin</title>
+  <link href="/css/ogi.css" rel="stylesheet">
   <script src="https://unpkg.com/htmx.org@2.0.4"></script>
-  <style>
-    :root { --bg: #f8f9fa; --card: #fff; --border: #dee2e6; --primary: #0d6efd; --danger: #dc3545; --success: #198754; --text: #212529; --muted: #6c757d; }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
-    .container { max-width: 960px; margin: 0 auto; padding: 1rem; }
-    nav { background: var(--text); color: #fff; padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center; }
-    nav a { color: #fff; text-decoration: none; margin-left: 1rem; }
-    nav a:hover { text-decoration: underline; }
-    .card { background: var(--card); border: 1px solid var(--border); border-radius: 0.5rem; padding: 1.25rem; margin-bottom: 1rem; }
-    .card h2 { margin-bottom: 0.75rem; font-size: 1.1rem; }
-    .stat { font-size: 2rem; font-weight: 700; color: var(--primary); }
-    .stat-label { color: var(--muted); font-size: 0.85rem; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-    th, td { padding: 0.5rem; text-align: left; border-bottom: 1px solid var(--border); }
-    th { font-weight: 600; background: var(--bg); }
-    .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; font-weight: 600; }
-    .badge-free { background: #e2e3e5; color: #41464b; }
-    .badge-standard { background: #cfe2ff; color: #084298; }
-    .badge-premium { background: #d1e7dd; color: #0f5132; }
-    .badge-active { background: var(--success); color: #fff; }
-    .badge-inactive { background: var(--danger); color: #fff; }
-    button, .btn { padding: 0.4rem 0.75rem; border: none; border-radius: 0.25rem; cursor: pointer; font-size: 0.85rem; text-decoration: none; display: inline-block; }
-    .btn-primary { background: var(--primary); color: #fff; }
-    .btn-danger { background: var(--danger); color: #fff; }
-    .btn-sm { padding: 0.2rem 0.5rem; font-size: 0.75rem; }
-    input, select { padding: 0.4rem; border: 1px solid var(--border); border-radius: 0.25rem; font-size: 0.85rem; }
-    form { display: flex; gap: 0.5rem; align-items: end; flex-wrap: wrap; }
-    .flash { padding: 0.75rem; border-radius: 0.25rem; margin-bottom: 1rem; background: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
-    .mt-1 { margin-top: 1rem; }
-  </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script src="/js/charts.js" defer></script>
 </head>
 <body>
-  <nav>
-    <strong>OGI Admin</strong>
-    <div>
-      <a href="/admin">Dashboard</a>
-      <a href="/admin/api-keys">API Keys</a>
-      <a href="/admin/audit">Audit Log</a>
-      <a href="/admin/simulate">Simulate</a>
-      <a href="/admin/pilots">Pilots</a>
-      <a href="/admin/funding">Funding</a>
-      <a href="/admin/impact">Impact</a>
-      <a href="/admin/countries">Countries</a>
-      <a href="/admin/regions">Regions</a>
-      ${username ? `<span style="opacity:0.6;font-size:0.85rem">${escapeHtml(username)}</span>` : ''}
-      <a href="/admin/logout">Logout</a>
+<div class="app-layout">
+  <div class="sidebar-overlay" onclick="this.classList.remove('open');document.querySelector('.sidebar').classList.remove('open')"></div>
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-brand-name">${t('nav.brand')}</div>
+      <div class="sidebar-brand-subtitle">Open Global Income</div>
     </div>
-  </nav>
-  <div class="container">
-    ${content}
+    <nav class="sidebar-nav">
+      <div class="sidebar-section">
+        <div class="sidebar-section-label">ANALYSIS</div>
+        ${navLink('/admin', t('nav.dashboard'), 'dashboard')}
+        ${navLink('/admin/simulate', t('nav.simulate'), 'simulate')}
+        ${navLink('/admin/pilots', t('nav.pilots'), 'pilots')}
+        ${navLink('/admin/funding', t('nav.funding'), 'funding')}
+        ${navLink('/admin/impact', t('nav.impact'), 'impact')}
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-section-label">DATA</div>
+        ${navLink('/admin/countries', t('nav.countries'), 'countries')}
+        ${navLink('/admin/regions', t('nav.regions'), 'regions')}
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-section-label">ADMIN</div>
+        ${navLink('/admin/api-keys', t('nav.apiKeys'), 'api-keys')}
+        ${navLink('/admin/audit', t('nav.audit'), 'audit')}
+        ${navLink('/admin/users', t('nav.users'), 'users')}
+      </div>
+      <div class="sidebar-divider"></div>
+      ${navLink('/admin/settings', t('nav.settings'), 'settings')}
+      <a href="/admin/logout" class="sidebar-link">${t('nav.logout')}</a>
+    </nav>
+    ${userSection}
+  </aside>
+  <div class="mobile-header">
+    <button class="mobile-hamburger" onclick="document.querySelector('.sidebar').classList.toggle('open');document.querySelector('.sidebar-overlay').classList.toggle('open')">&#9776;</button>
+    <span>OGI Admin</span>
   </div>
+  <main class="main-content">
+    <div class="main-content-inner">
+      ${content}
+    </div>
+  </main>
+</div>
 </body>
 </html>`;
-}
-
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }
