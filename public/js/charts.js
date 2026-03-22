@@ -7,6 +7,37 @@
 
 /* global Chart */
 
+/**
+ * Format large numbers for chart display: 45000000000 → "$45.2B"
+ */
+function formatChartValue(value) {
+  if (value == null) return '';
+  var abs = Math.abs(value);
+  var sign = value < 0 ? '-' : '';
+  if (abs >= 1e12) return sign + '$' + (abs / 1e12).toFixed(1) + 'T';
+  if (abs >= 1e9) return sign + '$' + (abs / 1e9).toFixed(1) + 'B';
+  if (abs >= 1e6) return sign + '$' + (abs / 1e6).toFixed(1) + 'M';
+  if (abs >= 1e3) return sign + '$' + (abs / 1e3).toFixed(1) + 'K';
+  if (abs < 1 && abs > 0) return sign + value.toFixed(2);
+  if (abs < 100) return sign + value.toFixed(1);
+  return sign + '$' + Math.round(abs).toLocaleString();
+}
+
+/**
+ * Format axis tick values (shorter).
+ */
+function formatAxisTick(value) {
+  if (value == null) return '';
+  var abs = Math.abs(value);
+  var sign = value < 0 ? '-' : '';
+  if (abs >= 1e12) return sign + (abs / 1e12).toFixed(1) + 'T';
+  if (abs >= 1e9) return sign + (abs / 1e9).toFixed(1) + 'B';
+  if (abs >= 1e6) return sign + (abs / 1e6).toFixed(1) + 'M';
+  if (abs >= 1e3) return sign + (abs / 1e3).toFixed(0) + 'K';
+  if (abs < 1 && abs > 0) return sign + value.toFixed(2);
+  return sign + Math.round(abs).toLocaleString();
+}
+
 // Professional color palette (Stripe/Linear inspired)
 const OGI_COLORS = {
   indigo:  '#4f46e5',
@@ -43,12 +74,29 @@ const DEFAULT_OPTIONS = {
     },
     tooltip: {
       backgroundColor: '#1f2937',
-      titleFont: { family: "'Inter', system-ui, sans-serif", size: 13 },
+      titleFont: { family: "'Inter', system-ui, sans-serif", size: 13, weight: '600' },
       bodyFont: { family: "'Inter', system-ui, sans-serif", size: 12 },
-      padding: 10,
+      padding: 12,
       cornerRadius: 8,
       displayColors: true,
-      boxPadding: 4,
+      boxPadding: 6,
+      callbacks: {
+        label: function(context) {
+          var label = context.dataset.label || '';
+          var value = context.parsed.y != null ? context.parsed.y : context.parsed.x;
+          if (value == null) value = context.parsed;
+          if (label) label += ': ';
+          // Only format as currency if value is large enough to be a monetary amount
+          if (typeof value === 'number') {
+            if (Math.abs(value) >= 1000) {
+              label += formatChartValue(value);
+            } else {
+              label += value < 1 ? value.toFixed(3) : value.toFixed(1);
+            }
+          }
+          return label;
+        }
+      }
     },
   },
   scales: {
@@ -61,10 +109,16 @@ const DEFAULT_OPTIONS = {
       border: { display: false },
     },
     y: {
-      grid: { color: '#f3f4f6' },
+      grid: { color: '#f3f4f6', drawBorder: false },
       ticks: {
         font: { family: "'Inter', system-ui, sans-serif", size: 11 },
         color: '#6b7280',
+        callback: function(value) {
+          if (typeof value === 'number' && Math.abs(value) >= 1000) {
+            return formatAxisTick(value);
+          }
+          return value;
+        },
       },
       border: { display: false },
     },
@@ -97,6 +151,11 @@ function initOgiCharts() {
                 ? config.data.labels.map((_, j) => OGI_PALETTE[j % OGI_PALETTE.length])
                 : color;
             }
+            if (config.type === 'bar') {
+              if (!ds.borderRadius) ds.borderRadius = 4;
+              if (!ds.borderSkipped) ds.borderSkipped = false;
+              if (!ds.maxBarThickness) ds.maxBarThickness = 48;
+            }
             if (!ds.borderColor && config.type !== 'bar') {
               ds.borderColor = '#ffffff';
               ds.borderWidth = 2;
@@ -105,9 +164,13 @@ function initOgiCharts() {
             if (!ds.borderColor) ds.borderColor = color;
             if (!ds.backgroundColor) ds.backgroundColor = lightColor;
             if (ds.fill === undefined) ds.fill = false;
-            if (!ds.tension) ds.tension = 0.3;
+            if (!ds.tension) ds.tension = 0.35;
+            if (!ds.borderWidth) ds.borderWidth = 2.5;
             if (!ds.pointRadius && ds.pointRadius !== 0) ds.pointRadius = 3;
-            if (!ds.pointHoverRadius) ds.pointHoverRadius = 5;
+            if (!ds.pointHoverRadius) ds.pointHoverRadius = 6;
+            if (!ds.pointBackgroundColor) ds.pointBackgroundColor = '#ffffff';
+            if (!ds.pointBorderColor) ds.pointBorderColor = ds.borderColor;
+            if (!ds.pointBorderWidth) ds.pointBorderWidth = 2;
           }
         });
       }
@@ -215,3 +278,4 @@ window.OGI.initCharts = initOgiCharts;
 window.OGI.initTabs = initOgiTabs;
 window.OGI.COLORS = OGI_COLORS;
 window.OGI.PALETTE = OGI_PALETTE;
+window.OGI.formatValue = formatChartValue;

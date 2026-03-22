@@ -225,7 +225,7 @@ select {
 .flash { padding: 0.75rem 1rem; border-radius: var(--radius-md); margin-bottom: 1rem; background: var(--color-success-bg); color: #065f46; border: 1px solid var(--color-success-border); }
 
 /* ── Charts ─────────────────────────────────────────── */
-.chart-container { position: relative; width: 100%; }
+.chart-container { position: relative; width: 100%; padding: 0.5rem 0; }
 .chart-container canvas { width: 100% !important; }
 .chart-actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; justify-content: flex-end; }
 
@@ -244,6 +244,25 @@ select {
 .progress-bar-fill-warning { background: var(--color-warning); }
 .progress-bar-fill-danger { background: var(--color-danger); }
 .progress-bar-fill-primary { background: var(--color-primary); }
+
+/* ── Data Warning ──────────────────────────────────── */
+.data-warning {
+  padding: 0.625rem 0.875rem;
+  background: var(--color-warning-bg);
+  color: #92400e;
+  border: 1px solid var(--color-warning-border);
+  border-radius: var(--radius-md);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+/* ── Impact Bars ───────────────────────────────────── */
+.impact-bars { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem; }
+.impact-bar-row { padding: 0.75rem 0; border-bottom: 1px solid var(--color-border-light); }
+.impact-bar-row:last-child { border-bottom: none; }
+.mb-half { margin-bottom: 0.375rem; }
+.mt-half { margin-top: 0.375rem; }
+
 
 /* ── Metric Tiles ───────────────────────────────────── */
 .metric-tile { display: flex; flex-direction: column; gap: 0.125rem; }

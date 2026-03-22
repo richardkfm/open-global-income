@@ -1,7 +1,5 @@
 import { layout } from './layout.js';
 import { escapeHtml, formatNumber, formatCompact, formatPercent } from './helpers.js';
-import { horizontalBarChart, lineChart } from './chart-helpers.js';
-import { yearLabels } from '../../core/projections.js';
 import { t } from '../../i18n/index.js';
 import type {
   Country,
@@ -241,17 +239,19 @@ export function renderImpactPreview(result: ImpactAnalysisResult, saved?: boolea
   const { povertyReduction: pov, purchasingPower: pp, socialCoverage: sc, fiscalMultiplier: fm } = result;
   const brief = result.policyBrief;
 
-  // Chart data for headline comparison
-  const chart = horizontalBarChart(
-    [t('impact.povertyReduction'), t('impact.purchasingPower'), t('impact.socialCoverage'), t('impact.gdpStimulus')],
-    [{ label: 'Impact', data: [
-      pov.liftedAsPercentOfPoor,
-      pp.incomeIncreasePercent,
-      sc.estimatedNewlyCovered > 0 ? (sc.estimatedNewlyCovered / sc.populationCurrentlyUncovered) * 100 : 0,
-      fm.stimulusAsPercentOfGdp * 10, // scale up for visibility
-    ], backgroundColor: ['#4f46e5', '#059669', '#7c3aed', '#ea580c'] }],
-    { height: 180, exportFilename: 'impact-comparison', chartOptions: { plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } } },
-  );
+  // Per-metric progress bars — each on its own honest scale, no mixing
+  const socialCoveragePct = sc.populationCurrentlyUncovered > 0
+    ? (sc.estimatedNewlyCovered / sc.populationCurrentlyUncovered) * 100 : 0;
+  const impactBars = renderImpactBars([
+    { label: t('impact.povertyReduction'), value: pov.liftedAsPercentOfPoor, max: 100, unit: '%', color: '#4f46e5', quality: pov.dataQuality,
+      detail: `${fmtLarge(pov.estimatedLifted)} people lifted from extreme poverty` },
+    { label: t('impact.purchasingPower'), value: pp.incomeIncreasePercent, max: Math.max(pp.incomeIncreasePercent * 1.3, 100), unit: '%', color: '#059669', quality: pp.dataQuality,
+      detail: `Bottom quintile income increase (+$${pp.ubiMonthlyPppUsd}/mo PPP)` },
+    { label: t('impact.socialCoverage'), value: socialCoveragePct, max: 100, unit: '%', color: '#7c3aed', quality: sc.dataQuality,
+      detail: `${fmtLarge(sc.estimatedNewlyCovered)} newly covered of ${fmtLarge(sc.populationCurrentlyUncovered)} uncovered` },
+    { label: t('impact.gdpStimulus'), value: fm.stimulusAsPercentOfGdp, max: Math.max(fm.stimulusAsPercentOfGdp * 2, 5), unit: '% GDP', color: '#ea580c', quality: 'high' as const,
+      detail: `${fmtCurrency(fm.estimatedGdpStimulusPppUsd)} estimated GDP stimulus (${fm.multiplier.toFixed(1)}× multiplier)` },
+  ]);
 
   return `
     <div class="card">
@@ -276,45 +276,7 @@ export function renderImpactPreview(result: ImpactAnalysisResult, saved?: boolea
         ${headlineCard(t('impact.gdpStimulus'), brief.headline.gdpStimulus.formatted, brief.headline.gdpStimulus.label, 'high')}
       </div>
 
-      ${chart}
-
-      ${(() => {
-        const years = 5;
-        const labels = yearLabels(years);
-        const coverageRate = result.program.coverageRate;
-        // Project impact as program scales from current coverage to full target
-        const povertyData = labels.map((_, i) => {
-          const scale = Math.min(1, (i + 1) / years);
-          return Math.round(pov.liftedAsPercentOfPoor * scale * 10) / 10;
-        });
-        const purchasingData = labels.map((_, i) => {
-          const scale = Math.min(1, (i + 1) / years);
-          return Math.round(pp.incomeIncreasePercent * scale * 10) / 10;
-        });
-        const socialData = labels.map((_, i) => {
-          const scale = Math.min(1, (i + 1) / years);
-          const pct = sc.populationCurrentlyUncovered > 0
-            ? (sc.estimatedNewlyCovered * scale / sc.populationCurrentlyUncovered) * 100 : 0;
-          return Math.round(pct * 10) / 10;
-        });
-        const gdpData = labels.map((_, i) => {
-          const scale = Math.min(1, (i + 1) / years);
-          return Math.round(fm.stimulusAsPercentOfGdp * scale * 1000) / 1000;
-        });
-        return `
-        <h3 class="section-title mt-2">Impact Development Over Time</h3>
-        <p class="text-xs text-muted mb-1">Projected impact as the program scales up over ${years} years at ${(coverageRate * 100).toFixed(0)}% target coverage</p>
-        ${lineChart(
-          labels,
-          [
-            { label: 'Poverty Reduction (%)', data: povertyData, borderColor: '#4f46e5' },
-            { label: 'Purchasing Power Increase (%)', data: purchasingData, borderColor: '#059669' },
-            { label: 'Social Coverage (%)', data: socialData, borderColor: '#7c3aed' },
-            { label: 'GDP Stimulus (%)', data: gdpData, borderColor: '#ea580c' },
-          ],
-          { height: 260, exportFilename: 'impact-projection', chartOptions: { plugins: { legend: { position: 'bottom' } } } },
-        )}`;
-      })()}
+      ${impactBars}
 
       <!-- Tabs -->
       <div data-ogi-tab-container>
@@ -334,6 +296,44 @@ export function renderImpactPreview(result: ImpactAnalysisResult, saved?: boolea
       </div>
     </div>
   `;
+}
+
+interface ImpactBarDef {
+  label: string;
+  value: number;
+  max: number;
+  unit: string;
+  color: string;
+  quality: 'high' | 'medium' | 'low';
+  detail: string;
+}
+
+function renderImpactBars(bars: ImpactBarDef[]): string {
+  return `<div class="impact-bars">${bars.map((b) => {
+    const pct = b.max > 0 ? Math.min((b.value / b.max) * 100, 100) : 0;
+    const insufficientData = b.quality === 'low' && b.value === 0;
+    if (insufficientData) {
+      return `
+        <div class="impact-bar-row">
+          <div class="flex-between mb-half">
+            <span class="text-sm text-bold">${escapeHtml(b.label)}</span>
+            <span class="badge badge-danger">Insufficient data</span>
+          </div>
+          <div class="text-xs text-muted" style="font-style:italic">Not enough data to estimate this metric reliably</div>
+        </div>`;
+    }
+    return `
+      <div class="impact-bar-row">
+        <div class="flex-between mb-half">
+          <span class="text-sm text-bold">${escapeHtml(b.label)}</span>
+          <span class="text-sm text-bold" style="color:${b.color}">${b.value < 0.01 ? '<0.01' : b.value < 10 ? b.value.toFixed(2) : b.value.toFixed(1)}${b.unit}</span>
+        </div>
+        <div class="progress-bar" style="height:10px;border-radius:5px">
+          <div class="progress-bar-fill" style="width:${pct.toFixed(1)}%;background:${b.color};border-radius:5px;transition:width 0.6s ease"></div>
+        </div>
+        <div class="text-xs text-muted mt-half">${escapeHtml(b.detail)} ${b.quality !== 'high' ? dataQualityBadge(b.quality) : ''}</div>
+      </div>`;
+  }).join('')}</div>`;
 }
 
 function headlineCard(

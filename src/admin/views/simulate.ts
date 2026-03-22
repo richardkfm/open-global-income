@@ -205,32 +205,48 @@ export function renderSimulationPreview(result: SimulationResult, saveName?: str
       </div>
       ${(() => {
         if (!fullCountry) return '';
+        const hasGdpGrowth = fullCountry.stats.gdpGrowthRate != null;
+        const hasInflation = fullCountry.stats.inflationRate != null;
         const gdpGrowth = fullCountry.stats.gdpGrowthRate ?? 3;
         const inflRate = fullCountry.stats.inflationRate ?? 4;
+
+        const missingIndicators: string[] = [];
+        if (!hasGdpGrowth) missingIndicators.push('GDP growth rate (using 3% default)');
+        if (!hasInflation) missingIndicators.push('Inflation rate (using 4% default)');
+
         const projYears = 10;
         const labels = yearLabels(projYears);
         const costGrowth = (inflRate + 1.5) / 100;
         const costProj = projectYearly(cost.annualPppUsd, costGrowth, projYears);
+        // GDP total grows at aggregate GDP growth (includes population growth)
         const gdpTotal = fullCountry.stats.gdpPerCapitaUsd * fullCountry.stats.population;
         const gdpProj = projectYearly(gdpTotal, gdpGrowth / 100, projYears);
         const pctGdpProj = costProj.map((c, i) => Math.round((c / gdpProj[i]) * 10000) / 100);
+
+        const dataWarning = missingIndicators.length > 0
+          ? `<div class="data-warning mb-1">
+              <strong>Data gaps:</strong> ${missingIndicators.map(i => escapeHtml(i)).join('; ')}. Projection accuracy is reduced.
+            </div>`
+          : '';
+
         return `
         <h3 class="section-title mt-2">10-Year Cost Projection</h3>
-        <p class="text-xs text-muted mb-1">GDP growth ${gdpGrowth.toFixed(1)}%/yr, inflation ${inflRate.toFixed(1)}%/yr, population growth ~1.5%/yr</p>
+        ${dataWarning}
+        <p class="text-xs text-muted mb-1">Costs grow at ${hasInflation ? '' : '~'}${inflRate.toFixed(1)}%/yr inflation + 1.5% population growth. GDP grows at ${hasGdpGrowth ? '' : '~'}${gdpGrowth.toFixed(1)}%/yr.</p>
         ${lineChart(
           labels,
           [
-            { label: 'Annual Cost (PPP USD)', data: costProj, borderColor: '#4f46e5', backgroundColor: '#eef2ff', fill: true },
+            { label: 'Annual Cost (PPP USD)', data: costProj, borderColor: '#4f46e5', backgroundColor: 'rgba(79,70,229,0.08)', fill: true },
           ],
-          { height: 240, exportFilename: 'cost-projection', chartOptions: { plugins: { legend: { position: 'bottom' } } } },
+          { height: 240, exportFilename: 'cost-projection', chartOptions: { plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } } },
         )}
         <div class="mt-1">
         ${lineChart(
           labels,
           [
-            { label: 'Cost as % of GDP', data: pctGdpProj, borderColor: '#ea580c', backgroundColor: '#fff7ed', fill: true },
+            { label: 'Cost as % of GDP', data: pctGdpProj, borderColor: '#ea580c', backgroundColor: 'rgba(234,88,12,0.08)', fill: true },
           ],
-          { height: 200, exportFilename: 'cost-pct-gdp-projection', chartOptions: { plugins: { legend: { position: 'bottom' } } } },
+          { height: 200, exportFilename: 'cost-pct-gdp-projection', chartOptions: { plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } } },
         )}
         </div>`;
       })()}

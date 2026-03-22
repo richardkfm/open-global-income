@@ -359,24 +359,47 @@ export function renderFundingPreview(result: FundingScenarioResult, fullCountry?
       </div>` : ''}
 
       ${(() => {
+        const hasGdpGrowth = fullCountry?.stats.gdpGrowthRate != null;
+        const hasInflation = fullCountry?.stats.inflationRate != null;
         const gdpGrowth = fullCountry?.stats.gdpGrowthRate ?? 3;
         const inflRate = fullCountry?.stats.inflationRate ?? 4;
+        const missingIndicators: string[] = [];
+        if (!hasGdpGrowth) missingIndicators.push('GDP growth rate (using 3% default)');
+        if (!hasInflation) missingIndicators.push('Inflation rate (using 4% default)');
+        if (!fullCountry) missingIndicators.push('Full country data unavailable');
+
+        if (!fullCountry) {
+          return `
+          <div class="card mt-2" style="border-left:3px solid var(--color-warning)">
+            <h3 class="section-title">10-Year Funding Projection</h3>
+            <p class="text-sm text-muted"><strong>Cannot generate projection:</strong> Full country economic data not available. Projections require GDP growth and inflation indicators.</p>
+          </div>`;
+        }
+
         const projYears = 10;
         const labels = yearLabels(projYears);
-        const costGrowth = (inflRate + 1.5) / 100; // cost grows with inflation + population growth (~1.5%)
+        const costGrowth = (inflRate + 1.5) / 100;
         const revenueGrowth = gdpGrowth / 100;
         const costProj = projectYearly(ubiCost.annualPppUsd, costGrowth, projYears);
         const revProj = projectYearly(totalRevenuePppUsd, revenueGrowth, projYears);
+
+        const dataWarning = missingIndicators.length > 0
+          ? `<div class="data-warning mb-1">
+              <strong>Data gaps:</strong> ${missingIndicators.map(i => escapeHtml(i)).join('; ')}. Projection accuracy is reduced.
+            </div>`
+          : '';
+
         return `
         <h3 class="section-title">10-Year Funding Projection</h3>
-        <p class="text-xs text-muted mb-1">Assumes GDP growth ${gdpGrowth.toFixed(1)}%/yr for revenue, inflation ${inflRate.toFixed(1)}% + 1.5% population growth for costs</p>
+        ${dataWarning}
+        <p class="text-xs text-muted mb-1">Revenue grows at ${hasGdpGrowth ? '' : '~'}${gdpGrowth.toFixed(1)}%/yr (GDP growth). Costs grow at ${hasInflation ? '' : '~'}${inflRate.toFixed(1)}%/yr inflation + 1.5% population growth.</p>
         ${lineChart(
           labels,
           [
-            { label: 'Projected Revenue', data: revProj, borderColor: '#059669', backgroundColor: '#ecfdf5', fill: true },
-            { label: 'Projected UBI Cost', data: costProj, borderColor: '#ef4444', backgroundColor: '#fef2f2', fill: true },
+            { label: 'Projected Revenue', data: revProj, borderColor: '#059669', backgroundColor: 'rgba(5,150,105,0.08)', fill: true },
+            { label: 'Projected UBI Cost', data: costProj, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.08)', fill: true },
           ],
-          { height: 280, exportFilename: 'funding-projection', chartOptions: { plugins: { legend: { position: 'bottom' } } } },
+          { height: 280, exportFilename: 'funding-projection', chartOptions: { plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } } },
         )}`;
       })()}
 
