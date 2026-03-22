@@ -194,6 +194,27 @@ const SCHEMA = `
   );
 
   CREATE INDEX IF NOT EXISTS idx_admin_invites_token ON admin_invites(token_hash);
+
+  CREATE TABLE IF NOT EXISTS data_sources (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    type TEXT NOT NULL CHECK(type IN ('api','upload','manual')),
+    provider TEXT NOT NULL,
+    url TEXT,
+    description TEXT,
+    config TEXT,
+    last_fetched_at TEXT,
+    data_year TEXT,
+    status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','disabled','error')),
+    error_message TEXT,
+    countries_covered INTEGER DEFAULT 0,
+    indicators_provided TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_data_sources_provider ON data_sources(provider);
+  CREATE INDEX IF NOT EXISTS idx_data_sources_status ON data_sources(status);
 `;
 
 export function getDb(dbPath?: string): Database.Database {

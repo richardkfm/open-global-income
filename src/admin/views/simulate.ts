@@ -1,6 +1,7 @@
 import { layout } from './layout.js';
 import { escapeHtml, formatNumber, formatCompact, formatPercent, formatCurrency } from './helpers.js';
-import { barChart } from './chart-helpers.js';
+import { barChart, lineChart } from './chart-helpers.js';
+import { projectYearly, yearLabels } from '../../core/projections.js';
 import { t } from '../../i18n/index.js';
 import { getCurrencyForCountry, formatLocalCurrency } from '../../data/currencies.js';
 import type { Country } from '../../core/types.js';
@@ -155,7 +156,7 @@ export function renderSimulatePage(
   );
 }
 
-export function renderSimulationPreview(result: SimulationResult, saveName?: string): string {
+export function renderSimulationPreview(result: SimulationResult, saveName?: string, fullCountry?: Country): string {
   const { country, simulation } = result;
   const { cost, entitlementPerPerson, recipientCount } = simulation;
 
@@ -202,6 +203,37 @@ export function renderSimulationPreview(result: SimulationResult, saveName?: str
           <div class="stat-value">${formatPercent(cost.asPercentOfGdp, 2)}</div>
         </div>
       </div>
+      ${(() => {
+        if (!fullCountry) return '';
+        const gdpGrowth = fullCountry.stats.gdpGrowthRate ?? 3;
+        const inflRate = fullCountry.stats.inflationRate ?? 4;
+        const projYears = 10;
+        const labels = yearLabels(projYears);
+        const costGrowth = (inflRate + 1.5) / 100;
+        const costProj = projectYearly(cost.annualPppUsd, costGrowth, projYears);
+        const gdpTotal = fullCountry.stats.gdpPerCapitaUsd * fullCountry.stats.population;
+        const gdpProj = projectYearly(gdpTotal, gdpGrowth / 100, projYears);
+        const pctGdpProj = costProj.map((c, i) => Math.round((c / gdpProj[i]) * 10000) / 100);
+        return `
+        <h3 class="section-title mt-2">10-Year Cost Projection</h3>
+        <p class="text-xs text-muted mb-1">GDP growth ${gdpGrowth.toFixed(1)}%/yr, inflation ${inflRate.toFixed(1)}%/yr, population growth ~1.5%/yr</p>
+        ${lineChart(
+          labels,
+          [
+            { label: 'Annual Cost (PPP USD)', data: costProj, borderColor: '#4f46e5', backgroundColor: '#eef2ff', fill: true },
+          ],
+          { height: 240, exportFilename: 'cost-projection', chartOptions: { plugins: { legend: { position: 'bottom' } } } },
+        )}
+        <div class="mt-1">
+        ${lineChart(
+          labels,
+          [
+            { label: 'Cost as % of GDP', data: pctGdpProj, borderColor: '#ea580c', backgroundColor: '#fff7ed', fill: true },
+          ],
+          { height: 200, exportFilename: 'cost-pct-gdp-projection', chartOptions: { plugins: { legend: { position: 'bottom' } } } },
+        )}
+        </div>`;
+      })()}
       <form method="post" action="/admin/simulate/save" class="form-inline mt-1">
         <input type="hidden" name="simulationJson" value="${escapeHtml(JSON.stringify(result))}">
         <input class="form-input" type="text" name="name" placeholder="${t('simulate.saveAs')}" value="${saveName ? escapeHtml(saveName) : ''}">

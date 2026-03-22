@@ -1,6 +1,7 @@
 import { layout } from './layout.js';
 import { escapeHtml, formatNumber, formatCompact, formatPercent } from './helpers.js';
-import { horizontalBarChart } from './chart-helpers.js';
+import { horizontalBarChart, lineChart } from './chart-helpers.js';
+import { yearLabels } from '../../core/projections.js';
 import { t } from '../../i18n/index.js';
 import type {
   Country,
@@ -216,6 +217,7 @@ export function renderImpactPage(
       .then(function(r) { return r.text(); })
       .then(function(html) {
         document.getElementById('impact-preview').innerHTML = html;
+        if (window.OGI) { window.OGI.initCharts(); window.OGI.initTabs(); }
         if (save) {
           fetch('/admin/impact/table')
             .then(function(r) { return r.text(); })
@@ -276,41 +278,61 @@ export function renderImpactPreview(result: ImpactAnalysisResult, saved?: boolea
 
       ${chart}
 
-      <!-- Tabs -->
-      <div class="tabs mt-2">
-        ${tabBtn('tab-poverty', t('impact.tabPoverty'), true)}
-        ${tabBtn('tab-power', t('impact.tabPurchasingPower'), false)}
-        ${tabBtn('tab-social', t('impact.tabSocialCoverage'), false)}
-        ${tabBtn('tab-fiscal', t('impact.tabGdpStimulus'), false)}
-        ${tabBtn('tab-brief', t('impact.tabPolicyBrief'), false)}
-      </div>
-
-      ${povertyTab(pov, result.program.monthlyAmountPppUsd)}
-      ${purchasingPowerTab(pp)}
-      ${socialCoverageTab(sc)}
-      ${fiscalTab(fm)}
-      ${briefTab(brief)}
-    </div>
-
-    <script>
-    (function() {
-      var tabs = ['tab-poverty','tab-power','tab-social','tab-fiscal','tab-brief'];
-      tabs.forEach(function(id) {
-        var btn = document.getElementById('btn-'+id);
-        if (btn) btn.addEventListener('click', function() {
-          tabs.forEach(function(tid) {
-            var el = document.getElementById(tid);
-            var b = document.getElementById('btn-'+tid);
-            if (el) el.style.display = 'none';
-            if (b) b.classList.remove('active');
-          });
-          var active = document.getElementById(id);
-          if (active) active.style.display = 'block';
-          btn.classList.add('active');
+      ${(() => {
+        const years = 5;
+        const labels = yearLabels(years);
+        const coverageRate = result.program.coverageRate;
+        // Project impact as program scales from current coverage to full target
+        const povertyData = labels.map((_, i) => {
+          const scale = Math.min(1, (i + 1) / years);
+          return Math.round(pov.liftedAsPercentOfPoor * scale * 10) / 10;
         });
-      });
-    })();
-    </script>
+        const purchasingData = labels.map((_, i) => {
+          const scale = Math.min(1, (i + 1) / years);
+          return Math.round(pp.incomeIncreasePercent * scale * 10) / 10;
+        });
+        const socialData = labels.map((_, i) => {
+          const scale = Math.min(1, (i + 1) / years);
+          const pct = sc.populationCurrentlyUncovered > 0
+            ? (sc.estimatedNewlyCovered * scale / sc.populationCurrentlyUncovered) * 100 : 0;
+          return Math.round(pct * 10) / 10;
+        });
+        const gdpData = labels.map((_, i) => {
+          const scale = Math.min(1, (i + 1) / years);
+          return Math.round(fm.stimulusAsPercentOfGdp * scale * 1000) / 1000;
+        });
+        return `
+        <h3 class="section-title mt-2">Impact Development Over Time</h3>
+        <p class="text-xs text-muted mb-1">Projected impact as the program scales up over ${years} years at ${(coverageRate * 100).toFixed(0)}% target coverage</p>
+        ${lineChart(
+          labels,
+          [
+            { label: 'Poverty Reduction (%)', data: povertyData, borderColor: '#4f46e5' },
+            { label: 'Purchasing Power Increase (%)', data: purchasingData, borderColor: '#059669' },
+            { label: 'Social Coverage (%)', data: socialData, borderColor: '#7c3aed' },
+            { label: 'GDP Stimulus (%)', data: gdpData, borderColor: '#ea580c' },
+          ],
+          { height: 260, exportFilename: 'impact-projection', chartOptions: { plugins: { legend: { position: 'bottom' } } } },
+        )}`;
+      })()}
+
+      <!-- Tabs -->
+      <div data-ogi-tab-container>
+        <div class="tabs mt-2" data-ogi-tab-group>
+          ${tabBtn('tab-poverty', t('impact.tabPoverty'), true)}
+          ${tabBtn('tab-power', t('impact.tabPurchasingPower'), false)}
+          ${tabBtn('tab-social', t('impact.tabSocialCoverage'), false)}
+          ${tabBtn('tab-fiscal', t('impact.tabGdpStimulus'), false)}
+          ${tabBtn('tab-brief', t('impact.tabPolicyBrief'), false)}
+        </div>
+
+        ${povertyTab(pov, result.program.monthlyAmountPppUsd)}
+        ${purchasingPowerTab(pp)}
+        ${socialCoverageTab(sc)}
+        ${fiscalTab(fm)}
+        ${briefTab(brief)}
+      </div>
+    </div>
   `;
 }
 
@@ -331,7 +353,7 @@ function headlineCard(
 }
 
 function tabBtn(id: string, label: string, active: boolean): string {
-  return `<button id="btn-${id}" class="tab${active ? ' active' : ''}" type="button">${escapeHtml(label)}</button>`;
+  return `<button id="btn-${id}" class="tab${active ? ' active' : ''}" type="button" data-ogi-tab="${id}">${escapeHtml(label)}</button>`;
 }
 
 function assumptionList(assumptions: string[]): string {
@@ -351,7 +373,7 @@ function miniStat(label: string, value: string, sub: string): string {
 
 function povertyTab(pov: PovertyReductionEstimate, floorPpp: number): string {
   return `
-    <div id="tab-poverty">
+    <div id="tab-poverty" data-ogi-tab-panel="tab-poverty">
       <div class="grid grid-3 mb-2">
         ${miniStat(t('impact.extremePoorBaseline'), fmtLarge(pov.extremePoorBaseline), t('impact.extremePoorBaselineSub'))}
         ${miniStat(t('impact.estimatedLifted'), fmtLarge(pov.estimatedLifted), t('impact.estimatedLiftedSub'))}
@@ -372,7 +394,7 @@ function povertyTab(pov: PovertyReductionEstimate, floorPpp: number): string {
 
 function purchasingPowerTab(pp: PurchasingPowerEstimate): string {
   return `
-    <div id="tab-power" class="hidden">
+    <div id="tab-power" class="hidden" data-ogi-tab-panel="tab-power">
       <div class="grid grid-3 mb-2">
         ${miniStat(t('impact.bottomQuintile'), fmtLarge(pp.bottomQuintilePopulation), t('impact.bottomQuintileSub'))}
         ${miniStat(t('impact.avgMonthlyIncome'), `$${formatNumber(Math.round(pp.estimatedMonthlyIncomeUsd))}`, t('impact.avgMonthlyIncomeSub'))}
@@ -391,7 +413,7 @@ function purchasingPowerTab(pp: PurchasingPowerEstimate): string {
 
 function socialCoverageTab(sc: SocialCoverageEstimate): string {
   return `
-    <div id="tab-social" class="hidden">
+    <div id="tab-social" class="hidden" data-ogi-tab-panel="tab-social">
       <div class="grid grid-3 mb-2">
         ${miniStat(t('impact.currentlyUncovered'), fmtLarge(sc.populationCurrentlyUncovered), t('impact.currentlyUncoveredSub'))}
         ${miniStat(t('impact.uncoverageRate'), formatPercent(sc.uncoverageRatePercent), t('impact.uncoverageRateSub'))}
@@ -410,7 +432,7 @@ function socialCoverageTab(sc: SocialCoverageEstimate): string {
 
 function fiscalTab(fm: FiscalMultiplierEstimate): string {
   return `
-    <div id="tab-fiscal" class="hidden">
+    <div id="tab-fiscal" class="hidden" data-ogi-tab-panel="tab-fiscal">
       <div class="grid grid-3 mb-2">
         ${miniStat(t('impact.fiscalMultiplier'), fm.multiplier.toFixed(1) + '\u00d7', `${t('impact.calibratedFor')} ${fm.incomeGroup}`)}
         ${miniStat(t('impact.annualTransfer'), fmtCurrency(fm.annualTransferPppUsd), t('impact.annualTransferSub'))}
@@ -425,7 +447,7 @@ function fiscalTab(fm: FiscalMultiplierEstimate): string {
 
 function briefTab(brief: import('../../core/types.js').PolicyBrief): string {
   return `
-    <div id="tab-brief" class="hidden">
+    <div id="tab-brief" class="hidden" data-ogi-tab-panel="tab-brief">
       <div class="card mb-2">
         <p class="text-sm">${escapeHtml(brief.programDescription)}</p>
       </div>

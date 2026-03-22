@@ -170,16 +170,48 @@ function mergeDeep(target, ...sources) {
   return target;
 }
 
+/**
+ * Initialize tab groups that use data-ogi-tab-group.
+ *
+ * Each tab group contains buttons with data-ogi-tab="panelId" and
+ * panels with data-ogi-tab-panel="panelId". Clicking a button shows
+ * its panel and hides all others.
+ */
+function initOgiTabs() {
+  document.querySelectorAll('[data-ogi-tab-group]').forEach((group) => {
+    if (group._ogiTabs) return; // Already initialized
+    group._ogiTabs = true;
+
+    const buttons = group.querySelectorAll('[data-ogi-tab]');
+    buttons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const targetId = btn.getAttribute('data-ogi-tab');
+        // Deactivate all buttons and hide all panels in this group
+        buttons.forEach((b) => b.classList.remove('active'));
+        const container = group.closest('[data-ogi-tab-container]') || group.parentElement;
+        container.querySelectorAll('[data-ogi-tab-panel]').forEach((panel) => {
+          panel.style.display = 'none';
+        });
+        // Activate clicked button and show its panel
+        btn.classList.add('active');
+        const target = container.querySelector('[data-ogi-tab-panel="' + targetId + '"]');
+        if (target) target.style.display = 'block';
+      });
+    });
+  });
+}
+
 // Initialize on page load
-document.addEventListener('DOMContentLoaded', initOgiCharts);
+document.addEventListener('DOMContentLoaded', () => { initOgiCharts(); initOgiTabs(); });
 
 // Re-initialize after htmx content swaps
-document.addEventListener('htmx:afterSwap', initOgiCharts);
-document.addEventListener('htmx:afterSettle', initOgiCharts);
+document.addEventListener('htmx:afterSwap', () => { initOgiCharts(); initOgiTabs(); });
+document.addEventListener('htmx:afterSettle', () => { initOgiCharts(); initOgiTabs(); });
 
-// Expose globally for download buttons
+// Expose globally for download buttons and dynamic content
 window.OGI = window.OGI || {};
 window.OGI.downloadChartPng = downloadChartPng;
 window.OGI.initCharts = initOgiCharts;
+window.OGI.initTabs = initOgiTabs;
 window.OGI.COLORS = OGI_COLORS;
 window.OGI.PALETTE = OGI_PALETTE;
