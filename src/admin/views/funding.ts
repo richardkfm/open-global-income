@@ -202,6 +202,7 @@ export function renderFundingPage(
       </div>
     </div>
   `,
+    { activePage: 'funding' },
   );
 }
 

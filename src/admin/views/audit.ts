@@ -64,6 +64,7 @@ export function renderAuditLog(entries: AuditEntry[]): string {
       </div>
     </div>
   `,
+    { activePage: 'audit' },
   );
 }
 

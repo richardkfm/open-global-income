@@ -123,6 +123,7 @@ export function renderPilotsPage(
       </div>
     </div>
   `,
+    { activePage: 'pilots' },
   );
 }
 
@@ -288,5 +289,6 @@ export function renderPilotDetailPage(
 
     <div class="mt-2"><a href="/admin/pilots">${t('pilots.backToPilots')}</a></div>
   `,
+    { activePage: 'pilots' },
   );
 }

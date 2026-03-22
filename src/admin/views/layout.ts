@@ -36,11 +36,7 @@ export function layout(title: string, content: string, usernameOrOptions?: strin
         <div class="sidebar-user-role">${escapeHtml(role || 'admin')}</div>
       </div>
     </div>`
-    : `<div class="sidebar-user">
-      <div class="sidebar-user-info">
-        <a href="/admin/logout" class="sidebar-link">${t('nav.logout')}</a>
-      </div>
-    </div>`;
+    : '';
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -63,33 +59,34 @@ export function layout(title: string, content: string, usernameOrOptions?: strin
     </div>
     <nav class="sidebar-nav">
       <div class="sidebar-section">
-        <div class="sidebar-section-label">ANALYSIS</div>
+        <div class="sidebar-section-label">${t('nav.sectionOverview')}</div>
         ${navLink('/admin', t('nav.dashboard'), 'dashboard')}
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-section-label">${t('nav.sectionTools')}</div>
         ${navLink('/admin/simulate', t('nav.simulate'), 'simulate')}
         ${navLink('/admin/pilots', t('nav.pilots'), 'pilots')}
         ${navLink('/admin/funding', t('nav.funding'), 'funding')}
         ${navLink('/admin/impact', t('nav.impact'), 'impact')}
       </div>
       <div class="sidebar-section">
-        <div class="sidebar-section-label">DATA</div>
+        <div class="sidebar-section-label">${t('nav.sectionData')}</div>
         ${navLink('/admin/countries', t('nav.countries'), 'countries')}
         ${navLink('/admin/regions', t('nav.regions'), 'regions')}
       </div>
       <div class="sidebar-section">
-        <div class="sidebar-section-label">ADMIN</div>
+        <div class="sidebar-section-label">${t('nav.sectionAdmin')}</div>
         ${navLink('/admin/api-keys', t('nav.apiKeys'), 'api-keys')}
         ${navLink('/admin/audit', t('nav.audit'), 'audit')}
-        ${navLink('/admin/users', t('nav.users'), 'users')}
       </div>
       <div class="sidebar-divider"></div>
-      ${navLink('/admin/settings', t('nav.settings'), 'settings')}
       <a href="/admin/logout" class="sidebar-link">${t('nav.logout')}</a>
     </nav>
     ${userSection}
   </aside>
   <div class="mobile-header">
     <button class="mobile-hamburger" onclick="document.querySelector('.sidebar').classList.toggle('open');document.querySelector('.sidebar-overlay').classList.toggle('open')">&#9776;</button>
-    <span>OGI Admin</span>
+    <span>${t('nav.brand')}</span>
   </div>
   <main class="main-content">
     <div class="main-content-inner">

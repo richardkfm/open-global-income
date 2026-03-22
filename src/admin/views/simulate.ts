@@ -148,6 +148,7 @@ export function renderSimulatePage(
       </div>
     </div>
   `,
+    { activePage: 'simulate' },
   );
 }
 

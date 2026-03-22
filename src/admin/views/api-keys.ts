@@ -77,5 +77,6 @@ export function renderApiKeys(keys: ApiKey[], flash?: string): string {
       </div>
     </div>
   `,
+    { activePage: 'api-keys' },
   );
 }

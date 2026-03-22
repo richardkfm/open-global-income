@@ -226,6 +226,7 @@ export function renderImpactPage(
     }
     </script>
   `,
+    { activePage: 'impact' },
   );
 }
 

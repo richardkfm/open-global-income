@@ -64,7 +64,7 @@ export function renderRegionList(
     html += `</tbody></table></div></div>`;
   }
 
-  return layout(t('regions.title'), html, username);
+  return layout(t('regions.title'), html, { activePage: 'regions', username });
 }
 
 export function renderRegionDetail(
@@ -127,5 +127,5 @@ export function renderRegionDetail(
 
     <p class="mt-1"><a href="/admin/regions">${t('regions.backToRegions')}</a></p>`;
 
-  return layout(`Region: ${region.name}`, html, username);
+  return layout(`Region: ${region.name}`, html, { activePage: 'regions', username });
 }

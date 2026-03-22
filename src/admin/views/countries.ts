@@ -222,7 +222,7 @@ export function renderCountryList(
         <tbody>${rows}</tbody>
       </table>
     </div>`,
-    username,
+    { activePage: 'countries', username },
   );
 }
 
@@ -396,6 +396,6 @@ export function renderCountryDetail(
     ${taxBreakdown}
     ${completenessSection}
     `,
-    username,
+    { activePage: 'countries', username },
   );
 }
