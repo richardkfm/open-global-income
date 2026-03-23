@@ -56,30 +56,32 @@ interface MechanismDef {
 }
 
 const MECHANISMS: MechanismDef[] = [
-  { key: 'income_tax', titleKey: 'incomeTaxTitle', descKey: 'incomeTaxDesc', fieldName: 'income_tax_rate', min: '0.5', max: '15', step: '0.5', defaultVal: '3', suffix: '%', checked: true },
-  { key: 'vat', titleKey: 'vatTitle', descKey: 'vatDesc', fieldName: 'vat_points', min: '0.5', max: '10', step: '0.5', defaultVal: '2', suffix: 'pp', checked: true },
+  { key: 'income_tax', titleKey: 'incomeTaxTitle', descKey: 'incomeTaxDesc', fieldName: 'income_tax_rate', min: '0.5', max: '15', step: '0.5', defaultVal: '2', suffix: '%', checked: true },
+  { key: 'vat', titleKey: 'vatTitle', descKey: 'vatDesc', fieldName: 'vat_points', min: '0.5', max: '10', step: '0.5', defaultVal: '2', suffix: 'pp', checked: false },
   { key: 'carbon', titleKey: 'carbonTaxTitle', descKey: 'carbonTaxDesc', fieldName: 'carbon_rate', min: '5', max: '200', step: '5', defaultVal: '25', suffix: '$', checked: false },
   { key: 'wealth', titleKey: 'wealthTaxTitle', descKey: 'wealthTaxDesc', fieldName: 'wealth_rate', min: '0.1', max: '5', step: '0.1', defaultVal: '1', suffix: '%', checked: false },
   { key: 'ftt', titleKey: 'fttTitle', descKey: 'fttDesc', fieldName: 'ftt_rate', min: '0.01', max: '1', step: '0.01', defaultVal: '0.1', suffix: '%', checked: false },
   { key: 'automation', titleKey: 'automationTaxTitle', descKey: 'automationTaxDesc', fieldName: 'automation_rate', min: '0.5', max: '15', step: '0.5', defaultVal: '3', suffix: '%', checked: false },
-  { key: 'redirect', titleKey: 'redirectTitle', descKey: 'redirectDesc', fieldName: 'redirect_pct', min: '5', max: '80', step: '5', defaultVal: '30', suffix: '%', checked: true },
+  { key: 'redirect', titleKey: 'redirectTitle', descKey: 'redirectDesc', fieldName: 'redirect_pct', min: '5', max: '80', step: '5', defaultVal: '15', suffix: '%', checked: false },
 ];
 
 function renderMechanismCard(m: MechanismDef): string {
   const prefix = m.suffix === '$' ? '$' : '';
   const postfix = m.suffix !== '$' ? m.suffix : '';
   const defaultDisplay = `${prefix}${m.defaultVal}${postfix}`;
+  const disabledStyle = m.checked ? '' : 'opacity:0.5';
   return `
-    <div class="card mb-1">
+    <div class="card mb-1 mechanism-card" id="mech-${m.key}" style="${disabledStyle}">
       <div class="flex-between">
         <h3 class="card-title">${t(`funding.${m.titleKey}`)}</h3>
-        <label class="form-checkbox"><input type="checkbox" name="enable_${m.key}" value="1"${m.checked ? ' checked' : ''}> ${t('funding.enable')}</label>
+        <label class="form-checkbox"><input type="checkbox" name="enable_${m.key}" value="1"${m.checked ? ' checked' : ''}
+          onchange="this.closest('.mechanism-card').style.opacity = this.checked ? '1' : '0.5'"> ${t('funding.enable')}</label>
       </div>
       <p class="text-muted text-sm mt-1">${t(`funding.${m.descKey}`)}</p>
       <div class="flex flex-center gap-1 mt-1">
         <span class="text-xs text-muted">${prefix}${m.min}${postfix}</span>
         <input type="range" name="${m.fieldName}" min="${m.min}" max="${m.max}" step="${m.step}" value="${m.defaultVal}"
-          oninput="this.nextElementSibling.textContent = '${prefix}' + this.value + '${postfix}'" class="w-full">
+          oninput="this.nextElementSibling.textContent = '${prefix}' + this.value + '${postfix}'; var cb = this.closest('.mechanism-card').querySelector('input[type=checkbox]'); if (!cb.checked) { cb.checked = true; cb.dispatchEvent(new Event('change')); }" class="w-full">
         <span class="text-bold text-sm" style="min-width:60px;text-align:right">${defaultDisplay}</span>
         <span class="text-xs text-muted">${prefix}${m.max}${postfix}</span>
       </div>
@@ -277,6 +279,20 @@ export function renderFundingPreview(result: FundingScenarioResult, fullCountry?
   // Assumptions
   const allAssumptions = mechanisms.flatMap((m) => m.assumptions);
 
+  // Overfunding warning
+  const overFundedWarning = coverageOfUbiCost > 150 ? `
+    <div class="alert alert-warning mb-2" style="background:#fffbeb;border:1px solid #f59e0b;border-radius:var(--radius-md);padding:0.75rem 1rem">
+      <strong style="color:#92400e">Scenario exceeds ${fmtPct(coverageOfUbiCost)} of UBI cost.</strong>
+      <span class="text-sm" style="color:#78350f"> This combination of mechanisms raises significantly more than needed. Consider reducing rates or disabling some mechanisms for a more realistic scenario. All estimates use income-group proxies where country-specific fiscal data is unavailable.</span>
+    </div>` : '';
+
+  // Proxy data warning — no actual fiscal data available
+  const proxyWarning = fiscalContext.totalTaxRevenue.percentGdp == null ? `
+    <div class="alert alert-info mb-2" style="background:#f0f9ff;border:1px solid #0ea5e9;border-radius:var(--radius-md);padding:0.75rem 1rem">
+      <strong style="color:#0c4a6e">Estimates based on income-group proxies.</strong>
+      <span class="text-sm" style="color:#075985"> No country-specific tax or fiscal data is available for ${escapeHtml(country.name)}. Revenue estimates use global averages for this income group. Run <code>npm run data:update</code> to fetch World Bank, ILO, and IMF fiscal data for more accurate results.</span>
+    </div>` : '';
+
   return `
     <div class="card mt-2">
       <div class="card-header">
@@ -285,6 +301,9 @@ export function renderFundingPreview(result: FundingScenarioResult, fullCountry?
       <p class="text-muted text-sm mb-2">
         UBI for ${formatNumber(result.country.population)} people at ${fmtPct(ubiCost.asPercentOfGdp)} ${t('funding.ofGdp')}
       </p>
+
+      ${overFundedWarning}
+      ${proxyWarning}
 
       <div class="grid grid-4 mb-2">
         <div class="card stat-card">

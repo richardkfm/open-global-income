@@ -239,19 +239,79 @@ export function renderImpactPreview(result: ImpactAnalysisResult, saved?: boolea
   const { povertyReduction: pov, purchasingPower: pp, socialCoverage: sc, fiscalMultiplier: fm } = result;
   const brief = result.policyBrief;
 
-  // Per-metric progress bars — each on its own honest scale, no mixing
+  // Determine which dimensions have usable data
+  const hasPoverty = pov.dataQuality !== 'low';
+  const hasPurchasing = pp.dataQuality !== 'low';
+  const hasSocial = sc.dataQuality !== 'low';
+
+  // Per-metric progress bars — only for dimensions with data
   const socialCoveragePct = sc.populationCurrentlyUncovered > 0
     ? (sc.estimatedNewlyCovered / sc.populationCurrentlyUncovered) * 100 : 0;
-  const impactBars = renderImpactBars([
-    { label: t('impact.povertyReduction'), value: pov.liftedAsPercentOfPoor, max: 100, unit: '%', color: '#4f46e5', quality: pov.dataQuality,
-      detail: `${fmtLarge(pov.estimatedLifted)} people lifted from extreme poverty` },
-    { label: t('impact.purchasingPower'), value: pp.incomeIncreasePercent, max: Math.max(pp.incomeIncreasePercent * 1.3, 100), unit: '%', color: '#059669', quality: pp.dataQuality,
-      detail: `Bottom quintile income increase (+$${pp.ubiMonthlyPppUsd}/mo PPP)` },
-    { label: t('impact.socialCoverage'), value: socialCoveragePct, max: 100, unit: '%', color: '#7c3aed', quality: sc.dataQuality,
-      detail: `${fmtLarge(sc.estimatedNewlyCovered)} newly covered of ${fmtLarge(sc.populationCurrentlyUncovered)} uncovered` },
-    { label: t('impact.gdpStimulus'), value: fm.stimulusAsPercentOfGdp, max: Math.max(fm.stimulusAsPercentOfGdp * 2, 5), unit: '% GDP', color: '#ea580c', quality: 'high' as const,
-      detail: `${fmtCurrency(fm.estimatedGdpStimulusPppUsd)} estimated GDP stimulus (${fm.multiplier.toFixed(1)}× multiplier)` },
-  ]);
+  const barDefs: ImpactBarDef[] = [];
+  if (hasPoverty) {
+    barDefs.push({ label: t('impact.povertyReduction'), value: pov.liftedAsPercentOfPoor, max: 100, unit: '%', color: '#4f46e5', quality: pov.dataQuality,
+      detail: `${fmtLarge(pov.estimatedLifted)} people lifted from extreme poverty` });
+  }
+  if (hasPurchasing) {
+    barDefs.push({ label: t('impact.purchasingPower'), value: pp.incomeIncreasePercent, max: Math.max(pp.incomeIncreasePercent * 1.3, 100), unit: '%', color: '#059669', quality: pp.dataQuality,
+      detail: `Bottom quintile income increase (+$${pp.ubiMonthlyPppUsd}/mo PPP)` });
+  }
+  if (hasSocial) {
+    barDefs.push({ label: t('impact.socialCoverage'), value: socialCoveragePct, max: 100, unit: '%', color: '#7c3aed', quality: sc.dataQuality,
+      detail: `${fmtLarge(sc.estimatedNewlyCovered)} newly covered of ${fmtLarge(sc.populationCurrentlyUncovered)} uncovered` });
+  }
+  barDefs.push({ label: t('impact.gdpStimulus'), value: fm.stimulusAsPercentOfGdp, max: Math.max(fm.stimulusAsPercentOfGdp * 2, 5), unit: '% GDP', color: '#ea580c', quality: 'high' as const,
+    detail: `${fmtCurrency(fm.estimatedGdpStimulusPppUsd)} estimated GDP stimulus (${fm.multiplier.toFixed(1)}× multiplier)` });
+  const impactBars = renderImpactBars(barDefs);
+
+  // Missing data guidance
+  const missingIndicators: { dimension: string; indicator: string; source: string; wbCode: string }[] = [];
+  if (!hasPoverty) {
+    missingIndicators.push({ dimension: 'Poverty Reduction', indicator: 'Poverty headcount ratio at $2.15/day', source: 'World Bank PovcalNet', wbCode: 'SI.POV.DDAY' });
+  }
+  if (!hasPurchasing) {
+    missingIndicators.push({ dimension: 'Purchasing Power', indicator: 'Gini index', source: 'World Bank', wbCode: 'SI.POV.GINI' });
+  }
+  if (!hasSocial) {
+    missingIndicators.push({ dimension: 'Social Coverage', indicator: 'Social protection coverage (%)', source: 'ILO World Social Protection Report', wbCode: 'per_allsp.cov_pop_tot' });
+  }
+
+  const missingDataCard = missingIndicators.length > 0 ? `
+    <div class="card mb-2" style="background:#fffbeb;border:1px solid #f59e0b">
+      <h3 class="card-title" style="color:#92400e;font-size:0.85rem">Missing data for ${missingIndicators.length} impact dimension${missingIndicators.length > 1 ? 's' : ''}</h3>
+      <p class="text-sm" style="color:#78350f;margin:0.5rem 0">The following dimensions are hidden because ${escapeHtml(result.country.name)} is missing required indicators. To enable them:</p>
+      <table style="width:100%;font-size:0.8rem;border-collapse:collapse;margin-top:0.5rem">
+        <thead><tr style="border-bottom:1px solid #fbbf24">
+          <th style="text-align:left;padding:0.3rem 0.5rem;color:#92400e">Dimension</th>
+          <th style="text-align:left;padding:0.3rem 0.5rem;color:#92400e">Missing Indicator</th>
+          <th style="text-align:left;padding:0.3rem 0.5rem;color:#92400e">Source</th>
+        </tr></thead>
+        <tbody>${missingIndicators.map((m) => `
+          <tr style="border-bottom:1px solid #fde68a">
+            <td style="padding:0.3rem 0.5rem;color:#78350f;font-weight:600">${escapeHtml(m.dimension)}</td>
+            <td style="padding:0.3rem 0.5rem;color:#78350f"><code style="background:#fef3c7;padding:0.1rem 0.3rem;border-radius:3px;font-size:0.75rem">${escapeHtml(m.wbCode)}</code> ${escapeHtml(m.indicator)}</td>
+            <td style="padding:0.3rem 0.5rem;color:#78350f">${escapeHtml(m.source)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+      <p class="text-xs" style="color:#92400e;margin-top:0.5rem">Run <code style="background:#fef3c7;padding:0.1rem 0.3rem;border-radius:3px">npm run data:update</code> to fetch the latest data from World Bank and ILO, or add the values manually to <code style="background:#fef3c7;padding:0.1rem 0.3rem;border-radius:3px">countries.json</code>.</p>
+    </div>` : '';
+
+  // Headline cards — only show dimensions with data
+  const headlineCards: string[] = [];
+  if (hasPoverty) headlineCards.push(headlineCard(t('impact.povertyReduction'), brief.headline.povertyReduction.formatted, brief.headline.povertyReduction.label, pov.dataQuality));
+  if (hasPurchasing) headlineCards.push(headlineCard(t('impact.purchasingPower'), brief.headline.purchasingPower.formatted, brief.headline.purchasingPower.label, pp.dataQuality));
+  if (hasSocial) headlineCards.push(headlineCard(t('impact.socialCoverage'), brief.headline.socialCoverage.formatted, brief.headline.socialCoverage.label, sc.dataQuality));
+  headlineCards.push(headlineCard(t('impact.gdpStimulus'), brief.headline.gdpStimulus.formatted, brief.headline.gdpStimulus.label, 'high'));
+
+  // Tabs — only show dimensions with data; first tab is visible, rest hidden
+  const tabDefs: { id: string; label: string; genContent: (hidden: boolean) => string }[] = [];
+  if (hasPoverty) tabDefs.push({ id: 'tab-poverty', label: t('impact.tabPoverty'), genContent: (h) => povertyTab(pov, result.program.monthlyAmountPppUsd, h) });
+  if (hasPurchasing) tabDefs.push({ id: 'tab-power', label: t('impact.tabPurchasingPower'), genContent: (h) => purchasingPowerTab(pp, h) });
+  if (hasSocial) tabDefs.push({ id: 'tab-social', label: t('impact.tabSocialCoverage'), genContent: (h) => socialCoverageTab(sc, h) });
+  tabDefs.push({ id: 'tab-fiscal', label: t('impact.tabGdpStimulus'), genContent: (h) => fiscalTab(fm, h) });
+  tabDefs.push({ id: 'tab-brief', label: t('impact.tabPolicyBrief'), genContent: (h) => briefTab(brief, h) });
+  const tabs = tabDefs.map((tab, i) => ({ id: tab.id, label: tab.label, content: tab.genContent(i !== 0) }));
 
   return `
     <div class="card">
@@ -268,12 +328,11 @@ export function renderImpactPreview(result: ImpactAnalysisResult, saved?: boolea
 
       <p class="text-muted text-sm mb-2">${escapeHtml(brief.subtitle)}</p>
 
+      ${missingDataCard}
+
       <!-- Headline cards -->
       <div class="grid grid-2 mb-2">
-        ${headlineCard(t('impact.povertyReduction'), brief.headline.povertyReduction.formatted, brief.headline.povertyReduction.label, pov.dataQuality)}
-        ${headlineCard(t('impact.purchasingPower'), brief.headline.purchasingPower.formatted, brief.headline.purchasingPower.label, pp.dataQuality)}
-        ${headlineCard(t('impact.socialCoverage'), brief.headline.socialCoverage.formatted, brief.headline.socialCoverage.label, sc.dataQuality)}
-        ${headlineCard(t('impact.gdpStimulus'), brief.headline.gdpStimulus.formatted, brief.headline.gdpStimulus.label, 'high')}
+        ${headlineCards.join('')}
       </div>
 
       ${impactBars}
@@ -281,18 +340,10 @@ export function renderImpactPreview(result: ImpactAnalysisResult, saved?: boolea
       <!-- Tabs -->
       <div data-ogi-tab-container>
         <div class="tabs mt-2" data-ogi-tab-group>
-          ${tabBtn('tab-poverty', t('impact.tabPoverty'), true)}
-          ${tabBtn('tab-power', t('impact.tabPurchasingPower'), false)}
-          ${tabBtn('tab-social', t('impact.tabSocialCoverage'), false)}
-          ${tabBtn('tab-fiscal', t('impact.tabGdpStimulus'), false)}
-          ${tabBtn('tab-brief', t('impact.tabPolicyBrief'), false)}
+          ${tabs.map((tab, i) => tabBtn(tab.id, tab.label, i === 0)).join('')}
         </div>
 
-        ${povertyTab(pov, result.program.monthlyAmountPppUsd)}
-        ${purchasingPowerTab(pp)}
-        ${socialCoverageTab(sc)}
-        ${fiscalTab(fm)}
-        ${briefTab(brief)}
+        ${tabs.map((tab) => tab.content).join('')}
       </div>
     </div>
   `;
@@ -309,19 +360,9 @@ interface ImpactBarDef {
 }
 
 function renderImpactBars(bars: ImpactBarDef[]): string {
+  if (bars.length === 0) return '';
   return `<div class="impact-bars">${bars.map((b) => {
     const pct = b.max > 0 ? Math.min((b.value / b.max) * 100, 100) : 0;
-    const insufficientData = b.quality === 'low' && b.value === 0;
-    if (insufficientData) {
-      return `
-        <div class="impact-bar-row">
-          <div class="flex-between mb-half">
-            <span class="text-sm text-bold">${escapeHtml(b.label)}</span>
-            <span class="badge badge-danger">Insufficient data</span>
-          </div>
-          <div class="text-xs text-muted" style="font-style:italic">Not enough data to estimate this metric reliably</div>
-        </div>`;
-    }
     return `
       <div class="impact-bar-row">
         <div class="flex-between mb-half">
@@ -371,9 +412,9 @@ function miniStat(label: string, value: string, sub: string): string {
     </div>`;
 }
 
-function povertyTab(pov: PovertyReductionEstimate, floorPpp: number): string {
+function povertyTab(pov: PovertyReductionEstimate, floorPpp: number, hidden = false): string {
   return `
-    <div id="tab-poverty" data-ogi-tab-panel="tab-poverty">
+    <div id="tab-poverty"${hidden ? ' class="hidden"' : ''} data-ogi-tab-panel="tab-poverty">
       <div class="grid grid-3 mb-2">
         ${miniStat(t('impact.extremePoorBaseline'), fmtLarge(pov.extremePoorBaseline), t('impact.extremePoorBaselineSub'))}
         ${miniStat(t('impact.estimatedLifted'), fmtLarge(pov.estimatedLifted), t('impact.estimatedLiftedSub'))}
@@ -392,9 +433,9 @@ function povertyTab(pov: PovertyReductionEstimate, floorPpp: number): string {
     </div>`;
 }
 
-function purchasingPowerTab(pp: PurchasingPowerEstimate): string {
+function purchasingPowerTab(pp: PurchasingPowerEstimate, hidden = true): string {
   return `
-    <div id="tab-power" class="hidden" data-ogi-tab-panel="tab-power">
+    <div id="tab-power"${hidden ? ' class="hidden"' : ''} data-ogi-tab-panel="tab-power">
       <div class="grid grid-3 mb-2">
         ${miniStat(t('impact.bottomQuintile'), fmtLarge(pp.bottomQuintilePopulation), t('impact.bottomQuintileSub'))}
         ${miniStat(t('impact.avgMonthlyIncome'), `$${formatNumber(Math.round(pp.estimatedMonthlyIncomeUsd))}`, t('impact.avgMonthlyIncomeSub'))}
@@ -411,9 +452,9 @@ function purchasingPowerTab(pp: PurchasingPowerEstimate): string {
     </div>`;
 }
 
-function socialCoverageTab(sc: SocialCoverageEstimate): string {
+function socialCoverageTab(sc: SocialCoverageEstimate, hidden = true): string {
   return `
-    <div id="tab-social" class="hidden" data-ogi-tab-panel="tab-social">
+    <div id="tab-social"${hidden ? ' class="hidden"' : ''} data-ogi-tab-panel="tab-social">
       <div class="grid grid-3 mb-2">
         ${miniStat(t('impact.currentlyUncovered'), fmtLarge(sc.populationCurrentlyUncovered), t('impact.currentlyUncoveredSub'))}
         ${miniStat(t('impact.uncoverageRate'), formatPercent(sc.uncoverageRatePercent), t('impact.uncoverageRateSub'))}
@@ -430,9 +471,9 @@ function socialCoverageTab(sc: SocialCoverageEstimate): string {
     </div>`;
 }
 
-function fiscalTab(fm: FiscalMultiplierEstimate): string {
+function fiscalTab(fm: FiscalMultiplierEstimate, hidden = true): string {
   return `
-    <div id="tab-fiscal" class="hidden" data-ogi-tab-panel="tab-fiscal">
+    <div id="tab-fiscal"${hidden ? ' class="hidden"' : ''} data-ogi-tab-panel="tab-fiscal">
       <div class="grid grid-3 mb-2">
         ${miniStat(t('impact.fiscalMultiplier'), fm.multiplier.toFixed(1) + '\u00d7', `${t('impact.calibratedFor')} ${fm.incomeGroup}`)}
         ${miniStat(t('impact.annualTransfer'), fmtCurrency(fm.annualTransferPppUsd), t('impact.annualTransferSub'))}
@@ -445,9 +486,9 @@ function fiscalTab(fm: FiscalMultiplierEstimate): string {
     </div>`;
 }
 
-function briefTab(brief: import('../../core/types.js').PolicyBrief): string {
+function briefTab(brief: import('../../core/types.js').PolicyBrief, hidden = true): string {
   return `
-    <div id="tab-brief" class="hidden" data-ogi-tab-panel="tab-brief">
+    <div id="tab-brief"${hidden ? ' class="hidden"' : ''} data-ogi-tab-panel="tab-brief">
       <div class="card mb-2">
         <p class="text-sm">${escapeHtml(brief.programDescription)}</p>
       </div>
