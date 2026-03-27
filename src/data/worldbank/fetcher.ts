@@ -61,13 +61,12 @@ export async function fetchIndicator(
       ? 'all'
       : config.countries.codes.join(';');
 
-  // For sparse indicators (infrequent reporters), request more years of history
-  const sparseConfig = config.sparseIndicators?.[field];
-  const mrnev = sparseConfig
-    ? sparseConfig.lookbackYears
-    : field === 'giniIndex'
-      ? config.giniIndex.lookbackYears
-      : 1;
+  // Always request mrnev=1: the single most recent non-empty value per country.
+  // The WB API searches all available years regardless of mrnev, so mrnev=1
+  // already returns the latest data point even for sparse reporters.
+  // Higher mrnev values caused HTTP 400 errors due to pagination issues
+  // (~260 countries × N values exceeding per_page limits).
+  const mrnev = 1;
 
   const url =
     `${config.source.baseUrl}/country/${countryCodes}/indicator/${indicatorCode}` +
