@@ -741,6 +741,10 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       completeness: getCountryDataCompleteness(c.code) ?? {
         total: 17,
         available: 0,
+        unavailable: 0,
+        notFetched: 17,
+        unavailableFields: [],
+        notFetchedFields: [],
         missingFields: [],
         presentFields: [],
       },
@@ -759,6 +763,10 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     const completeness = getCountryDataCompleteness(code) ?? {
       total: 17,
       available: 0,
+      unavailable: 0,
+      notFetched: 17,
+      unavailableFields: [],
+      notFetchedFields: [],
       missingFields: [],
       presentFields: [],
     };

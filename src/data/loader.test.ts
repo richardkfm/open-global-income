@@ -104,6 +104,18 @@ describe('getCountryDataCompleteness', () => {
     expect(result!.missingFields.length + result!.presentFields.length).toBe(result!.total);
   });
 
+  it('distinguishes unavailable (null) from notFetched (undefined)', () => {
+    const result = getCountryDataCompleteness('US');
+    expect(result).not.toBeNull();
+    expect(typeof result!.unavailable).toBe('number');
+    expect(typeof result!.notFetched).toBe('number');
+    expect(Array.isArray(result!.unavailableFields)).toBe(true);
+    expect(Array.isArray(result!.notFetchedFields)).toBe(true);
+    expect(result!.unavailable + result!.notFetched + result!.available).toBe(result!.total);
+    expect(result!.unavailableFields.length).toBe(result!.unavailable);
+    expect(result!.notFetchedFields.length).toBe(result!.notFetched);
+  });
+
   it('works for a country with likely sparse data', () => {
     // Burundi (BI) is known to have sparse macro data
     const result = getCountryDataCompleteness('BI');

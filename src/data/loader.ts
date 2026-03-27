@@ -145,7 +145,15 @@ export interface DataCompleteness {
   total: number;
   /** Fields with non-null values */
   available: number;
-  /** Which fields are missing (null/undefined) */
+  /** Which fields are explicitly null (fetched but not reported for this country) */
+  unavailable: number;
+  /** Which fields are undefined (never fetched / data file predates this field) */
+  notFetched: number;
+  /** Fields that are null (fetched, not reported) */
+  unavailableFields: string[];
+  /** Fields that are undefined (never fetched) */
+  notFetchedFields: string[];
+  /** Which fields are missing (null or undefined) — union of unavailable + notFetched */
   missingFields: string[];
   /** Which fields have data */
   presentFields: string[];
@@ -154,27 +162,39 @@ export interface DataCompleteness {
 /**
  * Return a completeness report for a single country's optional macro-economic data.
  * Core fields (GDP, GNI, PPP, Gini, population, incomeGroup) are always present.
+ *
+ * Distinguishes between:
+ * - present: field has a non-null value
+ * - unavailable: field is explicitly null (data was fetched but not reported for this country)
+ * - notFetched: field is undefined (data file predates this indicator or importer was not run)
  */
 export function getCountryDataCompleteness(code: string): DataCompleteness | null {
   const country = getCountryByCode(code);
   if (!country) return null;
 
   const presentFields: string[] = [];
-  const missingFields: string[] = [];
+  const unavailableFields: string[] = [];
+  const notFetchedFields: string[] = [];
 
   for (const field of OPTIONAL_STAT_FIELDS) {
     const val = country.stats[field];
     if (val !== null && val !== undefined) {
       presentFields.push(field as string);
+    } else if (val === null) {
+      unavailableFields.push(field as string);
     } else {
-      missingFields.push(field as string);
+      notFetchedFields.push(field as string);
     }
   }
 
   return {
     total: OPTIONAL_STAT_FIELDS.length,
     available: presentFields.length,
-    missingFields,
+    unavailable: unavailableFields.length,
+    notFetched: notFetchedFields.length,
+    unavailableFields,
+    notFetchedFields,
+    missingFields: [...unavailableFields, ...notFetchedFields],
     presentFields,
   };
 }

@@ -119,7 +119,9 @@ export async function fetchIndicator(
 export async function fetchAllIndicators(
   config: ImporterConfig,
 ): Promise<Map<string, RawCountryData>> {
-  const fields = Object.keys(config.indicators) as IndicatorField[];
+  const fields = (Object.keys(config.indicators) as string[]).filter(
+    (k) => !k.startsWith('_'),
+  ) as IndicatorField[];
   const allData = new Map<string, RawCountryData>();
 
   // Determine the set of country codes to track

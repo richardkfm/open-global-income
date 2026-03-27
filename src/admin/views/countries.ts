@@ -357,6 +357,27 @@ export function renderCountryDetail(
   const pct = Math.round((completeness.available / completeness.total) * 100);
   const barCls = pct >= 70 ? 'progress-bar-fill-success' : pct >= 40 ? 'progress-bar-fill-warning' : 'progress-bar-fill-danger';
 
+  // Build sub-sections for "not reported" (null) vs "not yet fetched" (undefined)
+  const unavailableSection = completeness.unavailableFields.length > 0
+    ? `<details class="mt-1">
+        <summary class="text-muted text-sm" style="cursor:pointer">${completeness.unavailableFields.length} not reported for this country</summary>
+        <div class="flex gap-1 mt-1" style="flex-wrap:wrap">
+          ${completeness.unavailableFields.map((f) => `<span class="badge badge-neutral">${escapeHtml(f)}</span>`).join('')}
+        </div>
+      </details>`
+    : '';
+
+  const notFetchedSection = completeness.notFetchedFields.length > 0
+    ? `<details class="mt-1">
+        <summary class="text-warning text-sm" style="cursor:pointer">${completeness.notFetchedFields.length} not yet fetched (run <code>npm run data:update</code>)</summary>
+        <div class="flex gap-1 mt-1" style="flex-wrap:wrap">
+          ${completeness.notFetchedFields.map((f) => `<span class="badge badge-warning">${escapeHtml(f)}</span>`).join('')}
+        </div>
+      </details>`
+    : '';
+
+  const allPresent = completeness.missingFields.length === 0;
+
   const completenessSection = `
     <div class="card">
       <div class="card-header">
@@ -371,14 +392,9 @@ export function renderCountryDetail(
         <div style="flex:1">
           <div class="text-bold">${completeness.available} of ${completeness.total} ${t('countries.indicatorsAvailable')} (${pct}%)</div>
           <div class="text-xs text-muted mt-1">${t('countries.dataSources')} <code>${escapeHtml(dataVersion)}</code></div>
-          ${completeness.missingFields.length > 0
-            ? `<details class="mt-1">
-                <summary class="text-muted text-sm" style="cursor:pointer">${completeness.missingFields.length} ${t('countries.indicatorsNotAvailable')}</summary>
-                <div class="flex gap-1 mt-1" style="flex-wrap:wrap">
-                  ${completeness.missingFields.map((f) => `<span class="badge badge-neutral">${escapeHtml(f)}</span>`).join('')}
-                </div>
-              </details>`
-            : `<div class="text-success text-sm mt-1">${t('countries.allIndicatorsAvailable')}</div>`
+          ${allPresent
+            ? `<div class="text-success text-sm mt-1">${t('countries.allIndicatorsAvailable')}</div>`
+            : `${notFetchedSection}${unavailableSection}`
           }
         </div>
       </div>
