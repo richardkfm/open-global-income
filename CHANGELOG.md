@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.8] - 2026-04-08
+
+### Fixed
+
+- **Macro-economic data population** — all 49 countries now have 17 macro-economic fields explicitly populated (previously all were `undefined`, causing data-completeness loops). Fields include 12 World Bank indicators (tax revenue, social spending, inflation, labor force, unemployment, debt, poverty, GDP growth, health/education expenditure, urbanization), 4 ILO fields (social protection coverage/expenditure, pension coverage, child benefits), and 1 IMF placeholder (tax breakdown). All fields are now explicitly `null` or numeric — never `undefined`.
+
 ## [0.1.7] - 2026-03-21
 
 ### Added

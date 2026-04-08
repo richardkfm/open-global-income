@@ -57,7 +57,7 @@ Open Global Income is a stack. Each layer builds on the one below it. The lower 
 
 | Layer | What it does | Phase |
 |-------|-------------|-------|
-| **Data** | 49 countries with 17+ macro-economic indicators from World Bank, ILO, and IMF; sub-national data for Kenya (47 counties) | 14, 17 |
+| **Data** | 49 countries with all 17 macro-economic indicators fully populated (World Bank, ILO, IMF); sub-national data for Kenya (47 counties) | 14, 17 |
 | **Calculation** | Entitlement formulas (v1 active, v2 preview), scoring, country comparison, regional COL adjustments | 1–10, 17 |
 | **Simulation** | Budget modeling with targeting presets, multi-country comparison, regional simulation, saved scenarios | 11, 17 |
 | **Disbursement** | Non-custodial payment rails — Solana USDC, EVM USDC, M-Pesa (stub) — with approval workflow and audit trail | 12 |
@@ -69,7 +69,7 @@ The funding and impact layers (Phases 14–16) are not a departure from the API 
 
 The sub-national data layer (Phase 17) brings precision where it matters most. A basic income floor in Nairobi (COL 1.35×) should not be the same local-currency amount as in rural Turkana (COL 0.68×). Regional cost-of-living indices adjust the national PPP conversion factor, and existing formulas work transparently via the "adjusted Country" pattern — zero formula changes needed.
 
-Secure admin UI with login, approval workflows, and audit trails. **387 tests** across 23 suites.
+Secure admin UI with login, approval workflows, and audit trails. **393 tests** across 23 suites.
 
 ### 🔜 Next
 
