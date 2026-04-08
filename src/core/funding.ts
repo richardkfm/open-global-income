@@ -166,8 +166,10 @@ export function calcCarbonTax(
 ): FundingEstimate {
   const gdpTotal = country.stats.gdpPerCapitaUsd * country.stats.population;
   const co2PerThousand = CO2_PER_1000_GDP[country.stats.incomeGroup] ?? 0.3;
-  const totalEmissionsKt = (gdpTotal / 1000) * co2PerThousand;
-  const revenueUsd = dollarPerTon * totalEmissionsKt * 1000; // kt → tons
+  // co2PerThousand is tons of CO2 per $1,000 of GDP
+  // gdpTotal / 1000 = number of $1,000-of-GDP units → result is in tons
+  const totalEmissionsTons = (gdpTotal / 1000) * co2PerThousand;
+  const revenueUsd = dollarPerTon * totalEmissionsTons;
 
   return {
     mechanism: 'carbon_tax',
@@ -177,7 +179,7 @@ export function calcCarbonTax(
     coversPercentOfUbiCost: 0,
     assumptions: [
       `Carbon tax of $${dollarPerTon} per metric ton of CO2`,
-      `Estimated CO2 emissions: ${formatLargeNumber(totalEmissionsKt * 1000)} tons (${co2PerThousand} tons per $1,000 GDP for ${country.stats.incomeGroup})`,
+      `Estimated CO2 emissions: ${formatLargeNumber(totalEmissionsTons)} tons (${co2PerThousand} tons per $1,000 GDP for ${country.stats.incomeGroup})`,
       'Emission intensity is an income-group proxy, not country-specific',
     ],
   };

@@ -139,10 +139,20 @@ describe('calcCarbonTax', () => {
     expect(est.assumptions.length).toBeGreaterThanOrEqual(2);
   });
 
+  it('produces plausible revenue well below GDP', () => {
+    const est = calcCarbonTax(kenya, 25);
+    const gdp = kenya.stats.gdpPerCapitaUsd * kenya.stats.population;
+    // $25/ton carbon tax should raise well under 5% of GDP
+    expect(est.annualRevenuePppUsd).toBeLessThan(gdp * 0.05);
+    // and more than a trivial amount (> $100M)
+    expect(est.annualRevenuePppUsd).toBeGreaterThan(100_000_000);
+  });
+
   it('higher rate = higher revenue', () => {
     const est25 = calcCarbonTax(kenya, 25);
     const est50 = calcCarbonTax(kenya, 50);
-    expect(est50.annualRevenuePppUsd).toBe(est25.annualRevenuePppUsd * 2);
+    // Allow ±1 for integer rounding of independently computed values
+    expect(est50.annualRevenuePppUsd).toBeCloseTo(est25.annualRevenuePppUsd * 2, -1);
   });
 });
 
