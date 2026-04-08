@@ -342,6 +342,15 @@ comparison.
 Closes #42
 ```
 
+### Commit Checklist
+
+Every commit that changes behaviour (bug fixes, new features, formula changes) **must** also update:
+
+1. **`CHANGELOG.md`** — add an entry under the current version (or a new `[Unreleased]` block if the version hasn't been bumped yet). Follow Keep a Changelog conventions: `### Fixed`, `### Added`, `### Changed`, `### Removed`.
+2. **`README.md`** — update any sections that reference changed behaviour: test counts, capability tables, funding mechanism descriptions, API endpoint lists, etc.
+
+Documentation-only commits (fixing typos, rewording) do not require a CHANGELOG entry, but README must still be consistent.
+
 ### Model Usage Policy
 
 Token efficiency matters. Use the right model for the right task:

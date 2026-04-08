@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.9] - 2026-04-08
+
+### Fixed
+
+- **Carbon tax 1000x unit error** — `calcCarbonTax` named its intermediate variable `totalEmissionsKt` (kilotons) but computed it in tons, then applied an erroneous `* 1000` "kt → tons" conversion. Result: a $25/ton tax on Kenya produced **$992 billion** instead of the correct **$992 million** — enough to "fund" the entire UBI programme 36× over. Fixed by renaming to `totalEmissionsTons` and dropping the spurious multiply.
+- **Income tax surcharge ignores informal economy** — the surcharge formula applied the rate to the full GNI of the entire labour force, overstating collectable revenue by 2–3× in low-income countries where 50–65% of labour income sits in the informal sector and is outside the tax net. Introduced `INCOME_TAX_FORMALITY_FACTOR` (0.35–0.90 by income group, sourced from IMF/World Bank informality estimates) to discount the taxable base accordingly.
+- **Wealth tax assumes 100% collection** — real-world wealth taxes face significant avoidance via offshore structures, complex trusts, and capital flight; most countries that implemented them eventually repealed them. Introduced `WEALTH_TAX_COLLECTION_FACTOR` (0.15–0.55 by income group, sourced from IMF WP/19/143 and OECD design guidance) to bring estimates in line with observed outcomes.
+- **VAT increase uses naive linear elasticity** — each percentage-point VAT rise was assumed to raise revenue proportional to the existing VAT base, ignoring the demand response (reduced consumption, shift to informal markets). Applied a `VAT_BEHAVIORAL_DISCOUNT` of 0.80 (20% yield reduction) across all three VAT code paths, consistent with IMF and Keen & Lockwood (2010) cross-country estimates.
+
+### Changed
+
+- All four funding assumptions are now surfaced in the `assumptions` array of each `FundingEstimate` so users can see exactly what was modelled.
+- Test count: **396 tests** across **23 suites** (9 new tests added to `src/core/funding.test.ts` covering realistic revenue bounds, formality/avoidance factors, and behavioral discounts).
+
 ## [0.1.8] - 2026-04-08
 
 ### Fixed
