@@ -137,6 +137,16 @@ describe('calcVatIncrease', () => {
     expect(est.mechanism).toBe('vat_increase');
     expect(est.annualRevenuePppUsd).toBeGreaterThan(0);
     expect(est.assumptions.some((a) => a.includes('4.8%'))).toBe(true);
+    expect(est.assumptions.some((a) => a.includes('Behavioral discount'))).toBe(true);
+  });
+
+  it('applies behavioral discount — revenue is below naive linear amount', () => {
+    const est = calcVatIncrease(kenya, 2);
+    const gdp = kenya.stats.gdpPerCapitaUsd * kenya.stats.population;
+    // Naive linear: (2/15) × 0.048 × gdp; with 20% discount should be 80% of that
+    const naiveLinear = (2 / 15) * (4.8 / 100) * gdp;
+    expect(est.annualRevenuePppUsd).toBeLessThan(naiveLinear);
+    expect(est.annualRevenuePppUsd).toBeCloseTo(naiveLinear * 0.80, -6);
   });
 
   it('falls back when no tax breakdown', () => {

@@ -135,6 +135,20 @@ export function calcIncomeTaxSurcharge(
 }
 
 /**
+ * Behavioral response factor for VAT increases.
+ *
+ * When VAT rates rise, consumers reduce spending, substitute to
+ * lower-taxed goods, or shift to informal markets. Each percentage
+ * point of VAT increase therefore raises less than the naive
+ * proportional amount. Empirical estimates put the discount at
+ * 15–25% of theoretical yield.
+ *
+ * Source: IMF "Value Added Tax: Principles and Practice" (2011);
+ * Keen & Lockwood (2010) cross-country estimates.
+ */
+const VAT_BEHAVIORAL_DISCOUNT = 0.80; // 20% demand response
+
+/**
  * VAT increase.
  *
  * If IMF tax breakdown is available, uses actual VAT/GDP share to estimate
@@ -158,7 +172,7 @@ export function calcVatIncrease(
     // But we don't know implied rate. Simpler: 1pp VAT ≈ vatShare × GDP / (standard rate ~15%)
     const impliedRate = 15; // typical VAT rate
     const vatRevenueUsd = (currentVatShare / 100) * gdpTotal;
-    revenueUsd = (points / impliedRate) * vatRevenueUsd;
+    revenueUsd = (points / impliedRate) * vatRevenueUsd * VAT_BEHAVIORAL_DISCOUNT;
     assumptions.push(
       `Current VAT revenue: ${currentVatShare.toFixed(1)}% of GDP`,
       `Assumed implied VAT rate of ~15% to estimate per-point revenue`,
@@ -166,7 +180,7 @@ export function calcVatIncrease(
   } else if (taxRevPct != null) {
     // Proxy: VAT is typically ~30% of total tax revenue
     const estimatedVatRevenue = (0.3 * taxRevPct / 100) * gdpTotal;
-    revenueUsd = (points / 15) * estimatedVatRevenue;
+    revenueUsd = (points / 15) * estimatedVatRevenue * VAT_BEHAVIORAL_DISCOUNT;
     assumptions.push(
       `VAT breakdown unavailable; estimated as 30% of total tax revenue (${taxRevPct.toFixed(1)}% of GDP)`,
       'Assumed implied VAT rate of ~15%',
@@ -176,14 +190,17 @@ export function calcVatIncrease(
     const vatPctProxy: Record<string, number> = { HIC: 7, UMC: 5, LMC: 4, LIC: 3 };
     const proxy = vatPctProxy[country.stats.incomeGroup] ?? 4;
     const estimatedVatRevenue = (proxy / 100) * gdpTotal;
-    revenueUsd = (points / 15) * estimatedVatRevenue;
+    revenueUsd = (points / 15) * estimatedVatRevenue * VAT_BEHAVIORAL_DISCOUNT;
     assumptions.push(
       `No tax data available; used income-group proxy VAT/GDP of ${proxy}%`,
       'Assumed implied VAT rate of ~15%',
     );
   }
 
-  assumptions.push(`VAT increase of ${points} percentage point(s)`);
+  assumptions.push(
+    `VAT increase of ${points} percentage point(s)`,
+    `Behavioral discount of 20% applied (demand response reduces yield below linear estimate)`,
+  );
 
   return {
     mechanism: 'vat_increase',
