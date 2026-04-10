@@ -1,8 +1,45 @@
 services:
   api:
     build: .
+    container_name: ogi-api
+    restart: unless-stopped
     ports:
       - "3333:3333"
+    volumes:
+      - ./data:/app/data
     environment:
       - NODE_ENV=production
       - PORT=3333
+      - DB_PATH=/app/data/ogi.sqlite
+      - LOG_LEVEL=info
+      - CORS_ORIGIN=${CORS_ORIGIN:-*}
+      - API_KEY_REQUIRED=${API_KEY_REQUIRED:-false}
+      - ADMIN_USERNAME=${ADMIN_USERNAME:?ADMIN_USERNAME must be set}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:?ADMIN_PASSWORD must be set}
+      - ENABLE_METRICS=${ENABLE_METRICS:-true}
+      - ENABLE_AUDIT_LOG=${ENABLE_AUDIT_LOG:-true}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://localhost:3333/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

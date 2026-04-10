@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Fixed
+
+- **SQLite directory creation race condition** — `getDb()` created the data directory via a dynamic `import('node:fs').then(...)`, scheduling the `mkdirSync` call as a microtask. Because `new Database(path)` ran synchronously on the very next line, the directory did not exist yet, causing `SQLITE_CANTOPEN: unable to open database file` on every cold-start inside Docker (where `/app/data/` is not pre-created). Fixed by replacing the dynamic import with a static `import { mkdirSync } from 'node:fs'` and calling it synchronously before opening the database.
+
+### Added
+
+- **Docker Compose production configuration** — `docker-compose.yml` now includes:
+  - Named volume mount `./data:/app/data` so the SQLite database survives container restarts
+  - Node.js-based health check against `/health` (no extra `curl` dependency needed)
+  - `restart: unless-stopped` so the container recovers from crashes automatically
+  - CPU/memory resource limits (1 CPU / 512 MB) with soft reservations
+  - Structured JSON log rotation (`max-size: 10 m`, `max-file: 3`)
+  - Explicit `DB_PATH` env var pointing inside the mounted volume
+  - `ADMIN_USERNAME` / `ADMIN_PASSWORD` required via the `${VAR:?message}` syntax — the compose file will refuse to start if these are unset, preventing accidental deployment with the default `admin`/`admin` credentials
+- **`.dockerignore`** — excludes `node_modules`, `dist`, `data`, `.git`, `.env*`, SQLite WAL files, and test coverage from the build context, speeding up `docker build` and preventing accidental inclusion of secrets or local database files
+- **`.env.example`** — documents every environment variable accepted by the application with defaults and inline comments; copy to `.env` before running with `docker compose`
+
 ## [0.1.9] - 2026-04-08
 
 ### Fixed
