@@ -1,8 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { getCountryByCode, getDataVersion } from '../../data/loader.js';
 import { calculateEntitlement } from '../../core/rules.js';
-
-const BATCH_MAX_ITEMS = parseInt(process.env.BATCH_MAX_ITEMS ?? '50', 10);
+import { config } from '../../config.js';
 
 export const incomeRoute: FastifyPluginAsync = async (app) => {
   /** Calculate entitlement for a single country */
@@ -55,12 +54,12 @@ export const incomeRoute: FastifyPluginAsync = async (app) => {
         });
       }
 
-      if (countries.length > BATCH_MAX_ITEMS) {
+      if (countries.length > config.api.batchMaxItems) {
         return reply.status(400).send({
           ok: false,
           error: {
             code: 'BATCH_TOO_LARGE',
-            message: `Maximum ${BATCH_MAX_ITEMS} countries per batch request`,
+            message: `Maximum ${config.api.batchMaxItems} countries per batch request`,
           },
         });
       }

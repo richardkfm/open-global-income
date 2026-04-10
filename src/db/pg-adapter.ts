@@ -15,6 +15,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { config } from '../config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -25,14 +26,14 @@ export interface PgConfig {
 }
 
 export function getPgConfig(): PgConfig {
-  const connectionString = process.env.DATABASE_URL;
+  const connectionString = config.databaseUrl;
   if (!connectionString) {
     throw new Error('DATABASE_URL environment variable is required for PostgreSQL backend');
   }
 
   return {
     connectionString,
-    ssl: process.env.DB_SSL !== 'false',
+    ssl: config.dbSsl,
   };
 }
 
@@ -70,9 +71,5 @@ export function getPendingMigrations(appliedVersions: Set<number>): Array<{
  * Determine which database backend to use.
  */
 export function getDbBackend(): 'sqlite' | 'postgres' {
-  const backend = process.env.DB_BACKEND ?? 'sqlite';
-  if (backend !== 'sqlite' && backend !== 'postgres') {
-    throw new Error(`Invalid DB_BACKEND: ${backend}. Use 'sqlite' or 'postgres'.`);
-  }
-  return backend;
+  return config.dbBackend;
 }

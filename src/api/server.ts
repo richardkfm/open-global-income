@@ -24,6 +24,7 @@ import { fundingRoute } from './routes/funding.js';
 import { impactRoute } from './routes/impact.js';
 import { regionsRoute } from './routes/regions.js';
 import { adminRoutes } from '../admin/routes.js';
+import { config } from '../config.js';
 
 export interface ServerOptions {
   rateLimitMax?: number;
@@ -31,7 +32,7 @@ export interface ServerOptions {
 }
 
 export function buildServer(opts?: ServerOptions) {
-  const logLevel = process.env.LOG_LEVEL ?? 'info';
+  const logLevel = config.logLevel;
   const app = Fastify({
     logger: {
       level: logLevel,
@@ -62,17 +63,13 @@ export function buildServer(opts?: ServerOptions) {
 
   // CORS
   app.register(fastifyCors, {
-    origin: process.env.CORS_ORIGIN ?? '*',
-    methods: (process.env.CORS_METHODS ?? 'GET,POST,OPTIONS').split(','),
+    origin: config.cors.origin,
+    methods: config.cors.methods,
   });
 
   // Rate limiting
-  const rateLimitMax =
-    opts?.rateLimitMax ??
-    parseInt(process.env.RATE_LIMIT_MAX ?? '100', 10);
-  const rateLimitWindow =
-    opts?.rateLimitWindow ??
-    parseInt(process.env.RATE_LIMIT_WINDOW_MS ?? '60000', 10);
+  const rateLimitMax = opts?.rateLimitMax ?? config.rateLimit.max;
+  const rateLimitWindow = opts?.rateLimitWindow ?? config.rateLimit.windowMs;
 
   app.register(fastifyRateLimit, {
     max: rateLimitMax,
@@ -167,7 +164,7 @@ export function buildServer(opts?: ServerOptions) {
   });
 
   // Prometheus metrics
-  if (process.env.ENABLE_METRICS !== 'false') {
+  if (config.metrics.enabled) {
     app.register(metricsMiddleware);
   }
 
@@ -192,7 +189,7 @@ export function buildServer(opts?: ServerOptions) {
   app.register(impactRoute, { prefix: '/v1' });
 
   // Admin UI (disabled only if ENABLE_ADMIN=false explicitly)
-  if (process.env.ENABLE_ADMIN !== 'false') {
+  if (config.admin.enabled) {
     app.register(adminRoutes, { prefix: '/admin' });
   }
 
