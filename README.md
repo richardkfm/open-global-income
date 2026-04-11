@@ -135,10 +135,13 @@ curl http://localhost:3333/v1/income/calc?country=KE
 ```bash
 git clone https://github.com/alcoolio/open-global-income.git
 cd open-global-income
+cp .env.example .env          # fill in ADMIN_USERNAME and ADMIN_PASSWORD
 docker compose up --build
 ```
 
-This builds the image and starts the API on port `3333`. No other dependencies required — the Dockerfile uses a multi-stage build with `node:20-slim`.
+The compose file uses `ADMIN_USERNAME` and `ADMIN_PASSWORD` from the environment (or a `.env` file). Both are **required** — compose will refuse to start if either is unset to prevent accidental deployment with default credentials.
+
+The SQLite database is persisted in `./data/ogi.sqlite` on the host via a volume mount, so data survives container restarts.
 
 Once the container is running, the following URLs are available:
 
@@ -148,38 +151,30 @@ Once the container is running, the following URLs are available:
 | `http://localhost:3333/docs` | Swagger UI — interactive API documentation |
 | `http://localhost:3333/docs/json` | Raw OpenAPI spec (JSON) |
 | `http://localhost:3333/v1/income/calc?country=KE` | Example: calculate Kenya's entitlement |
-| `http://localhost:3333/admin` | Admin UI (requires `ENABLE_ADMIN=true`) |
+| `http://localhost:3333/admin` | Admin UI |
 | `http://localhost:3333/metrics` | Prometheus metrics |
 
-#### Docker with environment variables
+#### Environment variables
 
-Pass environment variables to configure the container:
+All available environment variables are documented in `.env.example`. The most important ones for production:
 
-```bash
-docker compose up --build -e ENABLE_ADMIN=true -e ADMIN_PASSWORD=changeme
-```
-
-Or edit `docker-compose.yml` to add them:
-
-```yaml
-services:
-  api:
-    build: .
-    ports:
-      - "3333:3333"
-    environment:
-      - NODE_ENV=production
-      - PORT=3333
-      - ENABLE_ADMIN=true
-      - ADMIN_PASSWORD=changeme
-      - API_KEY_REQUIRED=false
-```
+| Variable | Default | Notes |
+|----------|---------|-------|
+| `ADMIN_USERNAME` | — | **Required.** No default; compose refuses to start without it |
+| `ADMIN_PASSWORD` | — | **Required.** No default; compose refuses to start without it |
+| `DB_PATH` | `./data/ogi.sqlite` | Set to `/app/data/ogi.sqlite` inside Docker |
+| `API_KEY_REQUIRED` | `false` | Set to `true` to enforce API keys on all endpoints |
+| `CORS_ORIGIN` | `*` | Restrict to your frontend origin in production |
 
 #### Docker build only
 
 ```bash
 docker build -t open-global-income .
-docker run -p 3333:3333 open-global-income
+docker run -p 3333:3333 \
+  -v "$(pwd)/data:/app/data" \
+  -e ADMIN_USERNAME=admin \
+  -e ADMIN_PASSWORD=changeme \
+  open-global-income
 ```
 
 ### Useful commands

@@ -1,9 +1,10 @@
 import type { FastifyPluginAsync } from 'fastify';
 import fp from 'fastify-plugin';
 import { logAuditEntry } from '../../db/audit.js';
+import { config } from '../../config.js';
 
 const auditLogPlugin: FastifyPluginAsync = async (app) => {
-  const enabled = process.env.ENABLE_AUDIT_LOG !== 'false';
+  const enabled = config.audit.enabled;
 
   if (!enabled) return;
 

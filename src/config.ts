@@ -17,7 +17,13 @@ export const config = {
   logLevel: process.env.LOG_LEVEL ?? 'info',
 
   /** Database backend: 'sqlite' (default) or 'postgres' */
-  dbBackend: (process.env.DB_BACKEND ?? 'sqlite') as 'sqlite' | 'postgres',
+  dbBackend: (() => {
+    const v = process.env.DB_BACKEND ?? 'sqlite';
+    if (v !== 'sqlite' && v !== 'postgres') {
+      throw new Error(`Invalid DB_BACKEND: "${v}". Use 'sqlite' or 'postgres'.`);
+    }
+    return v;
+  })() as 'sqlite' | 'postgres',
 
   /** SQLite file path (default: <cwd>/data/ogi.sqlite) */
   dbPath: process.env.DB_PATH as string | undefined,

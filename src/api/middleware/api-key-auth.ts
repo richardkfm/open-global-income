@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 import fp from 'fastify-plugin';
 import { validateApiKey, type ApiKey } from '../../db/api-keys.js';
+import { config } from '../../config.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -9,7 +10,7 @@ declare module 'fastify' {
 }
 
 const apiKeyAuthPlugin: FastifyPluginAsync = async (app) => {
-  const required = process.env.API_KEY_REQUIRED === 'true';
+  const required = config.api.keyRequired;
 
   app.addHook('onRequest', async (request: FastifyRequest, reply: FastifyReply) => {
     // Skip auth for health, docs, and OpenAPI spec routes
