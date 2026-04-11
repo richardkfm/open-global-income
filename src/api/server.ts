@@ -24,7 +24,7 @@ import { fundingRoute } from './routes/funding.js';
 import { impactRoute } from './routes/impact.js';
 import { regionsRoute } from './routes/regions.js';
 import { adminRoutes } from '../admin/routes.js';
-import { config } from '../config.js';
+import { config, packageVersion } from '../config.js';
 
 export interface ServerOptions {
   rateLimitMax?: number;
@@ -102,7 +102,7 @@ export function buildServer(opts?: ServerOptions) {
         title: 'Open Global Income API',
         description:
           'Open standard and reference implementation for a global income entitlement calculation model',
-        version: '0.1.10',
+        version: packageVersion,
       },
       servers: [{ url: '/' }],
     },

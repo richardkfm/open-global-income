@@ -24,6 +24,7 @@ import { listFundingScenarios, saveFundingScenario, deleteFundingScenario } from
 import { calculateImpactAnalysis } from '../core/impact.js';
 import { listImpactAnalyses, saveImpactAnalysis, deleteImpactAnalysis } from '../db/impact-db.js';
 import { renderDataSourcesPage, renderDataSourceDetail } from './views/data-sources.js';
+import { escapeHtml } from './views/helpers.js';
 import { listDataSources, getDataSourceById, createDataSource, updateDataSource, deleteDataSource, seedDefaultDataSources } from '../db/data-sources-db.js';
 import {
   ensureDefaultAdmin,
@@ -252,7 +253,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     if (!country) {
       return reply
         .type('text/html')
-        .send(`<p style="color:var(--danger)">Country '${countryCode}' not found</p>`);
+        .send(`<p style="color:var(--danger)">Country '${escapeHtml(countryCode)}' not found</p>`);
     }
 
     const params: SimulationParameters = {
@@ -537,7 +538,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       if (!country) {
         return reply
           .type('text/html')
-          .send(`<p style="color:var(--danger);margin-top:1rem">Country '${countryCode}' not found.</p>`);
+          .send(`<p style="color:var(--danger);margin-top:1rem">Country '${escapeHtml(countryCode)}' not found.</p>`);
       }
       const coverage = Math.min(1, Math.max(0, parseFloat(body.coverage ?? '20') / 100));
       const durationMonths = Math.min(120, Math.max(1, parseInt(body.durationMonths ?? '12', 10)));
@@ -560,36 +561,24 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       simulationId,
     );
 
-    return reply.type('text/html').send(renderFundingPreview(result, country));
+    return reply.type('text/html').send(renderFundingPreview(result, country, mechanisms));
   });
 
-  app.post<{ Body: { name?: string; resultJson?: string } }>(
+  app.post<{ Body: { name?: string; resultJson?: string; mechanismsJson?: string } }>(
     '/funding/save',
     async (request, reply) => {
-      const { name, resultJson } = request.body ?? {};
-      if (!resultJson) {
+      const { name, resultJson, mechanismsJson } = request.body ?? {};
+      if (!resultJson || !mechanismsJson) {
         return reply.redirect('/admin/funding?flash=Missing+scenario+data');
       }
       try {
         const result = JSON.parse(resultJson) as import('../core/types.js').FundingScenarioResult;
-        const mechanisms = result.mechanisms.map((m) => {
-          switch (m.mechanism) {
-            case 'income_tax_surcharge':
-              return { type: 'income_tax_surcharge' as const, rate: 0 };
-            case 'vat_increase':
-              return { type: 'vat_increase' as const, points: 0 };
-            case 'carbon_tax':
-              return { type: 'carbon_tax' as const, dollarPerTon: 0 };
-            case 'wealth_tax':
-              return { type: 'wealth_tax' as const, rate: 0 };
-            case 'financial_transaction_tax':
-              return { type: 'financial_transaction_tax' as const, rate: 0 };
-            case 'automation_tax':
-              return { type: 'automation_tax' as const, rate: 0 };
-            case 'redirect_social_spending':
-              return { type: 'redirect_social_spending' as const, percent: 0 };
-          }
-        });
+        const mechanisms = JSON.parse(
+          mechanismsJson,
+        ) as import('../core/types.js').FundingMechanismInput[];
+        if (!Array.isArray(mechanisms) || mechanisms.length === 0) {
+          return reply.redirect('/admin/funding?flash=No+mechanisms+to+save');
+        }
         saveFundingScenario(
           name ?? null,
           result.simulationId ?? null,
@@ -670,7 +659,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
         }
         country = getCountryByCode(countryCode);
         if (!country) {
-          return reply.type('text/html').send(`<p style="color:var(--danger)">Country '${countryCode}' not found.</p>`);
+          return reply.type('text/html').send(`<p style="color:var(--danger)">Country '${escapeHtml(countryCode)}' not found.</p>`);
         }
         const params: SimulationParameters = {
           country: country.code,

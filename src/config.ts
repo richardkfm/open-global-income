@@ -6,6 +6,29 @@
  * visible in one place and can be validated/documented together.
  */
 
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+/**
+ * Package version read from package.json at startup. Used by the OpenAPI
+ * spec, admin UI, and tests so bumping package.json updates every surface
+ * automatically. Falls back to '0.0.0-dev' if the file cannot be read
+ * (e.g. unusual test environment).
+ */
+function readPackageVersion(): string {
+  try {
+    const __dirname = dirname(fileURLToPath(import.meta.url));
+    const pkgPath = join(__dirname, '..', 'package.json');
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as { version?: string };
+    return pkg.version ?? '0.0.0-dev';
+  } catch {
+    return '0.0.0-dev';
+  }
+}
+
+export const packageVersion = readPackageVersion();
+
 export const config = {
   /** HTTP server port (default: 3333) */
   port: parseInt(process.env.PORT ?? '3333', 10),

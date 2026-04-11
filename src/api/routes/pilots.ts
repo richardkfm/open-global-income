@@ -10,6 +10,7 @@ import {
 import { getDisbursementById } from '../../db/disbursements-db.js';
 import { getSimulationById } from '../../db/simulations-db.js';
 import { dispatchEvent } from '../../webhooks/dispatcher.js';
+import { parsePagination, buildPaginationMeta } from '../pagination.js';
 import type { PilotStatus } from '../../core/types.js';
 
 const VALID_STATUSES = ['planning', 'active', 'paused', 'completed'];
@@ -95,10 +96,7 @@ export const pilotsRoute: FastifyPluginAsync = async (app) => {
   app.get<{ Querystring: { page?: string; limit?: string; status?: string; countryCode?: string } }>(
     '/pilots',
     async (request, reply) => {
-      const page = Math.max(1, parseInt(request.query.page ?? '1', 10) || 1);
-      const limit = Math.min(100, Math.max(1, parseInt(request.query.limit ?? '20', 10) || 20));
-      const offset = (page - 1) * limit;
-
+      const pg = parsePagination(request.query);
       const { status, countryCode } = request.query;
 
       if (status && !VALID_STATUSES.includes(status)) {
@@ -111,14 +109,13 @@ export const pilotsRoute: FastifyPluginAsync = async (app) => {
         });
       }
 
-      const { pilots, total } = listPilots({ limit, offset, status, countryCode });
-      const totalPages = Math.ceil(total / limit);
+      const { pilots, total } = listPilots({ limit: pg.limit, offset: pg.offset, status, countryCode });
 
       return reply.send({
         ok: true,
         data: {
           pilots,
-          pagination: { page, limit, total, totalPages },
+          pagination: buildPaginationMeta(pg, total),
         },
       });
     },

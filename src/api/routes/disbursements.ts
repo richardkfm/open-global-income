@@ -12,6 +12,7 @@ import {
 } from '../../db/disbursements-db.js';
 import { getProvider, listProviders } from '../../disbursements/providers/registry.js';
 import { dispatchEvent } from '../../webhooks/dispatcher.js';
+import { parsePagination, buildPaginationMeta } from '../pagination.js';
 import type { DisbursementChannelType } from '../../core/types.js';
 
 const VALID_CHANNEL_TYPES: DisbursementChannelType[] = [
@@ -344,10 +345,7 @@ export const disbursementsRoute: FastifyPluginAsync = async (app) => {
   app.get<{ Querystring: { page?: string; limit?: string; status?: string; channelId?: string } }>(
     '/disbursements',
     async (request, reply) => {
-      const page = Math.max(1, parseInt(request.query.page ?? '1', 10) || 1);
-      const limit = Math.min(100, Math.max(1, parseInt(request.query.limit ?? '20', 10) || 20));
-      const offset = (page - 1) * limit;
-
+      const pg = parsePagination(request.query);
       const { status, channelId } = request.query;
 
       if (status && !VALID_STATUSES.includes(status)) {
@@ -361,18 +359,17 @@ export const disbursementsRoute: FastifyPluginAsync = async (app) => {
       }
 
       const { disbursements, total } = listDisbursements({
-        limit,
-        offset,
+        limit: pg.limit,
+        offset: pg.offset,
         status,
         channelId,
       });
-      const totalPages = Math.ceil(total / limit);
 
       return reply.send({
         ok: true,
         data: {
           disbursements,
-          pagination: { page, limit, total, totalPages },
+          pagination: buildPaginationMeta(pg, total),
         },
       });
     },

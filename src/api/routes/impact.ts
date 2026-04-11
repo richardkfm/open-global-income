@@ -11,6 +11,7 @@ import {
 } from '../../db/impact-db.js';
 import type { ImpactParameters, SimulationParameters, TargetGroup } from '../../core/types.js';
 import { dispatchEvent } from '../../webhooks/dispatcher.js';
+import { parsePagination, buildPaginationMeta } from '../pagination.js';
 import { GLOBAL_INCOME_FLOOR_PPP } from '../../core/constants.js';
 
 // ── Shared validation helper ─────────────────────────────────────────────
@@ -180,7 +181,7 @@ export const impactRoute: FastifyPluginAsync = async (app) => {
       apiKeyId,
     );
 
-    dispatchEvent('impact_analysis.created', { id: saved.id, country: country.code });
+    void dispatchEvent('impact_analysis.created', { id: saved.id, country: country.code });
 
     return reply.status(201).send({ ok: true, data: saved });
   });
@@ -193,11 +194,9 @@ export const impactRoute: FastifyPluginAsync = async (app) => {
   app.get<{ Querystring: { page?: string; limit?: string } }>(
     '/impact-analyses',
     async (request) => {
-      const page = Math.max(1, parseInt(request.query.page ?? '1', 10));
-      const limit = Math.min(100, Math.max(1, parseInt(request.query.limit ?? '20', 10)));
-      const offset = (page - 1) * limit;
-      const { analyses, total } = listImpactAnalyses(limit, offset);
-      return { ok: true, data: { analyses, total, page, limit } };
+      const pg = parsePagination(request.query);
+      const { analyses, total } = listImpactAnalyses(pg.limit, pg.offset);
+      return { ok: true, data: { analyses, pagination: buildPaginationMeta(pg, total) } };
     },
   );
 

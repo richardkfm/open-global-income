@@ -9,6 +9,7 @@ import type {
   SavedSimulation,
   FundingScenarioResult,
   FundingEstimate,
+  FundingMechanismInput,
   FiscalContext,
   SavedFundingScenario,
 } from '../../core/types.js';
@@ -216,7 +217,11 @@ export function renderFundingPage(
 
 const BAR_COLORS = ['#4f46e5', '#7c3aed', '#db2777', '#ea580c', '#059669', '#0284c7'];
 
-export function renderFundingPreview(result: FundingScenarioResult, fullCountry?: Country): string {
+export function renderFundingPreview(
+  result: FundingScenarioResult,
+  fullCountry?: Country,
+  mechanismInputs?: FundingMechanismInput[],
+): string {
   const { mechanisms, totalRevenuePppUsd, coverageOfUbiCost, gapPppUsd, ubiCost, fiscalContext, country } = result;
 
   // Summary stat cards
@@ -425,6 +430,7 @@ export function renderFundingPreview(result: FundingScenarioResult, fullCountry?
       <div class="flex gap-1 mt-2">
         <form method="post" action="/admin/funding/save" class="form-inline" style="flex:1">
           <input type="hidden" name="resultJson" value="${escapeHtml(JSON.stringify(result))}">
+          <input type="hidden" name="mechanismsJson" value="${escapeHtml(JSON.stringify(mechanismInputs ?? []))}">
           <input type="text" name="name" placeholder="${t('funding.scenarioNamePlaceholder')}" class="w-full">
           <button type="submit" class="btn btn-primary btn-sm">${t('funding.saveScenario')}</button>
         </form>

@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Fixed
+
+- **XSS in admin error messages** — three error branches in `src/admin/routes.ts` interpolated the user-submitted `countryCode` directly into an HTML response (`Country '${countryCode}' not found`). Because `.toUpperCase()` does not sanitise HTML, a malicious admin form could execute arbitrary JavaScript in the admin panel. All three sites now pass the value through `escapeHtml()` before rendering.
+- **Fire-and-forget `dispatchEvent` missing `void` prefix** — `src/api/routes/funding.ts` (funding_scenario.created) and `src/api/routes/impact.ts` (impact_analysis.created) awaited nothing from the webhook dispatcher, and — unlike every other call site — omitted the `void` prefix. If the dispatcher rejected, an unhandled promise rejection could surface. Both calls now match the rest of the codebase with `void dispatchEvent(...)`.
+- **Funding scenario save discarded mechanism rates** — the admin save handler reconstructed mechanism inputs from the `FundingScenarioResult` object and hardcoded every `rate`, `points`, `dollarPerTon`, and `percent` field to `0`. Every scenario saved through the admin UI was therefore stored with useless placeholder parameters. The save form now carries the original `mechanismsJson` as a hidden input (parallel to `resultJson`) and the handler persists those values verbatim.
+- **OpenAPI version string drifted from package.json** — the version was hard-coded in `src/api/server.ts` (most recently `'0.1.10'`) while the companion test asserted `'0.1.6'`, so the version test failed on every release bump. Version is now read from `package.json` at startup via the new `packageVersion` export in `src/config.ts`, and the test asserts the shape (`/^\d+\.\d+\.\d+/`) instead of a literal.
+- **Pagination NaN fallthrough on impact & funding list endpoints** — `GET /v1/impact-analyses` and `GET /v1/funding-scenarios` parsed `page` and `limit` with `Math.max(1, parseInt(...))` with no numeric fallback. `Math.max(1, NaN)` is `NaN`, which produced `LIMIT NaN OFFSET NaN` SQL. These endpoints now clamp via the shared `parsePagination` helper.
+- **`totalPages: 0` for empty list results** — every paginated list endpoint reported `totalPages: 0` for an empty result set, breaking UI logic that expects at least one page. The shared helper now reports `Math.max(1, Math.ceil(total / limit))`.
+- **Stale top-level `version` field in `package-lock.json`** — the lock file still read `0.1.4` at the top level despite the package being at `0.1.10`. `npm install` regenerates this on first install.
+
+### Changed
+
+- **Shared pagination helper** — `parsePagination()` and `buildPaginationMeta()` live in a new `src/api/pagination.ts` module. All five list endpoints (`simulations`, `pilots`, `disbursements`, `funding-scenarios`, `impact-analyses`) now use it, eliminating five copies of the same boilerplate and normalising the response envelope to `{ items, pagination: { page, limit, total, totalPages } }`. As a result, `GET /v1/funding-scenarios` and `GET /v1/impact-analyses` now include `totalPages` and use the same `pagination: { ... }` wrapper as the other list endpoints (previously they returned `{ ..., total, page, limit }` flat).
+- **Shared `VALID_TARGET_GROUPS` constant** — the same whitelist was duplicated across three route modules. Extracted to `src/api/validators.ts` so adding a new target group touches one file.
+- **Test count: 397 tests** across 23 suites (one new test covering the NaN pagination fallback on `GET /v1/impact-analyses`).
+
 ## [0.1.10] - 2026-04-11
 
 ### Changed

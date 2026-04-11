@@ -168,15 +168,25 @@ describe('GET /v1/impact-analyses', () => {
     const body = res.json();
     expect(body.ok).toBe(true);
     expect(Array.isArray(body.data.analyses)).toBe(true);
-    expect(typeof body.data.total).toBe('number');
-    expect(body.data.page).toBe(1);
-    expect(body.data.limit).toBe(20);
+    expect(typeof body.data.pagination.total).toBe('number');
+    expect(body.data.pagination.page).toBe(1);
+    expect(body.data.pagination.limit).toBe(20);
+    // totalPages is always >= 1 so empty result sets still render pagination UI
+    expect(body.data.pagination.totalPages).toBeGreaterThanOrEqual(1);
   });
 
   it('respects limit and page query params', async () => {
     const res = await app.inject({ method: 'GET', url: '/v1/impact-analyses?limit=5&page=1' });
     expect(res.statusCode).toBe(200);
-    expect(res.json().data.limit).toBe(5);
+    expect(res.json().data.pagination.limit).toBe(5);
+  });
+
+  it('falls back to defaults for non-numeric page/limit', async () => {
+    const res = await app.inject({ method: 'GET', url: '/v1/impact-analyses?limit=abc&page=xyz' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.data.pagination.page).toBe(1);
+    expect(body.data.pagination.limit).toBe(20);
   });
 });
 

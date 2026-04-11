@@ -69,7 +69,7 @@ The funding and impact layers (Phases 14–16) are not a departure from the API 
 
 The sub-national data layer (Phase 17) brings precision where it matters most. A basic income floor in Nairobi (COL 1.35×) should not be the same local-currency amount as in rural Turkana (COL 0.68×). Regional cost-of-living indices adjust the national PPP conversion factor, and existing formulas work transparently via the "adjusted Country" pattern — zero formula changes needed.
 
-Secure admin UI with login, approval workflows, and audit trails. **396 tests** across 23 suites.
+Secure admin UI with login, approval workflows, and audit trails. **397 tests** across 23 suites.
 
 ### 🔜 Next
 
@@ -456,7 +456,7 @@ See [GOVERNANCE.md](./GOVERNANCE.md) for the decision-making process, API stabil
 
 ## 📋 Current Status
 
-**Version 0.1.10** — Seven phases complete (simulation, disbursement, pilots, macro-economic data, funding, impact, sub-national data). 396 tests across 23 suites. The platform now covers the full workflow from "how much per person?" through "where does the money come from?" to "what happens to poverty?" — with regional precision that reflects actual cost-of-living differences within countries. Docker deployment is production-ready with data persistence, health checks, and enforced credentials.
+**Version 0.1.10** — Seven phases complete (simulation, disbursement, pilots, macro-economic data, funding, impact, sub-national data). 397 tests across 23 suites. The platform now covers the full workflow from "how much per person?" through "where does the money come from?" to "what happens to poverty?" — with regional precision that reflects actual cost-of-living differences within countries. Docker deployment is production-ready with data persistence, health checks, and enforced credentials.
 
 See [CHANGELOG.md](./CHANGELOG.md) for full version history.
 

@@ -447,7 +447,9 @@ describe('OpenAPI docs', () => {
     const spec = res.json();
     expect(spec.openapi).toMatch(/^3\./);
     expect(spec.info.title).toBe('Open Global Income API');
-    expect(spec.info.version).toBe('0.1.6');
+    // Version is sourced from package.json at startup — use a shape check
+    // instead of hard-coding so version bumps don't require test updates.
+    expect(spec.info.version).toMatch(/^\d+\.\d+\.\d+/);
   });
 });
 

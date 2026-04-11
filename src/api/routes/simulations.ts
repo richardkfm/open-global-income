@@ -8,9 +8,9 @@ import {
   deleteSimulation,
 } from '../../db/simulations-db.js';
 import { dispatchEvent } from '../../webhooks/dispatcher.js';
+import { parsePagination, buildPaginationMeta } from '../pagination.js';
+import { VALID_TARGET_GROUPS } from '../validators.js';
 import type { SimulationParameters, TargetGroup } from '../../core/types.js';
-
-const VALID_TARGET_GROUPS: TargetGroup[] = ['all', 'bottom_decile', 'bottom_quintile', 'bottom_third', 'bottom_half'];
 
 export const simulationsRoute: FastifyPluginAsync = async (app) => {
   /** Save a simulation */
@@ -112,18 +112,13 @@ export const simulationsRoute: FastifyPluginAsync = async (app) => {
   app.get<{ Querystring: { page?: string; limit?: string } }>(
     '/simulations',
     async (request, reply) => {
-      const page = Math.max(1, parseInt(request.query.page ?? '1', 10) || 1);
-      const limit = Math.min(100, Math.max(1, parseInt(request.query.limit ?? '20', 10) || 20));
-      const offset = (page - 1) * limit;
-
-      const { simulations, total } = listSimulations(limit, offset);
-      const totalPages = Math.ceil(total / limit);
-
+      const pg = parsePagination(request.query);
+      const { simulations, total } = listSimulations(pg.limit, pg.offset);
       return reply.send({
         ok: true,
         data: {
           simulations,
-          pagination: { page, limit, total, totalPages },
+          pagination: buildPaginationMeta(pg, total),
         },
       });
     },

@@ -6,6 +6,7 @@ import { getSimulationById } from '../../db/simulations-db.js';
 import { saveFundingScenario, listFundingScenarios, getFundingScenarioById, deleteFundingScenario } from '../../db/funding-db.js';
 import type { FundingMechanismInput, SimulationParameters, TargetGroup } from '../../core/types.js';
 import { dispatchEvent } from '../../webhooks/dispatcher.js';
+import { parsePagination, buildPaginationMeta } from '../pagination.js';
 
 const VALID_MECHANISM_TYPES = [
   'income_tax_surcharge',
@@ -253,7 +254,7 @@ export const fundingRoute: FastifyPluginAsync = async (app) => {
     const result = calculateFundingScenario(country, simulation, validMech.mechanisms, dataVersion, simulationId);
     const saved = saveFundingScenario(name, simulationId, country.code, validMech.mechanisms, result);
 
-    dispatchEvent('funding_scenario.created', { id: saved.id, country: country.code });
+    void dispatchEvent('funding_scenario.created', { id: saved.id, country: country.code });
 
     return reply.status(201).send({ ok: true, data: saved });
   });
@@ -262,14 +263,12 @@ export const fundingRoute: FastifyPluginAsync = async (app) => {
    * GET /v1/funding-scenarios — List saved scenarios
    */
   app.get<{ Querystring: { page?: string; limit?: string } }>('/funding-scenarios', async (request) => {
-    const page = Math.max(1, parseInt(request.query.page ?? '1', 10));
-    const limit = Math.min(100, Math.max(1, parseInt(request.query.limit ?? '20', 10)));
-    const offset = (page - 1) * limit;
-    const { scenarios, total } = listFundingScenarios(limit, offset);
+    const pg = parsePagination(request.query);
+    const { scenarios, total } = listFundingScenarios(pg.limit, pg.offset);
 
     return {
       ok: true,
-      data: { scenarios, total, page, limit },
+      data: { scenarios, pagination: buildPaginationMeta(pg, total) },
     };
   });
 
