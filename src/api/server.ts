@@ -102,7 +102,7 @@ export function buildServer(opts?: ServerOptions) {
         title: 'Open Global Income API',
         description:
           'Open standard and reference implementation for a global income entitlement calculation model',
-        version: '0.1.6',
+        version: '0.1.10',
       },
       servers: [{ url: '/' }],
     },
