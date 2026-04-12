@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.11] - 2026-04-12
+
 ### Added
 
 - **SEPA Credit Transfer provider** — `src/disbursements/providers/sepa.ts` implements the `DisbursementProvider` interface for European bank wire payments. Like the M-Pesa stub, it validates configuration, documents the Wise Payouts API integration path, converts PPP-USD amounts to EUR via an ECB reference rate (0.92 EUR/USD representative 2024 value), and returns a mock SEPA Credit Transfer instruction including a generated end-to-end reference. Real integration requires a Wise Payouts API key; the provider is a drop-in replacement once credentials are available. Registered under `providerId: 'sepa'` in the provider registry, visible at `GET /v1/disbursements/channels`.
@@ -27,7 +29,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **Shared pagination helper** — `parsePagination()` and `buildPaginationMeta()` live in a new `src/api/pagination.ts` module. All five list endpoints (`simulations`, `pilots`, `disbursements`, `funding-scenarios`, `impact-analyses`) now use it, eliminating five copies of the same boilerplate and normalising the response envelope to `{ items, pagination: { page, limit, total, totalPages } }`. As a result, `GET /v1/funding-scenarios` and `GET /v1/impact-analyses` now include `totalPages` and use the same `pagination: { ... }` wrapper as the other list endpoints (previously they returned `{ ..., total, page, limit }` flat).
 - **Shared `VALID_TARGET_GROUPS` constant** — the same whitelist was duplicated across three route modules. Extracted to `src/api/validators.ts` so adding a new target group touches one file.
-- **Test count: 397 tests** across 23 suites (one new test covering the NaN pagination fallback on `GET /v1/impact-analyses`).
+- **Test count: 415 tests** across 24 suites (includes one new test for the NaN pagination fallback on `GET /v1/impact-analyses` and 18 new tests for the SEPA provider).
 
 ## [0.1.10] - 2026-04-11
 

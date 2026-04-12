@@ -703,12 +703,64 @@ The centerpiece of the "sell the concept" vision. New `/admin/simulate/:id/impac
 
 ---
 
+---
+
+## Phase 18: Western Europe Disbursement & EU Regional Data — Complete ✅
+
+**Goal:** Enable large test groups in western Europe, where SEPA bank wire is the standard payment rail and regional cost-of-living variation is significant. Answer: *"How do we pay people in Europe, and how does the entitlement vary by region?"*
+
+### Why SEPA over Solana for western Europe
+
+For pilots operating through governments, NGOs, or research institutes in the EU:
+
+| Factor | SEPA/EUR | Solana USDC |
+|---|---|---|
+| Recipient bank accounts | Near-universal (99%+) | Requires wallet setup |
+| Regulatory path | EU Payment Services Directive | MiCA compliance overhead |
+| Government partnership | Standard requirement | Unlikely without extra legal structure |
+| Donor auditor comfort | Expected | Requires explanation |
+| Settlement speed | SEPA Instant < 10s | Fast, but irrelevant without wallets |
+
+Solana remains the right choice for crypto-native DAOs. SEPA is the right default for any real-world European pilot.
+
+### What was built
+
+- **SEPA Credit Transfer provider** — `src/disbursements/providers/sepa.ts` implements the full `DisbursementProvider` interface:
+  - `validateConfig()` — validates `apiKey`, `payoutAccountId`, `environment` (sandbox/production)
+  - `submit()` — converts PPP-USD → EUR via ECB reference rate (0.92), generates ISO-20022-style end-to-end reference (`OGI-{ts}-{rand}`), returns SEPA Credit Transfer instruction ready for submission via Wise Payouts API
+  - `checkStatus()` — documents the Wise `GET /v2/transfers/{id}` polling path
+  - Registered under `providerId: 'sepa'` in `src/disbursements/providers/registry.ts`
+  - Immediately available via `GET /v1/disbursements/channels` and `POST /v1/disbursements/channels`
+
+- **EU sub-national region data** — 41 new entries in `src/data/regions.json` (data version `curated-2024-02`):
+  - **Germany** — 16 Bundesländer (Destatis 2022 regional price levels; COL range 0.82 Saxony-Anhalt → 1.15 Hamburg)
+  - **France** — 13 metropolitan regions (INSEE 2022 regional price indices; COL range 0.89 Hauts-de-France → 1.22 Île-de-France)
+  - **Netherlands** — 12 provinces (CBS 2022 regional price levels; COL range 0.88 Drenthe → 1.18 Noord-Holland)
+  - All existing regional endpoints (`GET /v1/income/regions`, `GET /v1/income/calc/regional`, `POST /v1/simulate/regional`) work with no code changes
+
+- **18 new tests** — `sepa.test.ts` covers metadata, config validation, EUR conversion math, SEPA reference generation, uniqueness, and checkStatus
+
+### Live integration path
+
+Real SEPA disbursement requires Wise Payouts API credentials (or equivalent processor). The integration steps are:
+
+1. Obtain Wise API key + Business profile ID
+2. Set `environment: 'production'` in channel config
+3. Replace the stub `submit()` logic with:
+   - `POST /v2/quotes` — get live EUR/USD rate
+   - `POST /v1/transfers` per recipient (or batch via Wise Batch API)
+4. Implement `checkStatus()` via `GET /v2/transfers/{id}`
+
+No interface changes — the stub is a drop-in replacement.
+
+---
+
 ## Dependency chain
 
 ```
 Phase 11 (Simulation) ✅
     ↓ simulation_id
-Phase 12 (Disbursement) ✅ ← uses adapters (Solana, EVM)
+Phase 12 (Disbursement) ✅ ← uses adapters (Solana, EVM, M-Pesa stub, SEPA stub)
     ↓ disbursement_id
 Phase 13 (Pilot Dashboard) ✅
     ↓
@@ -718,10 +770,12 @@ Phase 15 (Funding Simulation) ✅ ← "where does the money come from?"
     ↓ funding scenarios feed into
 Phase 16 (Economic Impact) ✅  ← "what happens to the economy?"
     ↓
-Phase 17 (Sub-national Data) ✅ ← regional precision for all layers above
+Phase 17 (Sub-national Data) ✅ ← regional precision for all layers above (47 Kenya counties)
+    ↓
+Phase 18 (EU Disbursement & Regions) ✅ ← SEPA provider + 41 EU regions (DE, FR, NL)
 ```
 
-All seven phases complete. The platform covers end-to-end: calculate → simulate → fund → measure impact → disburse → track — with regional precision.
+All eight phases complete. The platform covers end-to-end: calculate → simulate → fund → measure impact → disburse → track — with regional precision in Africa and western Europe.
 
 ---
 
@@ -729,11 +783,12 @@ All seven phases complete. The platform covers end-to-end: calculate → simulat
 
 These remain on the roadmap:
 
-- **More sub-national data** — expand regional coverage beyond Kenya (Tanzania, Uganda, Ghana, Nigeria, India)
+- **More sub-national data** — EU coverage now includes DE, FR, NL; next priority: AT, BE, SE, DK + East Africa (Tanzania, Uganda) + Asia (India)
+- **Live SEPA** — real Wise Payouts API integration; the stub provider documents the full path
 - **Evidence layer** — outcome metrics, pre/post analysis, control groups, research exports
-- **Identity & enrollment** — pluggable verification, deduplication
-- **Live M-Pesa** — real Safaricom B2C integration
-- **Multi-currency settlement** — cross-rail reconciliation
+- **Identity & enrollment** — pluggable verification (`IdentityProvider` interface), deduplication across programs
+- **Live M-Pesa** — real Safaricom B2C integration (the stub provider documents the full interface)
+- **Multi-currency settlement** — cross-rail reconciliation with live FX rate feeds
 - **Federation** — multi-program interop, cross-border portability
 
 ---
