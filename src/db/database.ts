@@ -217,6 +217,31 @@ const SCHEMA = `
 
   CREATE INDEX IF NOT EXISTS idx_data_sources_provider ON data_sources(provider);
   CREATE INDEX IF NOT EXISTS idx_data_sources_status ON data_sources(status);
+
+  CREATE TABLE IF NOT EXISTS recipients (
+    id TEXT PRIMARY KEY,
+    country_code TEXT NOT NULL,
+    account_hash TEXT,
+    identity_provider TEXT,
+    verified_at TEXT,
+    payment_method TEXT CHECK(payment_method IN ('sepa', 'mobile_money', 'crypto')),
+    routing_ref TEXT,
+    status TEXT NOT NULL DEFAULT 'pending'
+      CHECK(status IN ('pending', 'verified', 'suspended')),
+    pilot_id TEXT,
+    api_key_id TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (pilot_id) REFERENCES pilots(id),
+    FOREIGN KEY (api_key_id) REFERENCES api_keys(id)
+  );
+
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_recipients_account
+    ON recipients(country_code, account_hash)
+    WHERE account_hash IS NOT NULL;
+
+  CREATE INDEX IF NOT EXISTS idx_recipients_status ON recipients(status);
+  CREATE INDEX IF NOT EXISTS idx_recipients_country ON recipients(country_code);
+  CREATE INDEX IF NOT EXISTS idx_recipients_pilot ON recipients(pilot_id);
 `;
 
 export function getDb(dbPath?: string): Database.Database {

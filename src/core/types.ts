@@ -482,6 +482,64 @@ export interface SavedImpactAnalysis {
   createdAt: string;
 }
 
+// ── Recipient & Identity types ────────────────────────────────────────────────
+
+export type RecipientStatus = 'pending' | 'verified' | 'suspended';
+export type PaymentMethod = 'sepa' | 'mobile_money' | 'crypto';
+
+export interface RecipientProfile {
+  id: string;
+  countryCode: CountryCode;
+  /**
+   * SHA-256 of the account identifier (IBAN, phone, wallet address).
+   * Never stored or returned in plaintext — only the hash is persisted.
+   */
+  accountHash: string | null;
+  /** Which identity provider performed the verification */
+  identityProvider: string | null;
+  verifiedAt: string | null;
+  paymentMethod: PaymentMethod | null;
+  /**
+   * Non-reversible display suffix (e.g. last 4 of IBAN, phone suffix).
+   * Safe to show in UI; cannot be used to reconstruct the full identifier.
+   */
+  routingRef: string | null;
+  status: RecipientStatus;
+  /** Optional link to a pilot program */
+  pilotId: string | null;
+  apiKeyId: string | null;
+  createdAt: string;
+}
+
+/** Input claim provided when verifying a recipient's identity */
+export interface IdentityClaim {
+  recipientId: string;
+  countryCode: CountryCode;
+  claimType: 'national_id' | 'bank_account' | 'phone' | 'wallet' | 'community';
+  /** Raw claim value — will be hashed before storage, never persisted in plaintext */
+  claimReference: string;
+}
+
+export interface VerificationResult {
+  verified: boolean;
+  /** SHA-256 of claimReference — stored as accountHash */
+  accountHash: string | null;
+  /** Non-reversible display suffix for UI */
+  routingRef: string | null;
+  error?: string;
+}
+
+/**
+ * Pluggable identity verification interface.
+ * The platform stores verified claims (hashes + provider reference),
+ * never raw identity data.
+ */
+export interface IdentityProvider {
+  readonly providerId: string;
+  readonly providerName: string;
+  verify(claim: IdentityClaim): Promise<VerificationResult>;
+}
+
 export interface PilotReport {
   pilot: {
     id: string;

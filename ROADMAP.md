@@ -760,50 +760,444 @@ No interface changes — the stub is a drop-in replacement.
 ```
 Phase 11 (Simulation) ✅
     ↓ simulation_id
-Phase 12 (Disbursement) ✅ ← uses adapters (Solana, EVM, M-Pesa stub, SEPA stub)
+Phase 12 (Disbursement) ✅ ← Solana, EVM, M-Pesa stub, SEPA stub
     ↓ disbursement_id
 Phase 13 (Pilot Dashboard) ✅
     ↓
-Phase 14 (Macro-Economic Data) ✅ ← enriches country profiles with fiscal + social data
-    ↓ country data feeds into
-Phase 15 (Funding Simulation) ✅ ← "where does the money come from?"
-    ↓ funding scenarios feed into
-Phase 16 (Economic Impact) ✅  ← "what happens to the economy?"
+Phase 14 (Macro-Economic Data) ✅ ← 17 indicators, World Bank + ILO + IMF
     ↓
-Phase 17 (Sub-national Data) ✅ ← regional precision for all layers above (47 Kenya counties)
+Phase 15 (Funding Simulation) ✅ ← 6 funding mechanisms
     ↓
-Phase 18 (EU Disbursement & Regions) ✅ ← SEPA provider + 41 EU regions (DE, FR, NL)
+Phase 16 (Economic Impact) ✅ ← 4 impact dimensions, policy brief export
+    ↓
+Phase 17 (Sub-national Data) ✅ ← Kenya 47 counties
+    ↓
+Phase 18 (EU Disbursement & Regions) ✅ ← SEPA stub + DE/FR/NL regions
+    ↓
+Phase 19 (Recipient & Identity Model) ← operational foundation
+    ↓ recipient_id links to disbursements
+Phase 20 (Inbound Webhooks) ← provider callbacks update disbursement state
+    ↓
+Phase 21 (Audit Exports) ← compliance-grade signed document per pilot
+    ↓
+Phase 22 (Programmable Targeting) ← recipient-aware custom targeting rules
+    ↓
+Phase 23 (Evidence Layer) ← outcomes per cohort, cross-program benchmarks
+    ↓
+Phase 24 (Scenario Versioning) ← data-version diffing on saved simulations
+    ↓
+Phase 25 (Multi-tenancy) ← tenant isolation, shared calculation, federation foundation
 ```
 
-All eight phases complete. The platform covers end-to-end: calculate → simulate → fund → measure impact → disburse → track — with regional precision in Africa and western Europe.
+---
+
+## Phase 19: Recipient & Identity Model
+
+**Goal:** Give the platform a concept of an individual person. Without this, every disbursement is a headcount and an amount — there is nobody on the other end. This phase is the operational foundation everything else builds on. Answer: *"Who are we paying, and how do we know it's them?"*
+
+### The design constraint: no raw identity data
+
+The platform must never store biometric data, plaintext IBANs, or government ID numbers. Instead it stores *verified claims*: a hash of an account reference, a pointer to which identity provider performed the verification, and when. The actual verification is delegated to a pluggable `IdentityProvider` interface.
+
+### 19.1 — Core types
+
+New types in `src/core/types.ts`:
+
+```typescript
+export type RecipientStatus = 'pending' | 'verified' | 'suspended';
+export type PaymentMethod = 'sepa' | 'mobile_money' | 'crypto';
+
+export interface RecipientProfile {
+  id: string;
+  countryCode: string;
+  /** SHA-256 of the account identifier (IBAN, phone number, wallet address) — never stored in plaintext */
+  accountHash: string | null;
+  /** Which identity provider verified this recipient */
+  identityProvider: string | null;
+  verifiedAt: string | null;
+  paymentMethod: PaymentMethod | null;
+  /** Provider-specific routing reference (e.g. last-4 of IBAN, phone suffix) — non-reversible */
+  routingRef: string | null;
+  status: RecipientStatus;
+  /** Optional link to a pilot program */
+  pilotId: string | null;
+  apiKeyId: string | null;
+  createdAt: string;
+}
+
+/** Pluggable identity verification interface — platform stores claims, not data */
+export interface IdentityProvider {
+  readonly providerId: string;
+  readonly providerName: string;
+  verify(claim: IdentityClaim): Promise<VerificationResult>;
+}
+
+export interface IdentityClaim {
+  recipientId: string;
+  countryCode: string;
+  providedBy: string;
+  claimType: 'national_id' | 'bank_account' | 'phone' | 'wallet' | 'community';
+  claimReference: string; // will be hashed before storage
+}
+
+export interface VerificationResult {
+  verified: boolean;
+  accountHash: string | null;
+  routingRef: string | null;
+  error?: string;
+}
+```
+
+### 19.2 — Database table
+
+```sql
+CREATE TABLE recipients (
+  id TEXT PRIMARY KEY,
+  country_code TEXT NOT NULL,
+  account_hash TEXT,           -- SHA-256 of account identifier
+  identity_provider TEXT,
+  verified_at TEXT,
+  payment_method TEXT,
+  routing_ref TEXT,            -- non-reversible suffix for display only
+  status TEXT NOT NULL DEFAULT 'pending',
+  pilot_id TEXT,
+  api_key_id TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (pilot_id) REFERENCES pilots(id),
+  FOREIGN KEY (api_key_id) REFERENCES api_keys(id)
+);
+
+-- Fast duplicate detection by account hash within a country
+CREATE UNIQUE INDEX idx_recipients_account ON recipients(country_code, account_hash)
+  WHERE account_hash IS NOT NULL;
+```
+
+### 19.3 — API endpoints
+
+- `POST /v1/recipients` — enroll a recipient (status: `pending`)
+- `GET /v1/recipients` — list recipients (filterable by `countryCode`, `status`, `pilotId`)
+- `GET /v1/recipients/:id` — profile + payment history
+- `PATCH /v1/recipients/:id` — update status (`pending` → `verified` → `suspended`) or payment method
+- `POST /v1/recipients/check-duplicate` — given an `accountHash`, returns whether it is already enrolled and in which program — prevents double-payment without exposing identity
+
+### 19.4 — Link recipients to disbursements
+
+Add optional `recipientId` to the `Disbursement` type and DB row. When set, `GET /v1/recipients/:id` can return a full payment history.
+
+### 19.5 — Admin UI
+
+New `/admin/recipients` page:
+- List with status badges, country filter, pilot filter
+- Detail page: status, payment method, verification provider, payment history
+- Manual status transitions (verify, suspend) with audit log entry
+
+### 19.6 — Tests
+
+- Enrollment happy path
+- Duplicate detection (same `accountHash` same country → 409)
+- Status transition rules (cannot go `suspended` → `verified` without re-verification)
+- `check-duplicate` returns correct cross-program flag
+- `GET /v1/recipients/:id/disbursements` returns linked payments
 
 ---
 
-## Future phases
+## Phase 20: Inbound Webhooks & Payment Confirmations
 
-These remain on the roadmap:
+**Goal:** Make the platform reactive rather than purely transactional. Right now disbursement status only moves forward when the API is polled. Real payment rails send callbacks. Answer: *"Did the money actually arrive?"*
 
-- **More sub-national data** — EU coverage now includes DE, FR, NL; next priority: AT, BE, SE, DK + East Africa (Tanzania, Uganda) + Asia (India)
-- **Live SEPA** — real Wise Payouts API integration; the stub provider documents the full path
-- **Evidence layer** — outcome metrics, pre/post analysis, control groups, research exports
-- **Identity & enrollment** — pluggable verification (`IdentityProvider` interface), deduplication across programs
-- **Live M-Pesa** — real Safaricom B2C integration (the stub provider documents the full interface)
-- **Multi-currency settlement** — cross-rail reconciliation with live FX rate feeds
-- **Federation** — multi-program interop, cross-border portability
+### 20.1 — Inbound webhook endpoint
+
+```
+POST /v1/webhooks/inbound/:provider
+```
+
+- `provider` matches a registered `DisbursementProvider` `providerId` (e.g. `sepa`, `safaricom`)
+- Each provider implements a new optional interface method:
+
+```typescript
+interface DisbursementProvider {
+  // ... existing methods ...
+  /** Verify and parse an inbound callback from this provider */
+  parseCallback?(
+    headers: Record<string, string>,
+    body: unknown
+  ): Promise<CallbackEvent | null>;
+}
+
+interface CallbackEvent {
+  externalId: string;
+  status: 'confirmed' | 'failed';
+  details: Record<string, unknown>;
+}
+```
+
+### 20.2 — Callback processing
+
+On receiving a verified callback:
+1. Look up disbursement by `externalId`
+2. Transition status: `processing` → `completed` or `failed`
+3. Write a `disbursement_log` entry with the provider's raw callback payload
+4. Fire `disbursement.confirmed` or `disbursement.failed` webhook event outward
+
+### 20.3 — Security
+
+- Each channel config stores a `webhookSecret` (set at channel creation, never returned via API)
+- The platform verifies HMAC-SHA256 of the raw request body against the secret before processing
+- Replays rejected via timestamp window (± 5 minutes)
+- Unknown `externalId` returns 200 (avoid leaking information) but logs a warning
+
+### 20.4 — Wise (SEPA) callback
+
+Wise sends a `POST` to a configured URL when a transfer changes state. The `sepaProvider` gains a `parseCallback()` implementation that:
+- Verifies the `X-Wise-Signature-SHA256` header
+- Parses the `resource_type: "transfer"` + `current_state: "outgoing_payment_sent"` fields
+- Returns a `CallbackEvent` with `status: 'confirmed'`
+
+### 20.5 — Tests
+
+- Valid HMAC signature → callback processed, disbursement status updated
+- Invalid HMAC → 401, no state change
+- Unknown `externalId` → 200, no crash
+- Replay outside time window → rejected
+- Confirmed callback fires outbound `disbursement.confirmed` webhook
 
 ---
 
-## What this enables
+## Phase 21: Structured Audit Exports
 
-After all phases, the platform supports this workflow — designed to convince, not just calculate:
+**Goal:** Generate a compliance-grade, self-contained document for every pilot that regulators, donors, and auditors can independently verify. Answer: *"Can we prove, to a court standard, what happened, to whom, and why?"*
 
-1. **Model** — Government ministry runs `POST /v1/simulate` for Kenya, bottom 20%, 12 months
-2. **Contextualize** — Views the enriched country profile: tax capacity, social spending, poverty rates, debt
-3. **Fund** — Uses the scenario builder to model funding: "3% income surcharge + 2pp VAT + redirect 30% of social spending covers 34% of cost"
-4. **Impact** — Generates the impact report: "Lifts 3.9M people above the extreme poverty line, covers 10.8M currently uncovered by social protection, income increase of 85% for the poorest quintile"
-5. **Present** — Exports a PDF policy brief with all the numbers, sources, and assumptions
-6. **Decide** — Compares across countries, adjusts targeting and funding, picks the most feasible pilot
-7. **Deploy** — Creates a pilot, links it to the simulation, starts disbursements
-8. **Report** — Tracks actual vs. projected spend with full audit trail
+### 21.1 — Audit export endpoint
 
-*That* is a tool that sells basic income to policymakers.
+```
+GET /v1/pilots/:id/audit-export
+```
+
+Returns a structured JSON document covering:
+
+```json
+{
+  "exportVersion": "1.0",
+  "generatedAt": "2026-04-12T10:00:00Z",
+  "pilot": { ... },
+  "methodology": {
+    "rulesetVersion": "v1",
+    "dataVersion": "worldbank-2023",
+    "formulaDescription": "...",
+    "entitlementPerRecipient": { "pppUsd": 210, "eur": 193.2 },
+    "fxRateUsed": 0.92,
+    "fxRateSource": "ECB reference rate"
+  },
+  "recipients": {
+    "totalEnrolled": 500,
+    "totalVerified": 487,
+    "totalSuspended": 13,
+    "byCountry": { "DE": 300, "NL": 187 }
+  },
+  "disbursements": [
+    {
+      "id": "...",
+      "status": "completed",
+      "recipientCount": 487,
+      "totalEur": 94176.84,
+      "approvedAt": "...",
+      "completedAt": "...",
+      "providerReference": "OGI-...",
+      "log": [ ... ]
+    }
+  ],
+  "integrity": {
+    "sha256": "...",  // hash of the canonical payload above
+    "signedBy": "ogi-platform",
+    "algorithm": "SHA-256"
+  }
+}
+```
+
+### 21.2 — Integrity hash
+
+The `integrity.sha256` field is a SHA-256 hash of the canonical JSON (sorted keys, no whitespace) of everything above the `integrity` field. Recipients can independently recompute this hash to verify the document has not been tampered with.
+
+### 21.3 — GDPR considerations
+
+- No raw account identifiers — only `accountHash` and `routingRef` appear in recipient records
+- The document is suitable for submission to a data protection authority because it contains no personal data beyond what is strictly necessary for accountability
+
+### 21.4 — Admin UI
+
+New "Export Audit Document" button on the pilot detail page. Downloads the signed JSON directly.
+
+### 21.5 — Tests
+
+- All disbursement log entries appear in export
+- Integrity hash is stable for same input, changes with any modification
+- Endpoint requires auth (no anonymous audit dumps)
+- GDPR check: no plaintext IBANs or phone numbers appear in output
+
+---
+
+## Phase 22: Programmable Targeting Rules
+
+**Goal:** Replace the five coarse targeting presets with a structured rules engine that operators define at program creation time. Answer: *"Which specific people should receive this payment, and why?"*
+
+### 22.1 — Targeting rule schema
+
+```typescript
+interface TargetingRules {
+  /** Age range in years — requires recipient date-of-birth claim */
+  ageRange?: [number, number];
+  /** Urban/rural filter — matches region.stats.urbanRural */
+  urbanRural?: 'urban' | 'rural' | 'mixed';
+  /** Maximum monthly income in PPP-USD */
+  maxMonthlyIncomePppUsd?: number;
+  /** Only include recipients verified by specific providers */
+  identityProviders?: string[];
+  /** Exclude recipients who received a payment within N days */
+  excludeIfPaidWithinDays?: number;
+  /** Limit to a specific set of region IDs */
+  regionIds?: string[];
+  /** Named preset — expands to a standard set of rules */
+  preset?: TargetGroup;
+}
+```
+
+### 22.2 — Integration points
+
+- `POST /v1/simulate` accepts `targetingRules` in addition to (or replacing) `targetGroup`
+- `POST /v1/pilots` stores `targetingRules` alongside the simulation
+- At disbursement time, `targetingRules` filter the enrolled recipient list to produce the actual payment batch
+- `GET /v1/pilots/:id/report` shows how many recipients were filtered out by each rule
+
+### 22.3 — Backward compatibility
+
+Existing `targetGroup` presets expand to equivalent `TargetingRules` objects internally. No breaking change.
+
+---
+
+## Phase 23: Evidence Layer
+
+**Goal:** Close the loop between projected impact and observed outcomes. This is the layer that makes the platform indispensable long-term — programs that use OGI accumulate a cross-program evidence base that no individual program could build alone. Answer: *"Did it work, and how does that compare to similar programs?"*
+
+### 23.1 — Outcome recording
+
+```
+POST /v1/pilots/:id/outcomes
+```
+
+```json
+{
+  "cohortType": "recipient" | "control",
+  "measurementDate": "2026-10-01",
+  "indicators": {
+    "employmentRate": 0.62,
+    "averageMonthlyIncomeUsd": 380,
+    "foodSecurityScore": 3.8,
+    "childSchoolAttendanceRate": 0.91
+  },
+  "sampleSize": 487,
+  "dataSource": "NGO field survey — October 2026"
+}
+```
+
+### 23.2 — Pre/post comparison
+
+```
+GET /v1/pilots/:id/outcomes/compare
+```
+
+Returns the difference between baseline (pre-program) and latest measurement, alongside the projected impact from Phase 16. Shows:
+- Projected vs. actual employment change
+- Projected vs. actual poverty reduction
+- Effect size with confidence interval (if control group exists)
+
+### 23.3 — Anonymized cross-program benchmarks
+
+```
+GET /v1/evidence/aggregate?country=DE&incomeGroup=HIC&coverageMin=0.1&coverageMax=0.3
+```
+
+Returns anonymized, aggregated outcome statistics across all pilots matching the filter. No program names, no individual data — only aggregate distributions (median, p25, p75 for each indicator).
+
+This is the network effect endpoint: it becomes more valuable with every program that joins.
+
+### 23.4 — Research export
+
+```
+GET /v1/evidence/export?format=csv&country=DE
+```
+
+Anonymized, aggregated dataset in CSV or Parquet for academic partners. Standardized column names so researchers can combine data across programs without cleaning.
+
+---
+
+## Phase 24: Scenario Versioning & Data Diffing
+
+**Goal:** Saved simulations are point-in-time snapshots. When World Bank data updates, projections change — but there is no record of how or why. Answer: *"How much did the cost estimate change since we last ran this, and what drove it?"*
+
+### 24.1 — Diff endpoint
+
+```
+GET /v1/simulations/:id/diff?targetDataVersion=worldbank-2024
+```
+
+Returns:
+```json
+{
+  "simulationId": "...",
+  "baseline": { "dataVersion": "worldbank-2023", "annualCostPppUsd": 27223260000 },
+  "comparison": { "dataVersion": "worldbank-2024", "annualCostPppUsd": 28100000000 },
+  "delta": { "absolute": 876740000, "percent": 3.2 },
+  "drivers": [
+    { "field": "gniPerCapitaUsd", "before": 2010, "after": 2080, "impact": "increases entitlement by $4.2/month" },
+    { "field": "population", "before": 54030000, "after": 55210000, "impact": "increases recipient count by 236,000" }
+  ]
+}
+```
+
+### 24.2 — Data version registry
+
+New `GET /v1/data-versions` endpoint listing all available World Bank/ILO/IMF snapshots with their `dataVersion` strings, dates, and country coverage. Operators can pin simulations to a specific version for reproducibility.
+
+---
+
+## Phase 25: Multi-tenancy Foundation
+
+**Goal:** Multiple independent programs — run by different governments, funded by different donors — share a single platform instance with full data isolation. Answer: *"Can two NGOs use the same infrastructure without seeing each other's data?"*
+
+### 25.1 — Tenant model
+
+- Each organization is a **tenant** with its own set of API keys, pilots, recipients, disbursements, and saved scenarios
+- The shared layers (countries, regions, rulesets, calculation engine) are global — every tenant benefits from data and formula updates
+- A tenant's data is never visible to another tenant
+
+### 25.2 — Scoped API keys
+
+API keys gain a `tenantId` field. All data operations are filtered by `tenantId` at the database query level — not application-level filtering, which can be bypassed.
+
+### 25.3 — Aggregate benchmarks remain cross-tenant
+
+The `GET /v1/evidence/aggregate` endpoint (Phase 23) aggregates anonymized outcomes across tenants. This is the designed network effect — you opt into the evidence base by using the platform, but your raw data stays private.
+
+### 25.4 — Admin segregation
+
+A new super-admin tier can view tenant metadata (program count, disbursement volume) without accessing any tenant's actual data. Normal admin accounts are scoped to a single tenant.
+
+---
+
+## What this enables (full stack)
+
+After all phases, the platform supports this end-to-end workflow:
+
+1. **Model** — `POST /v1/simulate` for Germany bottom quintile, 12 months, programmatic targeting rules
+2. **Fund** — Funding scenario builder shows a 2pp VAT increase covers 60% of cost
+3. **Impact** — Policy brief: "Lifts 340,000 people above poverty line; 85% income increase for poorest quintile"
+4. **Enroll** — `POST /v1/recipients` for 50,000 verified participants; duplicate check across programs
+5. **Disburse** — SEPA Credit Transfer instruction batch; Wise callback confirms settlement
+6. **Track** — Pilot dashboard shows actual vs. projected spend; audit export for regulator
+7. **Measure** — Post-program outcomes recorded; comparison against projection; control group analysis
+8. **Share** — Anonymized outcomes contribute to cross-program evidence base
+9. **Compare** — Next program queries benchmark: "What were employment outcomes in comparable pilots?"
+10. **Prove** — Independent researchers download the research export and replicate the findings
+
+*That* is infrastructure that outlives any single organization — the SMTP of basic income.
+

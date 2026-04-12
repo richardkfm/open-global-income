@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.12] - 2026-04-12
+
+### Added
+
+- **Recipient & Identity Model (Phase 19)** — operational foundation for enrolling real program participants:
+  - `RecipientProfile`, `RecipientStatus`, `PaymentMethod`, `IdentityProvider`, `IdentityClaim`, `VerificationResult` types in `src/core/types.ts`
+  - `recipients` table in SQLite schema with a unique index on `(country_code, account_hash)` preventing double-enrollment within a country. No raw IBAN, phone, or ID numbers are ever stored — only the SHA-256 hash of the account identifier (`accountHash`) plus a non-reversible display suffix (`routingRef`)
+  - `src/db/recipients-db.ts` — `createRecipient`, `getRecipientById`, `listRecipients`, `updateRecipient`, `findByAccountHash`
+  - **5 new API endpoints** under `/v1/recipients`:
+    - `POST /v1/recipients` — enroll a recipient (status: `pending`); returns 409 if `accountHash` is already enrolled in the same country
+    - `GET /v1/recipients` — paginated list, filterable by `countryCode`, `status`, `pilotId`
+    - `GET /v1/recipients/:id` — retrieve a single recipient profile
+    - `PATCH /v1/recipients/:id` — update status, payment method, account hash, verification details; enforces legal state transitions (`pending→verified→suspended→pending`); returns 422 for illegal transitions, 409 for duplicate account hash conflicts
+    - `POST /v1/recipients/check-duplicate` — given a `countryCode` + `accountHash`, returns whether the account is already enrolled and in which pilot — enables cross-program de-duplication without exposing identity
+  - Registered `recipientsRoute` in `src/api/server.ts` under `/v1` prefix
+- **ROADMAP phases 19–25** — full feature specifications for: Recipient & Identity Model, Inbound Webhooks & Payment Confirmations, Structured Audit Exports, Programmable Targeting Rules, Evidence Layer, Scenario Versioning & Data Diffing, and Multi-tenancy Foundation
+- **26 new tests** in `src/api/routes/recipients.test.ts` covering all endpoints, all status transitions, duplicate detection, and error cases
+- **Test count: 441 tests** across 25 suites
+
 ## [0.1.11] - 2026-04-12
 
 ### Added
