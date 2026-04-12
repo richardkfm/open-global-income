@@ -51,7 +51,7 @@ Open Global Income is a stack. Each layer builds on the one below it. The lower 
 └─────────────────────────────────────────────────┘
 ```
 
-### ✅ Built (v0.1.10)
+### ✅ Built (v0.1.12)
 
 **The API is the product.** Everything below is exposed through a REST API with OpenAPI docs, a generated TypeScript SDK, and webhook events — not locked behind a UI.
 
@@ -458,7 +458,7 @@ See [GOVERNANCE.md](./GOVERNANCE.md) for the decision-making process, API stabil
 
 ## 📋 Current Status
 
-**Version 0.1.10** — Seven phases complete (simulation, disbursement, pilots, macro-economic data, funding, impact, sub-national data). 397 tests across 23 suites. The platform now covers the full workflow from "how much per person?" through "where does the money come from?" to "what happens to poverty?" — with regional precision that reflects actual cost-of-living differences within countries. Docker deployment is production-ready with data persistence, health checks, and enforced credentials.
+**Version 0.1.12** — Nine phases complete (simulation, disbursement, pilots, macro-economic data, funding, impact, sub-national data, EU payment rails & regions, recipient model). 441 tests across 25 suites. The platform covers the full workflow from "how much per person?" through "where does the money come from?" to "what happens to poverty?" — with regional precision, SEPA bank wire support for western Europe, and individual recipient enrollment with cross-program duplicate detection. Docker deployment is production-ready with data persistence, health checks, and enforced credentials.
 
 See [CHANGELOG.md](./CHANGELOG.md) for full version history.
 
