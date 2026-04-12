@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **SEPA Credit Transfer provider** — `src/disbursements/providers/sepa.ts` implements the `DisbursementProvider` interface for European bank wire payments. Like the M-Pesa stub, it validates configuration, documents the Wise Payouts API integration path, converts PPP-USD amounts to EUR via an ECB reference rate (0.92 EUR/USD representative 2024 value), and returns a mock SEPA Credit Transfer instruction including a generated end-to-end reference. Real integration requires a Wise Payouts API key; the provider is a drop-in replacement once credentials are available. Registered under `providerId: 'sepa'` in the provider registry, visible at `GET /v1/disbursements/channels`.
+- **EU sub-national region data** — `src/data/regions.json` now includes cost-of-living indexed regions for Germany (16 Bundesländer, sourced from Destatis 2022), France (13 metropolitan regions, sourced from INSEE 2022), and Netherlands (12 provinces, sourced from CBS 2022). Enables `GET /v1/income/regions?country=DE`, `POST /v1/simulate/regional` for EU pilots, and regional entitlement comparison via `GET /v1/income/calc/regional`. Total regions: 47 (Kenya) + 16 (Germany) + 13 (France) + 12 (Netherlands) = 88 regions. Data version bumped from `curated-2024-01` to `curated-2024-02`.
+- **18 new tests** — `src/disbursements/providers/sepa.test.ts` covers provider metadata, config validation (valid sandbox, valid production, each missing field, invalid environment, empty string, non-string type), submit (pending status, stub prefix, uniqueness, SEPA reference, EUR conversion at 0.92 rate, recipient count and currency, total amount, instruction type), and checkStatus.
+- **Test count: 415 tests** across 24 suites.
+
 ### Fixed
 
 - **XSS in admin error messages** — three error branches in `src/admin/routes.ts` interpolated the user-submitted `countryCode` directly into an HTML response (`Country '${countryCode}' not found`). Because `.toUpperCase()` does not sanitise HTML, a malicious admin form could execute arbitrary JavaScript in the admin panel. All three sites now pass the value through `escapeHtml()` before rendering.

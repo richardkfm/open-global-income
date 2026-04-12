@@ -57,10 +57,10 @@ Open Global Income is a stack. Each layer builds on the one below it. The lower 
 
 | Layer | What it does | Phase |
 |-------|-------------|-------|
-| **Data** | 49 countries with all 17 macro-economic indicators fully populated (World Bank, ILO, IMF); sub-national data for Kenya (47 counties) | 14, 17 |
+| **Data** | 49 countries with all 17 macro-economic indicators fully populated (World Bank, ILO, IMF); sub-national data for Kenya (47 counties), Germany (16 Bundesländer), France (13 regions), Netherlands (12 provinces) — 88 regions total | 14, 17 |
 | **Calculation** | Entitlement formulas (v1 active, v2 preview), scoring, country comparison, regional COL adjustments | 1–10, 17 |
 | **Simulation** | Budget modeling with targeting presets, multi-country comparison, regional simulation, saved scenarios | 11, 17 |
-| **Disbursement** | Non-custodial payment rails — Solana USDC, EVM USDC, M-Pesa (stub) — with approval workflow and audit trail | 12 |
+| **Disbursement** | Non-custodial payment rails — Solana USDC, EVM USDC, M-Pesa (stub), SEPA Credit Transfer (stub) — with approval workflow and audit trail | 12 |
 | **Pilots** | Lifecycle management (planning → active → completed), variance analysis, structured donor reports | 13 |
 | **Funding** | 6 funding mechanisms (income tax, VAT, carbon tax, wealth tax, FTT, redirect social spending) with informality, avoidance, and demand-response adjustments; fiscal context analysis | 15 |
 | **Impact** | Poverty reduction, purchasing power, social coverage, GDP stimulus estimates — with exportable policy briefs | 16 |
@@ -69,17 +69,18 @@ The funding and impact layers (Phases 14–16) are not a departure from the API 
 
 The sub-national data layer (Phase 17) brings precision where it matters most. A basic income floor in Nairobi (COL 1.35×) should not be the same local-currency amount as in rural Turkana (COL 0.68×). Regional cost-of-living indices adjust the national PPP conversion factor, and existing formulas work transparently via the "adjusted Country" pattern — zero formula changes needed.
 
-Secure admin UI with login, approval workflows, and audit trails. **397 tests** across 23 suites.
+Secure admin UI with login, approval workflows, and audit trails. **415 tests** across 24 suites.
 
 ### 🔜 Next
 
-- **More countries** — add sub-national data for additional countries beyond Kenya. The region data format and loader are country-agnostic; each country needs a curated `regions.json` entry with cost-of-living indices sourced from national statistics bureaus.
+- **More countries** — sub-national data now covers Kenya (47 counties), Germany (16 Bundesländer), France (13 regions), and Netherlands (12 provinces). Next priority: Tanzania, Uganda, Ghana, Nigeria, India. The region data format and loader are country-agnostic; each country needs a curated `regions.json` entry with cost-of-living indices sourced from national statistics bureaus.
 - **Evidence layer** — outcome metrics, pre/post analysis, control groups, research-grade exports. Programs live or die on evidence, and this is the layer that closes the loop between "we projected X impact" and "here's what actually happened."
 
 ### 🌐 Future
 
 - **Identity & enrollment** — pluggable verification (`IdentityProvider` interface), deduplication across programs
 - **Live M-Pesa** — real Safaricom B2C integration (the stub provider documents the full interface)
+- **Live SEPA** — real Wise Payouts API integration (the stub provider documents the full integration path; requires API credentials)
 - **Multi-currency settlement** — cross-rail reconciliation with live exchange rates
 - **Federation** — multi-program interop, cross-border portability, open evidence base
 

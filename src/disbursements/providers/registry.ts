@@ -2,11 +2,13 @@ import type { DisbursementProvider } from '../types.js';
 import { solanaUsdcProvider } from './solana.js';
 import { evmUsdcProvider } from './evm.js';
 import { mpesaStubProvider } from './mpesa.js';
+import { sepaProvider } from './sepa.js';
 
 const providers: DisbursementProvider[] = [
   solanaUsdcProvider,
   evmUsdcProvider,
   mpesaStubProvider,
+  sepaProvider,
 ];
 
 /** Look up a provider by its ID. Returns undefined if not found. */
