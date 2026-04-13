@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.13] - 2026-04-13
+
+### Added
+- Phase 20: Inbound Webhooks & Payment Confirmations
+- `POST /v1/webhooks/inbound/:provider` — receives callbacks from payment providers and advances disbursement status
+- HMAC-SHA256 signature verification using per-channel `webhookSecret` stored in channel config
+- Replay-attack protection via ±5 minute timestamp window
+- Wise (SEPA) `parseCallback()` implementation — verifies `X-Wise-Signature-SHA256`, parses `transfers#state-change` events
+- `disbursement.confirmed` outbound webhook event fired when a provider callback confirms payment
+- `external_id` stored on disbursement records for fast inbound lookup
+- `getDisbursementByExternalId` and `setExternalId` DB helpers
+- 5 new tests covering: valid callback, invalid HMAC, unknown externalId, replay protection, outbound event dispatch
+- **Test count: 446 tests** across 26 suites
+
 ## [0.1.12] - 2026-04-12
 
 ### Added

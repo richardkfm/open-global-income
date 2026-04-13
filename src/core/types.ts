@@ -251,6 +251,7 @@ export interface Disbursement {
   createdAt: string;
   approvedAt: string | null;
   completedAt: string | null;
+  externalId: string | null;
   apiKeyId: string | null;
 }
 

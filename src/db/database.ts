@@ -80,6 +80,7 @@ const SCHEMA = `
     approved_at TEXT,
     completed_at TEXT,
     api_key_id TEXT,
+    external_id TEXT,
     FOREIGN KEY (channel_id) REFERENCES disbursement_channels(id),
     FOREIGN KEY (simulation_id) REFERENCES simulations(id),
     FOREIGN KEY (api_key_id) REFERENCES api_keys(id)
@@ -259,6 +260,13 @@ export function getDb(dbPath?: string): Database.Database {
   db.pragma('foreign_keys = ON');
   db.exec(SCHEMA);
 
+  // Migrate: add external_id column if it doesn't exist yet (safe on existing DBs)
+  try {
+    db.exec('ALTER TABLE disbursements ADD COLUMN external_id TEXT');
+  } catch {
+    // Column already exists — OK
+  }
+
   return db;
 }
 
@@ -267,6 +275,14 @@ export function getTestDb(): Database.Database {
   const testDb = new Database(':memory:');
   testDb.pragma('foreign_keys = ON');
   testDb.exec(SCHEMA);
+
+  // Migrate: add external_id column if it doesn't exist yet (safe on existing DBs)
+  try {
+    testDb.exec('ALTER TABLE disbursements ADD COLUMN external_id TEXT');
+  } catch {
+    // Column already exists — OK
+  }
+
   db = testDb;
   return testDb;
 }

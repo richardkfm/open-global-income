@@ -9,6 +9,7 @@ import {
   updateDisbursementStatus,
   addLogEntry,
   getLogEntries,
+  setExternalId,
 } from '../../db/disbursements-db.js';
 import { getProvider, listProviders } from '../../disbursements/providers/registry.js';
 import { dispatchEvent } from '../../webhooks/dispatcher.js';
@@ -300,6 +301,7 @@ export const disbursementsRoute: FastifyPluginAsync = async (app) => {
         });
       }
 
+      setExternalId(disbursement.id, result.externalId);
       updateDisbursementStatus(disbursement.id, 'completed');
       addLogEntry(disbursement.id, 'confirmed', {
         externalId: result.externalId,

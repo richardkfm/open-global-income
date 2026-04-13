@@ -24,6 +24,7 @@ import { fundingRoute } from './routes/funding.js';
 import { impactRoute } from './routes/impact.js';
 import { regionsRoute } from './routes/regions.js';
 import { recipientsRoute } from './routes/recipients.js';
+import { inboundWebhooksRoute } from './routes/inboundWebhooks.js';
 import { adminRoutes } from '../admin/routes.js';
 import { config, packageVersion } from '../config.js';
 
@@ -189,6 +190,7 @@ export function buildServer(opts?: ServerOptions) {
   app.register(fundingRoute, { prefix: '/v1' });
   app.register(impactRoute, { prefix: '/v1' });
   app.register(recipientsRoute, { prefix: '/v1' });
+  app.register(inboundWebhooksRoute, { prefix: '/v1' });
 
   // Admin UI (disabled only if ENABLE_ADMIN=false explicitly)
   if (config.admin.enabled) {
