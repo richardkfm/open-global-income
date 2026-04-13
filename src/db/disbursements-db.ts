@@ -36,6 +36,7 @@ interface DisbursementRow {
   approved_at: string | null;
   completed_at: string | null;
   api_key_id: string | null;
+  external_id: string | null;
 }
 
 interface LogRow {
@@ -75,6 +76,7 @@ function rowToDisbursement(row: DisbursementRow): Disbursement {
     createdAt: row.created_at,
     approvedAt: row.approved_at,
     completedAt: row.completed_at,
+    externalId: row.external_id,
     apiKeyId: row.api_key_id,
   };
 }
@@ -190,6 +192,7 @@ export function createDisbursement(params: {
     createdAt: now,
     approvedAt: null,
     completedAt: null,
+    externalId: null,
     apiKeyId: params.apiKeyId ?? null,
   };
 }
@@ -287,4 +290,22 @@ export function getLogEntries(disbursementId: string): DisbursementLogEntry[] {
     )
     .all(disbursementId) as LogRow[];
   return rows.map(rowToLog);
+}
+
+/** Look up a disbursement by provider-assigned external ID */
+export function getDisbursementByExternalId(externalId: string): Disbursement | null {
+  const db = getDb();
+  const row = db
+    .prepare('SELECT * FROM disbursements WHERE external_id = ?')
+    .get(externalId) as DisbursementRow | undefined;
+  return row ? rowToDisbursement(row) : null;
+}
+
+/** Store the provider-assigned external ID on a disbursement */
+export function setExternalId(disbursementId: string, externalId: string): void {
+  const db = getDb();
+  db.prepare('UPDATE disbursements SET external_id = ? WHERE id = ?').run(
+    externalId,
+    disbursementId,
+  );
 }

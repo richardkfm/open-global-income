@@ -9,6 +9,7 @@ export type WebhookEvent =
   | 'disbursement.created'
   | 'disbursement.approved'
   | 'disbursement.completed'
+  | 'disbursement.confirmed'
   | 'disbursement.failed'
   | 'pilot.created'
   | 'pilot.status_changed'

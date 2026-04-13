@@ -38,6 +38,7 @@ export const sepaProvider: DisbursementProvider = {
   providerId: 'sepa',
   providerName: 'SEPA Credit Transfer (Stub)',
   supportedCurrencies: ['EUR'],
+  signatureHeader: 'x-wise-signature-sha256',
 
   async validateConfig(config: Record<string, unknown>) {
     const required = ['apiKey', 'payoutAccountId', 'environment'] as const;
@@ -109,6 +110,41 @@ export const sepaProvider: DisbursementProvider = {
         mock: true,
         note: 'SEPA stub — status always returns pending. Real status checks require Wise Payouts API (GET /v2/transfers/{transferId}).',
       },
+    };
+  },
+
+  async parseCallback(
+    _headers: Record<string, string>,
+    body: unknown,
+  ): Promise<import('../types.js').CallbackEvent | null> {
+    // Wise webhook payload shape:
+    // {
+    //   data: { resource: { type: string, id: number }, current_state: string },
+    //   event_type: string,
+    //   sent_at: string   // ISO 8601
+    // }
+    if (typeof body !== 'object' || body === null) return null;
+
+    const payload = body as Record<string, unknown>;
+    const data = payload.data as Record<string, unknown> | undefined;
+    const sentAt = payload.sent_at as string | undefined;
+
+    if (!data || !sentAt) return null;
+
+    const resource = data.resource as Record<string, unknown> | undefined;
+    const currentState = data.current_state as string | undefined;
+
+    if (!resource || resource.type !== 'transfer') return null;
+    if (currentState !== 'outgoing_payment_sent' && currentState !== 'funds_refunded') return null;
+
+    const externalId = String(resource.id);
+    const status = currentState === 'outgoing_payment_sent' ? 'confirmed' : 'failed';
+
+    return {
+      externalId,
+      status,
+      timestamp: sentAt,
+      details: { resource_type: 'transfer', current_state: currentState, raw: body },
     };
   },
 };
