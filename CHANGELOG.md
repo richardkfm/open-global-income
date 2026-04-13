@@ -18,7 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `external_id` stored on disbursement records for fast inbound lookup
 - `getDisbursementByExternalId` and `setExternalId` DB helpers
 - 5 new tests covering: valid callback, invalid HMAC, unknown externalId, replay protection, outbound event dispatch
-- **Test count: 446 tests** across 26 suites
+- **Test count: 448 tests** across 26 suites
 
 ## [0.1.12] - 2026-04-12
 
