@@ -138,6 +138,158 @@ describe('POST /v1/simulate', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json().data.simulation.entitlementPerPerson.pppUsdPerMonth).toBe(100);
   });
+
+  it('accepts targetingRules with preset and uses it instead of targetGroup', async () => {
+    const withGroup = await app.inject({
+      method: 'POST',
+      url: '/v1/simulate',
+      payload: {
+        country: 'KE',
+        coverage: 1.0,
+        targetGroup: 'all',
+        targetingRules: { preset: 'bottom_quintile' },
+        durationMonths: 12,
+        adjustments: { floorOverride: null, householdSize: null },
+      },
+    });
+    const withPreset = await app.inject({
+      method: 'POST',
+      url: '/v1/simulate',
+      payload: { country: 'KE', coverage: 1.0, targetGroup: 'bottom_quintile', durationMonths: 12, adjustments: { floorOverride: null, householdSize: null } },
+    });
+
+    expect(withGroup.statusCode).toBe(200);
+    expect(withGroup.json().data.simulation.recipientCount).toBe(
+      withPreset.json().data.simulation.recipientCount,
+    );
+  });
+
+  it('targetingRules with no preset defaults to all population', async () => {
+    const withRules = await app.inject({
+      method: 'POST',
+      url: '/v1/simulate',
+      payload: {
+        country: 'KE',
+        coverage: 0.5,
+        targetGroup: 'all',
+        targetingRules: { identityProviders: ['kyc-a'], ageRange: [18, 65] },
+        durationMonths: 12,
+        adjustments: { floorOverride: null, householdSize: null },
+      },
+    });
+    const withoutRules = await app.inject({
+      method: 'POST',
+      url: '/v1/simulate',
+      payload: { country: 'KE', coverage: 0.5, targetGroup: 'all', durationMonths: 12, adjustments: { floorOverride: null, householdSize: null } },
+    });
+
+    expect(withRules.statusCode).toBe(200);
+    // Non-preset rules don't affect simulation recipient count estimate
+    expect(withRules.json().data.simulation.recipientCount).toBe(
+      withoutRules.json().data.simulation.recipientCount,
+    );
+  });
+
+  it('returns 400 for invalid targetingRules.preset', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/simulate',
+      payload: {
+        country: 'KE',
+        coverage: 0.2,
+        targetGroup: 'all',
+        targetingRules: { preset: 'invalid_preset' },
+        durationMonths: 12,
+        adjustments: { floorOverride: null, householdSize: null },
+      },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('INVALID_PARAMETER');
+  });
+
+  it('returns 400 for invalid targetingRules.ageRange (not an array)', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/simulate',
+      payload: {
+        country: 'KE',
+        coverage: 0.2,
+        targetGroup: 'all',
+        targetingRules: { ageRange: 'young' },
+        durationMonths: 12,
+        adjustments: { floorOverride: null, householdSize: null },
+      },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('INVALID_PARAMETER');
+  });
+
+  it('returns 400 for invalid targetingRules.urbanRural', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/simulate',
+      payload: {
+        country: 'KE',
+        coverage: 0.2,
+        targetGroup: 'all',
+        targetingRules: { urbanRural: 'suburban' },
+        durationMonths: 12,
+        adjustments: { floorOverride: null, householdSize: null },
+      },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('INVALID_PARAMETER');
+  });
+
+  it('returns 400 for non-object targetingRules', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/simulate',
+      payload: {
+        country: 'KE',
+        coverage: 0.2,
+        targetGroup: 'all',
+        targetingRules: 'bottom_quintile',
+        durationMonths: 12,
+        adjustments: { floorOverride: null, householdSize: null },
+      },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('INVALID_PARAMETER');
+  });
+
+  it('accepts full targetingRules with all valid fields', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/simulate',
+      payload: {
+        country: 'KE',
+        coverage: 0.2,
+        targetGroup: 'all',
+        targetingRules: {
+          preset: 'bottom_half',
+          ageRange: [18, 65],
+          urbanRural: 'rural',
+          maxMonthlyIncomePppUsd: 300,
+          identityProviders: ['kyc-a', 'kyc-b'],
+          excludeIfPaidWithinDays: 30,
+          regionIds: ['KE-NAI', 'KE-MOM'],
+        },
+        durationMonths: 12,
+        adjustments: { floorOverride: null, householdSize: null },
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    // preset=bottom_half → 50% of population
+    const allRes = await app.inject({
+      method: 'POST',
+      url: '/v1/simulate',
+      payload: { country: 'KE', coverage: 0.2, targetGroup: 'all', durationMonths: 12, adjustments: { floorOverride: null, householdSize: null } },
+    });
+    expect(res.json().data.simulation.recipientCount).toBeLessThan(
+      allRes.json().data.simulation.recipientCount,
+    );
+  });
 });
 
 // --- POST /v1/simulate/compare ---

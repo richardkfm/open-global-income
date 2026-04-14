@@ -16,6 +16,8 @@ import { parsePagination, buildPaginationMeta } from '../pagination.js';
 import { RULESETS } from '../../core/rulesets.js';
 import { GLOBAL_INCOME_FLOOR_PPP } from '../../core/constants.js';
 import { getDataVersion } from '../../data/loader.js';
+import { applyRulesToRecipients } from '../../core/targeting.js';
+import { parseTargetingRules } from './simulate.js';
 import type { PilotStatus } from '../../core/types.js';
 
 /** Produce deterministic canonical JSON (sorted keys, no whitespace) for hashing. */
@@ -49,7 +51,7 @@ export const pilotsRoute: FastifyPluginAsync = async (app) => {
   // ── POST /v1/pilots ─────────────────────────────────────────────────────────
 
   app.post<{ Body: Record<string, unknown> }>('/pilots', async (request, reply) => {
-    const { name, countryCode, description, simulationId, startDate, endDate, targetRecipients } =
+    const { name, countryCode, description, simulationId, targetingRules, startDate, endDate, targetRecipients } =
       request.body ?? {};
 
     if (typeof name !== 'string' || !name.trim()) {
@@ -92,12 +94,26 @@ export const pilotsRoute: FastifyPluginAsync = async (app) => {
       }
     }
 
+    // Parse optional targeting rules
+    let parsedTargetingRules = null;
+    if (targetingRules !== undefined && targetingRules !== null) {
+      const rulesResult = parseTargetingRules(targetingRules);
+      if (!rulesResult.ok) {
+        return reply.status(400).send({
+          ok: false,
+          error: { code: rulesResult.code, message: rulesResult.message },
+        });
+      }
+      parsedTargetingRules = rulesResult.rules;
+    }
+
     const apiKeyId = (request as { apiKeyId?: string }).apiKeyId;
     const pilot = createPilot({
       name: name.trim(),
       countryCode: (countryCode as string).toUpperCase(),
       description: typeof description === 'string' ? description : null,
       simulationId: typeof simulationId === 'string' ? simulationId : null,
+      targetingRules: parsedTargetingRules,
       startDate: typeof startDate === 'string' ? startDate : null,
       endDate: typeof endDate === 'string' ? endDate : null,
       targetRecipients: typeof targetRecipients === 'number' ? targetRecipients : null,
@@ -323,6 +339,20 @@ export const pilotsRoute: FastifyPluginAsync = async (app) => {
       }
     }
 
+    // Compute targeting filter stats if this pilot has targeting rules
+    let targetingFilterStats: Array<{
+      rule: string;
+      description: string;
+      recipientsFiltered: number;
+      notes?: string;
+    }> = [];
+
+    if (pilot.targetingRules) {
+      const { items: enrolledRecipients } = listRecipients({ pilotId: pilot.id, page: 1, limit: 10000 });
+      const { stats } = applyRulesToRecipients(enrolledRecipients, pilot.targetingRules);
+      targetingFilterStats = stats;
+    }
+
     const report = {
       pilot: {
         id: pilot.id,
@@ -338,6 +368,10 @@ export const pilotsRoute: FastifyPluginAsync = async (app) => {
         disbursementCount: disbursements.length,
         averagePerRecipient,
         periodCovered: { from: earliestDate, to: latestDate },
+      },
+      targeting: {
+        rules: pilot.targetingRules,
+        filterStats: targetingFilterStats,
       },
       simulation: simulationData,
       disbursements,

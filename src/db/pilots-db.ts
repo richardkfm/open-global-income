@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { getDb } from './database.js';
-import type { Pilot, PilotStatus } from '../core/types.js';
+import type { Pilot, PilotStatus, TargetingRules } from '../core/types.js';
 
 // ── Row types ─────────────────────────────────────────────────────────────────
 
@@ -10,6 +10,7 @@ interface PilotRow {
   country_code: string;
   description: string | null;
   simulation_id: string | null;
+  targeting_rules: string | null;
   status: string;
   start_date: string | null;
   end_date: string | null;
@@ -27,6 +28,7 @@ function rowToPilot(row: PilotRow): Pilot {
     countryCode: row.country_code,
     description: row.description,
     simulationId: row.simulation_id,
+    targetingRules: row.targeting_rules ? (JSON.parse(row.targeting_rules) as TargetingRules) : null,
     status: row.status as PilotStatus,
     startDate: row.start_date,
     endDate: row.end_date,
@@ -43,6 +45,7 @@ export function createPilot(params: {
   countryCode: string;
   description?: string | null;
   simulationId?: string | null;
+  targetingRules?: TargetingRules | null;
   startDate?: string | null;
   endDate?: string | null;
   targetRecipients?: number | null;
@@ -51,16 +54,18 @@ export function createPilot(params: {
   const db = getDb();
   const id = randomUUID();
   const now = new Date().toISOString();
+  const targetingRulesJson = params.targetingRules ? JSON.stringify(params.targetingRules) : null;
 
   db.prepare(
-    `INSERT INTO pilots (id, name, country_code, description, simulation_id, status, start_date, end_date, target_recipients, api_key_id, created_at)
-     VALUES (?, ?, ?, ?, ?, 'planning', ?, ?, ?, ?, ?)`,
+    `INSERT INTO pilots (id, name, country_code, description, simulation_id, targeting_rules, status, start_date, end_date, target_recipients, api_key_id, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, 'planning', ?, ?, ?, ?, ?)`,
   ).run(
     id,
     params.name,
     params.countryCode,
     params.description ?? null,
     params.simulationId ?? null,
+    targetingRulesJson,
     params.startDate ?? null,
     params.endDate ?? null,
     params.targetRecipients ?? null,
@@ -74,6 +79,7 @@ export function createPilot(params: {
     countryCode: params.countryCode,
     description: params.description ?? null,
     simulationId: params.simulationId ?? null,
+    targetingRules: params.targetingRules ?? null,
     status: 'planning',
     startDate: params.startDate ?? null,
     endDate: params.endDate ?? null,

@@ -172,11 +172,36 @@ export interface GlobalIncomeEntitlement {
 /** Target group for budget simulation */
 export type TargetGroup = 'all' | 'bottom_decile' | 'bottom_quintile' | 'bottom_third' | 'bottom_half';
 
+/**
+ * Programmable targeting rules for recipient filtering.
+ * Rules are evaluated at disbursement time to filter the enrolled recipient list.
+ * For simulation purposes, only the `preset` field (and optionally `urbanRural`) affect
+ * the estimated recipient count; other fields constrain actual recipients at pay time.
+ */
+export interface TargetingRules {
+  /** Age range in years — requires recipient date-of-birth claim */
+  ageRange?: [number, number];
+  /** Urban/rural filter — matches region.stats.urbanRural */
+  urbanRural?: 'urban' | 'rural' | 'mixed';
+  /** Maximum monthly income in PPP-USD */
+  maxMonthlyIncomePppUsd?: number;
+  /** Only include recipients verified by specific providers */
+  identityProviders?: string[];
+  /** Exclude recipients who received a payment within N days */
+  excludeIfPaidWithinDays?: number;
+  /** Limit to a specific set of region IDs */
+  regionIds?: string[];
+  /** Named preset — expands to a standard population fraction for simulation */
+  preset?: TargetGroup;
+}
+
 /** Parameters for a budget simulation request */
 export interface SimulationParameters {
   country: string;
   coverage: number;
   targetGroup: TargetGroup;
+  /** Optional programmable targeting rules — preset takes precedence over targetGroup */
+  targetingRules?: TargetingRules;
   durationMonths: number;
   adjustments: {
     floorOverride: number | null;
@@ -273,6 +298,8 @@ export interface Pilot {
   countryCode: string;
   description: string | null;
   simulationId: string | null;
+  /** Programmable targeting rules stored with this pilot */
+  targetingRules: TargetingRules | null;
   status: PilotStatus;
   startDate: string | null;
   endDate: string | null;
@@ -541,6 +568,14 @@ export interface IdentityProvider {
   verify(claim: IdentityClaim): Promise<VerificationResult>;
 }
 
+/** Per-rule filtering statistics for the targeting rules report section */
+export interface TargetingFilterStat {
+  rule: string;
+  description: string;
+  recipientsFiltered: number;
+  notes?: string;
+}
+
 export interface PilotReport {
   pilot: {
     id: string;
@@ -556,6 +591,10 @@ export interface PilotReport {
     disbursementCount: number;
     averagePerRecipient: number;
     periodCovered: { from: string | null; to: string | null };
+  };
+  targeting: {
+    rules: TargetingRules | null;
+    filterStats: TargetingFilterStat[];
   };
   simulation: { id: string; projectedCost: number; variance: string } | null;
   disbursements: Disbursement[];

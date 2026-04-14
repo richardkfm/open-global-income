@@ -537,6 +537,149 @@ describe('Pilot lifecycle (planning → active → paused → active → complet
   });
 });
 
+// ── Targeting rules — POST /v1/pilots + report ───────────────────────────────
+
+describe('Targeting rules', () => {
+  it('creates a pilot with targeting rules and returns them', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/pilots',
+      payload: {
+        name: 'Targeted Pilot',
+        countryCode: 'KE',
+        targetingRules: {
+          preset: 'bottom_quintile',
+          identityProviders: ['kyc-a'],
+          ageRange: [18, 60],
+        },
+      },
+    });
+    expect(res.statusCode).toBe(201);
+    const body = res.json();
+    expect(body.ok).toBe(true);
+    expect(body.data.targetingRules).toMatchObject({
+      preset: 'bottom_quintile',
+      identityProviders: ['kyc-a'],
+      ageRange: [18, 60],
+    });
+  });
+
+  it('pilot created without targetingRules has null targetingRules', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/pilots',
+      payload: { name: 'No Rules Pilot', countryCode: 'KE' },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(res.json().data.targetingRules).toBeNull();
+  });
+
+  it('returns 400 for invalid targetingRules.preset', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/pilots',
+      payload: {
+        name: 'Bad Rules',
+        countryCode: 'KE',
+        targetingRules: { preset: 'invalid_preset' },
+      },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('INVALID_PARAMETER');
+  });
+
+  it('returns 400 for invalid targetingRules.ageRange', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/pilots',
+      payload: {
+        name: 'Bad Age Range',
+        countryCode: 'KE',
+        targetingRules: { ageRange: [65, 18] }, // max < min
+      },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('INVALID_PARAMETER');
+  });
+
+  it('returns 400 for invalid targetingRules.urbanRural', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/pilots',
+      payload: {
+        name: 'Bad Urban Rural',
+        countryCode: 'KE',
+        targetingRules: { urbanRural: 'suburban' },
+      },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('INVALID_PARAMETER');
+  });
+
+  it('report includes targeting section with null rules when no rules set', async () => {
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/v1/pilots',
+      payload: { name: 'No Rules Report', countryCode: 'KE' },
+    });
+    const pilotId = createRes.json().data.id;
+
+    const res = await app.inject({ method: 'GET', url: `/v1/pilots/${pilotId}/report` });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.data.targeting).toBeDefined();
+    expect(body.data.targeting.rules).toBeNull();
+    expect(body.data.targeting.filterStats).toEqual([]);
+  });
+
+  it('report includes targeting filter stats when rules are set', async () => {
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/v1/pilots',
+      payload: {
+        name: 'Rules Report Pilot',
+        countryCode: 'KE',
+        targetingRules: {
+          preset: 'bottom_quintile',
+          identityProviders: ['kyc-a'],
+          ageRange: [18, 60],
+        },
+      },
+    });
+    const pilotId = createRes.json().data.id;
+
+    // Enroll two recipients — one with allowed provider, one without
+    await app.inject({
+      method: 'POST',
+      url: '/v1/recipients',
+      payload: { countryCode: 'KE', identityProvider: 'kyc-a', paymentMethod: 'sepa', pilotId },
+    });
+    await app.inject({
+      method: 'POST',
+      url: '/v1/recipients',
+      payload: { countryCode: 'KE', identityProvider: 'kyc-b', paymentMethod: 'sepa', pilotId },
+    });
+
+    const res = await app.inject({ method: 'GET', url: `/v1/pilots/${pilotId}/report` });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.data.targeting.rules).toMatchObject({ preset: 'bottom_quintile' });
+
+    const filterStats = body.data.targeting.filterStats;
+    expect(Array.isArray(filterStats)).toBe(true);
+
+    // identityProviders rule should show 1 recipient filtered out (kyc-b)
+    const ipStat = filterStats.find((s: { rule: string }) => s.rule === 'identityProviders');
+    expect(ipStat).toBeDefined();
+    expect(ipStat.recipientsFiltered).toBe(1);
+
+    // ageRange stat should be present with a note
+    const ageStat = filterStats.find((s: { rule: string }) => s.rule === 'ageRange');
+    expect(ageStat).toBeDefined();
+    expect(ageStat.notes).toBeTruthy();
+  });
+});
+
 // ── GET /v1/pilots/:id/audit-export ──────────────────────────────────────────
 
 describe('GET /v1/pilots/:id/audit-export', () => {

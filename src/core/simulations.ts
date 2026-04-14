@@ -1,37 +1,22 @@
-import type { Country, SimulationParameters, SimulationResult, TargetGroup } from './types.js';
+import type { Country, SimulationParameters, SimulationResult } from './types.js';
 import { GLOBAL_INCOME_FLOOR_PPP, RULESET_VERSION } from './constants.js';
-
-/** Factor by which target group reduces the base population */
-function getTargetGroupFactor(targetGroup: TargetGroup): number {
-  switch (targetGroup) {
-    case 'all':
-      return 1.0;
-    case 'bottom_decile':
-      return 0.1;
-    case 'bottom_quintile':
-      return 0.2;
-    case 'bottom_third':
-      return 1 / 3;
-    case 'bottom_half':
-      return 0.5;
-    default: {
-      const exhaustive: never = targetGroup;
-      throw new Error(`Unknown targetGroup: ${exhaustive}`);
-    }
-  }
-}
+import { populationFactorFromRules, expandPresetToRules } from './targeting.js';
 
 /**
  * Calculate a budget simulation for a country.
  *
  * Pure function — no side effects, no I/O.
  *
- * recipientCount = population × targetGroupFactor × coverage
+ * recipientCount = population × targetFactor × coverage
  * monthlyLocal   = floorPpp × pppConversionFactor
  * monthlyTotal   = recipientCount × monthlyLocal
  * annualTotal    = monthlyTotal × durationMonths
  * annualPppUsd   = recipientCount × floorPpp × durationMonths
  * asPercentOfGdp = annualPppUsd / (gdpPerCapitaUsd × population) × 100
+ *
+ * If `params.targetingRules` is present its `preset` field is used as the
+ * population fraction — this takes precedence over `params.targetGroup`.
+ * Existing callers that only set `targetGroup` continue to work unchanged.
  */
 export function calculateSimulation(
   country: Country,
@@ -39,7 +24,11 @@ export function calculateSimulation(
   dataVersion: string,
 ): SimulationResult {
   const floorPpp = params.adjustments.floorOverride ?? GLOBAL_INCOME_FLOOR_PPP;
-  const targetFactor = getTargetGroupFactor(params.targetGroup);
+
+  // Resolve the effective targeting rules: explicit rules beat legacy targetGroup
+  const effectiveRules = params.targetingRules ?? expandPresetToRules(params.targetGroup);
+  const targetFactor = populationFactorFromRules(effectiveRules);
+
   const targetPopulation = country.stats.population * targetFactor;
   const recipientCount = Math.round(targetPopulation * params.coverage);
 

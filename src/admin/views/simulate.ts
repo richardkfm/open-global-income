@@ -89,6 +89,52 @@ export function renderSimulatePage(
                 </select>
               </div>
             </div>
+
+            <details class="targeting-details">
+              <summary class="targeting-summary">Advanced targeting filters <span class="text-muted text-xs">(optional)</span></summary>
+              <div class="targeting-fields">
+                <div class="form-row">
+                  <div class="form-field">
+                    <label class="form-label">Urban / Rural</label>
+                    <select class="form-select" name="tr_urban_rural">
+                      <option value="">Any</option>
+                      <option value="urban">Urban only</option>
+                      <option value="rural">Rural only</option>
+                      <option value="mixed">Mixed</option>
+                    </select>
+                  </div>
+                  <div class="form-field form-field-narrow">
+                    <label class="form-label">Min age</label>
+                    <input class="form-input" type="number" name="tr_age_min" min="0" max="120" placeholder="e.g. 18">
+                  </div>
+                  <div class="form-field form-field-narrow">
+                    <label class="form-label">Max age</label>
+                    <input class="form-input" type="number" name="tr_age_max" min="0" max="120" placeholder="e.g. 65">
+                  </div>
+                  <div class="form-field form-field-narrow">
+                    <label class="form-label">Max income (PPP-USD/mo)</label>
+                    <input class="form-input" type="number" name="tr_max_income" min="1" placeholder="e.g. 300">
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-field">
+                    <label class="form-label">Identity providers <span class="text-muted text-xs">(comma-separated)</span></label>
+                    <input class="form-input" type="text" name="tr_identity_providers" placeholder="e.g. kyc-provider-a, kyc-provider-b">
+                  </div>
+                  <div class="form-field form-field-narrow">
+                    <label class="form-label">Exclude if paid within (days)</label>
+                    <input class="form-input" type="number" name="tr_exclude_paid_days" min="1" placeholder="e.g. 30">
+                  </div>
+                  <div class="form-field">
+                    <label class="form-label">Region IDs <span class="text-muted text-xs">(comma-separated)</span></label>
+                    <input class="form-input" type="text" name="tr_region_ids" placeholder="e.g. KE-NAI, KE-MOM">
+                  </div>
+                </div>
+                <p class="text-xs text-muted" style="margin:0.25rem 0 0">
+                  Note: advanced filters (age, income, identity providers, regions) are applied at disbursement time. Only the group preset affects recipient count estimates.
+                </p>
+              </div>
+            </details>
             <div class="form-actions">
               <button type="submit" class="btn btn-primary">${t('simulate.runButton')}</button>
             </div>
@@ -156,12 +202,29 @@ export function renderSimulatePage(
   );
 }
 
-export function renderSimulationPreview(result: SimulationResult, saveName?: string, fullCountry?: Country): string {
+export interface SimulationPreviewContext {
+  saveName?: string;
+  fullCountry?: Country;
+  /** Flat form fields to carry through to the save endpoint */
+  savedFormFields?: Record<string, string>;
+}
+
+export function renderSimulationPreview(result: SimulationResult, saveName?: string, fullCountry?: Country, ctx?: SimulationPreviewContext): string {
+  // Merge legacy args with ctx for backward compatibility
+  const _saveName = ctx?.saveName ?? saveName;
+  const _fullCountry = ctx?.fullCountry ?? fullCountry;
+  const savedFormFields = ctx?.savedFormFields ?? {};
   const { country, simulation } = result;
   const { cost, entitlementPerPerson, recipientCount } = simulation;
 
   const currency = getCurrencyForCountry(country.code);
   const currencyCode = currency?.code ?? 'USD';
+
+  // Hidden inputs to carry form params through to save endpoint
+  const hiddenFields = Object.entries(savedFormFields)
+    .filter(([, v]) => v !== undefined && v !== '')
+    .map(([k, v]) => `<input type="hidden" name="${escapeHtml(k)}" value="${escapeHtml(v)}">`)
+    .join('\n        ');
 
   const localMonthlyPerPerson = formatLocalCurrency(
     entitlementPerPerson.localCurrencyPerMonth,
@@ -204,11 +267,11 @@ export function renderSimulationPreview(result: SimulationResult, saveName?: str
         </div>
       </div>
       ${(() => {
-        if (!fullCountry) return '';
-        const hasGdpGrowth = fullCountry.stats.gdpGrowthRate != null;
-        const hasInflation = fullCountry.stats.inflationRate != null;
-        const gdpGrowth = fullCountry.stats.gdpGrowthRate ?? 3;
-        const inflRate = fullCountry.stats.inflationRate ?? 4;
+        if (!_fullCountry) return '';
+        const hasGdpGrowth = _fullCountry.stats.gdpGrowthRate != null;
+        const hasInflation = _fullCountry.stats.inflationRate != null;
+        const gdpGrowth = _fullCountry.stats.gdpGrowthRate ?? 3;
+        const inflRate = _fullCountry.stats.inflationRate ?? 4;
 
         const missingIndicators: string[] = [];
         if (!hasGdpGrowth) missingIndicators.push('GDP growth rate (using 3% default)');
@@ -219,7 +282,7 @@ export function renderSimulationPreview(result: SimulationResult, saveName?: str
         const costGrowth = (inflRate + 1.5) / 100;
         const costProj = projectYearly(cost.annualPppUsd, costGrowth, projYears);
         // GDP total grows at aggregate GDP growth (includes population growth)
-        const gdpTotal = fullCountry.stats.gdpPerCapitaUsd * fullCountry.stats.population;
+        const gdpTotal = _fullCountry.stats.gdpPerCapitaUsd * _fullCountry.stats.population;
         const gdpProj = projectYearly(gdpTotal, gdpGrowth / 100, projYears);
         const pctGdpProj = costProj.map((c, i) => Math.round((c / gdpProj[i]) * 10000) / 100);
 
@@ -252,7 +315,8 @@ export function renderSimulationPreview(result: SimulationResult, saveName?: str
       })()}
       <form method="post" action="/admin/simulate/save" class="form-inline mt-1">
         <input type="hidden" name="simulationJson" value="${escapeHtml(JSON.stringify(result))}">
-        <input class="form-input" type="text" name="name" placeholder="${t('simulate.saveAs')}" value="${saveName ? escapeHtml(saveName) : ''}">
+        ${hiddenFields}
+        <input class="form-input" type="text" name="name" placeholder="${t('simulate.saveAs')}" value="${_saveName ? escapeHtml(_saveName) : ''}">
         <button type="submit" class="btn btn-primary btn-sm">${t('simulate.save')}</button>
       </form>
     </div>`;

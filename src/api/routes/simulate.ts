@@ -2,18 +2,131 @@ import type { FastifyPluginAsync } from 'fastify';
 import { getCountryByCode, getDataVersion } from '../../data/loader.js';
 import { calculateSimulation } from '../../core/simulations.js';
 import { VALID_TARGET_GROUPS } from '../validators.js';
-import type { SimulationParameters, TargetGroup } from '../../core/types.js';
+import type { SimulationParameters, TargetGroup, TargetingRules } from '../../core/types.js';
 
 const COMPARE_MAX_COUNTRIES = 20;
+
+const VALID_URBAN_RURAL = ['urban', 'rural', 'mixed'] as const;
+
+function parseTargetingRules(raw: unknown):
+  | { ok: true; rules: TargetingRules }
+  | { ok: false; code: string; message: string } {
+  if (raw === null || raw === undefined) {
+    return { ok: true, rules: {} };
+  }
+  if (typeof raw !== 'object' || Array.isArray(raw)) {
+    return { ok: false, code: 'INVALID_PARAMETER', message: "'targetingRules' must be an object" };
+  }
+  const r = raw as Record<string, unknown>;
+  const rules: TargetingRules = {};
+
+  // preset
+  if (r.preset !== undefined) {
+    if (!VALID_TARGET_GROUPS.includes(r.preset as TargetGroup)) {
+      return {
+        ok: false,
+        code: 'INVALID_PARAMETER',
+        message: `'targetingRules.preset' must be one of: ${VALID_TARGET_GROUPS.join(', ')}`,
+      };
+    }
+    rules.preset = r.preset as TargetGroup;
+  }
+
+  // ageRange
+  if (r.ageRange !== undefined) {
+    if (
+      !Array.isArray(r.ageRange) ||
+      r.ageRange.length !== 2 ||
+      typeof r.ageRange[0] !== 'number' ||
+      typeof r.ageRange[1] !== 'number' ||
+      r.ageRange[0] < 0 ||
+      r.ageRange[1] < r.ageRange[0]
+    ) {
+      return {
+        ok: false,
+        code: 'INVALID_PARAMETER',
+        message: "'targetingRules.ageRange' must be [minAge, maxAge] with minAge ≥ 0 and maxAge ≥ minAge",
+      };
+    }
+    rules.ageRange = [r.ageRange[0] as number, r.ageRange[1] as number];
+  }
+
+  // urbanRural
+  if (r.urbanRural !== undefined) {
+    if (!VALID_URBAN_RURAL.includes(r.urbanRural as (typeof VALID_URBAN_RURAL)[number])) {
+      return {
+        ok: false,
+        code: 'INVALID_PARAMETER',
+        message: `'targetingRules.urbanRural' must be one of: ${VALID_URBAN_RURAL.join(', ')}`,
+      };
+    }
+    rules.urbanRural = r.urbanRural as 'urban' | 'rural' | 'mixed';
+  }
+
+  // maxMonthlyIncomePppUsd
+  if (r.maxMonthlyIncomePppUsd !== undefined) {
+    if (typeof r.maxMonthlyIncomePppUsd !== 'number' || r.maxMonthlyIncomePppUsd <= 0) {
+      return {
+        ok: false,
+        code: 'INVALID_PARAMETER',
+        message: "'targetingRules.maxMonthlyIncomePppUsd' must be a positive number",
+      };
+    }
+    rules.maxMonthlyIncomePppUsd = r.maxMonthlyIncomePppUsd as number;
+  }
+
+  // identityProviders
+  if (r.identityProviders !== undefined) {
+    if (!Array.isArray(r.identityProviders) || !r.identityProviders.every((p) => typeof p === 'string')) {
+      return {
+        ok: false,
+        code: 'INVALID_PARAMETER',
+        message: "'targetingRules.identityProviders' must be an array of strings",
+      };
+    }
+    rules.identityProviders = r.identityProviders as string[];
+  }
+
+  // excludeIfPaidWithinDays
+  if (r.excludeIfPaidWithinDays !== undefined) {
+    if (
+      typeof r.excludeIfPaidWithinDays !== 'number' ||
+      !Number.isInteger(r.excludeIfPaidWithinDays) ||
+      r.excludeIfPaidWithinDays < 1
+    ) {
+      return {
+        ok: false,
+        code: 'INVALID_PARAMETER',
+        message: "'targetingRules.excludeIfPaidWithinDays' must be a positive integer",
+      };
+    }
+    rules.excludeIfPaidWithinDays = r.excludeIfPaidWithinDays as number;
+  }
+
+  // regionIds
+  if (r.regionIds !== undefined) {
+    if (!Array.isArray(r.regionIds) || !r.regionIds.every((id) => typeof id === 'string')) {
+      return {
+        ok: false,
+        code: 'INVALID_PARAMETER',
+        message: "'targetingRules.regionIds' must be an array of strings",
+      };
+    }
+    rules.regionIds = r.regionIds as string[];
+  }
+
+  return { ok: true, rules };
+}
 
 function parseSimulationBody(body: Record<string, unknown>): {
   ok: true;
   params: SimulationParameters;
 } | { ok: false; code: string; message: string } {
-  const { country, coverage, targetGroup, durationMonths, adjustments } = body as {
+  const { country, coverage, targetGroup, targetingRules, durationMonths, adjustments } = body as {
     country?: unknown;
     coverage?: unknown;
     targetGroup?: unknown;
+    targetingRules?: unknown;
     durationMonths?: unknown;
     adjustments?: unknown;
   };
@@ -37,6 +150,14 @@ function parseSimulationBody(body: Record<string, unknown>): {
       code: 'INVALID_PARAMETER',
       message: `'targetGroup' must be one of: ${VALID_TARGET_GROUPS.join(', ')}`,
     };
+  }
+
+  // Parse optional targetingRules — takes precedence over targetGroup if provided
+  let parsedRules: TargetingRules | undefined;
+  if (targetingRules !== undefined && targetingRules !== null) {
+    const rulesResult = parseTargetingRules(targetingRules);
+    if (!rulesResult.ok) return rulesResult;
+    parsedRules = rulesResult.rules;
   }
 
   const duration = (durationMonths as number) ?? 12;
@@ -66,11 +187,15 @@ function parseSimulationBody(body: Record<string, unknown>): {
       country: country.toUpperCase(),
       coverage,
       targetGroup: tg as TargetGroup,
+      ...(parsedRules !== undefined ? { targetingRules: parsedRules } : {}),
       durationMonths: duration,
       adjustments: { floorOverride, householdSize },
     },
   };
 }
+
+/** Exposed for use by other routes that need to parse targeting rules */
+export { parseTargetingRules };
 
 export const simulateRoute: FastifyPluginAsync = async (app) => {
   /** Run a budget simulation for a single country */

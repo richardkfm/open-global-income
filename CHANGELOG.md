@@ -6,6 +6,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.16] - 2026-04-14
+
+### Added
+- Admin UI: targeting rules support in the Simulate and Pilots pages
+- **Simulate page** (`/admin/simulate`): collapsible "Advanced targeting filters" panel below the Target group dropdown — fields for Urban/Rural, Min/Max age, Max monthly income (PPP-USD), Identity providers (comma-separated), Exclude if paid within N days, and Region IDs (comma-separated); filter values are carried through to the Save endpoint via hidden inputs
+- **Pilots create form** (`/admin/pilots`): collapsible "Targeting rules" section with all rule fields — Population group preset dropdown (bottom half / third / quintile / decile), plus the same advanced filters; targeting rules are stored on the pilot record
+- **Pilot detail page** (`/admin/pilots/:id`): new "Targeting Rules" card rendered when the pilot has rules, showing a clean summary table of each active rule
+- `parseFormTargetingRules()` helper in `routes.ts` — converts flat HTML form fields into a `TargetingRules` object; returns null if no meaningful rule is set (backward-compatible with existing pilots)
+- CSS for `.targeting-details` / `.targeting-summary` / `.targeting-fields` — animated collapsible triangle indicator
+- **Test count: 490 tests** across 27 suites (unchanged — admin UI changes are covered by existing admin test suite)
+
+## [0.1.15] - 2026-04-14
+
+### Added
+- Phase 22: Programmable Targeting Rules
+- `TargetingRules` interface in `src/core/types.ts` — structured rules object with `preset`, `ageRange`, `urbanRural`, `maxMonthlyIncomePppUsd`, `identityProviders`, `excludeIfPaidWithinDays`, and `regionIds` fields
+- `src/core/targeting.ts` — pure targeting engine: `expandPresetToRules` (TargetGroup → TargetingRules), `populationFactorFromRules` (estimate recipient fraction for simulations), `applyRulesToRecipients` (filter enrolled recipients and produce per-rule stats)
+- `POST /v1/simulate` now accepts `targetingRules` object in addition to (or replacing) `targetGroup`; when `targetingRules.preset` is set it takes precedence over the legacy field — fully backward-compatible
+- `POST /v1/pilots` now accepts and stores `targetingRules` alongside the simulation link
+- `GET /v1/pilots/:id/report` now includes a `targeting` section: `{ rules, filterStats }` showing the active rules and how many enrolled recipients each rule would filter, with per-rule notes for fields that require disbursement-time evaluation (ageRange, urbanRural, income, regionIds)
+- Full input validation for all `targetingRules` fields (preset enum, ageRange bounds, urbanRural enum, positive-number/integer checks, string-array checks)
+- Database migration: `targeting_rules TEXT` column added to the `pilots` table; existing rows unaffected (nullable)
+- **37 new tests** across 3 suites: `src/core/targeting.test.ts` (30 unit tests covering expandPresetToRules, populationFactorFromRules, applyRulesToRecipients), `src/api/simulate.test.ts` (7 integration tests for targetingRules in POST /v1/simulate), `src/api/routes/pilots.test.ts` (8 integration tests for targeting rules in pilot creation and report)
+- **Test count: 490 tests** across 27 suites
+
 ## [0.1.14] - 2026-04-13
 
 ### Added

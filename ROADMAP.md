@@ -780,7 +780,7 @@ Phase 20 (Inbound Webhooks) ✅ ← provider callbacks update disbursement state
     ↓
 Phase 21 (Audit Exports) ✅ ← compliance-grade signed document per pilot
     ↓
-Phase 22 (Programmable Targeting) ← recipient-aware custom targeting rules
+Phase 22 (Programmable Targeting) ✅ ← TargetingRules engine, simulate + pilot integration
     ↓
 Phase 23 (Evidence Layer) ← outcomes per cohort, cross-program benchmarks
     ↓
@@ -1036,7 +1036,7 @@ New "Export Audit Document" button on the pilot detail page. Downloads the signe
 
 ---
 
-## Phase 22: Programmable Targeting Rules
+## Phase 22: Programmable Targeting Rules — Complete ✅
 
 **Goal:** Replace the five coarse targeting presets with a structured rules engine that operators define at program creation time. Answer: *"Which specific people should receive this payment, and why?"*
 

@@ -105,6 +105,7 @@ const SCHEMA = `
     country_code TEXT NOT NULL,
     description TEXT,
     simulation_id TEXT,
+    targeting_rules TEXT,
     status TEXT NOT NULL DEFAULT 'planning'
       CHECK(status IN ('planning','active','paused','completed')),
     start_date TEXT,
@@ -267,6 +268,13 @@ export function getDb(dbPath?: string): Database.Database {
     // Column already exists — OK
   }
 
+  // Migrate: add targeting_rules column to pilots if it doesn't exist yet
+  try {
+    db.exec('ALTER TABLE pilots ADD COLUMN targeting_rules TEXT');
+  } catch {
+    // Column already exists — OK
+  }
+
   return db;
 }
 
@@ -279,6 +287,13 @@ export function getTestDb(): Database.Database {
   // Migrate: add external_id column if it doesn't exist yet (safe on existing DBs)
   try {
     testDb.exec('ALTER TABLE disbursements ADD COLUMN external_id TEXT');
+  } catch {
+    // Column already exists — OK
+  }
+
+  // Migrate: add targeting_rules column to pilots if it doesn't exist yet
+  try {
+    testDb.exec('ALTER TABLE pilots ADD COLUMN targeting_rules TEXT');
   } catch {
     // Column already exists — OK
   }

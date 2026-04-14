@@ -4,7 +4,7 @@ import { renderLogin } from './views/login.js';
 import { renderDashboard, type DashboardData } from './views/dashboard.js';
 import { renderApiKeys } from './views/api-keys.js';
 import { renderAuditLog, renderAuditTable } from './views/audit.js';
-import { renderSimulatePage, renderSimulationPreview, renderComparisonTable } from './views/simulate.js';
+import { renderSimulatePage, renderSimulationPreview, renderComparisonTable, type SimulationPreviewContext } from './views/simulate.js';
 import { renderPilotsPage, renderPilotDetailPage } from './views/pilots.js';
 import { renderCountryList, renderCountryDetail, type CountryListItem } from './views/countries.js';
 import { renderRegionList, renderRegionDetail } from './views/regions.js';
@@ -41,7 +41,7 @@ import {
   SESSION_TTL_STANDARD,
   SESSION_TTL_REMEMBER,
 } from '../db/admin-auth.js';
-import type { SimulationParameters, TargetGroup, PilotStatus, ImpactParameters } from '../core/types.js';
+import type { SimulationParameters, TargetGroup, TargetingRules, PilotStatus, ImpactParameters } from '../core/types.js';
 
 // ---------------------------------------------------------------------------
 // Brute-force protection — in-memory per-IP attempt tracker
@@ -116,6 +116,73 @@ function canonicalJson(obj: unknown): string {
     );
   }
   return JSON.stringify(obj);
+}
+
+// ---------------------------------------------------------------------------
+// Targeting rules — parse flat form fields into a TargetingRules object
+// ---------------------------------------------------------------------------
+
+/**
+ * Build a TargetingRules object from flat HTML form fields.
+ * Returns null if no meaningful rule is present.
+ * Field names:
+ *   tr_preset, tr_age_min, tr_age_max, tr_urban_rural,
+ *   tr_max_income, tr_identity_providers, tr_exclude_paid_days, tr_region_ids
+ */
+function parseFormTargetingRules(body: Record<string, string | undefined>): TargetingRules | null {
+  const rules: TargetingRules = {};
+  let hasAny = false;
+
+  const preset = body.tr_preset;
+  if (preset && preset !== '' && preset !== 'all') {
+    rules.preset = preset as TargetGroup;
+    hasAny = true;
+  }
+
+  const ageMin = body.tr_age_min ? parseInt(body.tr_age_min, 10) : NaN;
+  const ageMax = body.tr_age_max ? parseInt(body.tr_age_max, 10) : NaN;
+  if (!isNaN(ageMin) && !isNaN(ageMax) && ageMin >= 0 && ageMax >= ageMin) {
+    rules.ageRange = [ageMin, ageMax];
+    hasAny = true;
+  }
+
+  const urbanRural = body.tr_urban_rural;
+  if (urbanRural === 'urban' || urbanRural === 'rural' || urbanRural === 'mixed') {
+    rules.urbanRural = urbanRural;
+    hasAny = true;
+  }
+
+  const maxIncome = body.tr_max_income ? parseFloat(body.tr_max_income) : NaN;
+  if (!isNaN(maxIncome) && maxIncome > 0) {
+    rules.maxMonthlyIncomePppUsd = maxIncome;
+    hasAny = true;
+  }
+
+  const providers = body.tr_identity_providers?.trim();
+  if (providers) {
+    const list = providers.split(',').map((p) => p.trim()).filter((p) => p.length > 0);
+    if (list.length > 0) {
+      rules.identityProviders = list;
+      hasAny = true;
+    }
+  }
+
+  const excludeDays = body.tr_exclude_paid_days ? parseInt(body.tr_exclude_paid_days, 10) : NaN;
+  if (!isNaN(excludeDays) && excludeDays > 0) {
+    rules.excludeIfPaidWithinDays = excludeDays;
+    hasAny = true;
+  }
+
+  const regionIds = body.tr_region_ids?.trim();
+  if (regionIds) {
+    const list = regionIds.split(',').map((r) => r.trim()).filter((r) => r.length > 0);
+    if (list.length > 0) {
+      rules.regionIds = list;
+      hasAny = true;
+    }
+  }
+
+  return hasAny ? rules : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -266,13 +333,19 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.post<{
-    Body: { country?: string; coverage?: string; durationMonths?: string; targetGroup?: string };
+    Body: Record<string, string | undefined>;
   }>('/simulate/preview', async (request, reply) => {
-    const body = request.body ?? {};
+    const body = (request.body ?? {}) as Record<string, string | undefined>;
     const countryCode = (body.country ?? '').toUpperCase();
     const coverage = Math.min(1, Math.max(0, parseFloat(body.coverage ?? '20') / 100));
     const durationMonths = Math.min(120, Math.max(1, parseInt(body.durationMonths ?? '12', 10)));
     const targetGroup = (body.targetGroup ?? 'all') as TargetGroup;
+
+    // Build targeting rules from advanced filter fields; fall back to targetGroup preset
+    const extraRules = parseFormTargetingRules(body);
+    const targetingRules: TargetingRules | undefined = extraRules
+      ? { preset: targetGroup !== 'all' ? targetGroup : undefined, ...extraRules }
+      : undefined;
 
     const country = getCountryByCode(countryCode);
     if (!country) {
@@ -285,12 +358,20 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       country: countryCode,
       coverage,
       targetGroup,
+      ...(targetingRules ? { targetingRules } : {}),
       durationMonths,
       adjustments: { floorOverride: null, householdSize: null },
     };
 
+    // Collect form fields to carry through to the save endpoint
+    const savedFormFields: Record<string, string> = {};
+    for (const key of ['targetGroup', 'tr_preset', 'tr_age_min', 'tr_age_max', 'tr_urban_rural',
+      'tr_max_income', 'tr_identity_providers', 'tr_exclude_paid_days', 'tr_region_ids']) {
+      if (body[key]) savedFormFields[key] = body[key] as string;
+    }
+
     const result = calculateSimulation(country, params, getDataVersion());
-    return reply.type('text/html').send(renderSimulationPreview(result, undefined, country));
+    return reply.type('text/html').send(renderSimulationPreview(result, undefined, country, { savedFormFields, fullCountry: country }));
   });
 
   app.post<{
@@ -324,10 +405,11 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     return reply.type('text/html').send(renderComparisonTable(results));
   });
 
-  app.post<{ Body: { name?: string; simulationJson?: string } }>(
+  app.post<{ Body: Record<string, string | undefined> }>(
     '/simulate/save',
     async (request, reply) => {
-      const { name, simulationJson } = request.body ?? {};
+      const body = (request.body ?? {}) as Record<string, string | undefined>;
+      const { name, simulationJson } = body;
       if (!simulationJson) {
         return reply.redirect('/admin/simulate?flash=Missing+simulation+data');
       }
@@ -335,11 +417,17 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       try {
         const result = JSON.parse(simulationJson);
         const countryCode = result.country?.code ?? 'XX';
+        const targetGroup = (body.targetGroup ?? 'all') as TargetGroup;
+        const extraRules = parseFormTargetingRules(body);
+        const targetingRules: TargetingRules | undefined = extraRules
+          ? { preset: targetGroup !== 'all' ? targetGroup : undefined, ...extraRules }
+          : undefined;
         const params: SimulationParameters = {
           country: countryCode,
           coverage: result.simulation?.coverageRate ?? 1,
-          targetGroup: 'all',
-          durationMonths: 12,
+          targetGroup,
+          ...(targetingRules ? { targetingRules } : {}),
+          durationMonths: result.simulation?.meta ? 12 : 12,
           adjustments: { floorOverride: null, householdSize: null },
         };
         saveSimulation(name ?? null, countryCode, params, result);
@@ -384,26 +472,18 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       .send(renderPilotDetailPage(pilot, disbursements, simulation, flash));
   });
 
-  app.post<{
-    Body: {
-      name?: string;
-      countryCode?: string;
-      simulationId?: string;
-      description?: string;
-      startDate?: string;
-      endDate?: string;
-      targetRecipients?: string;
-    };
-  }>('/pilots/create', async (request, reply) => {
-    const body = request.body ?? {};
+  app.post<{ Body: Record<string, string | undefined> }>('/pilots/create', async (request, reply) => {
+    const body = (request.body ?? {}) as Record<string, string | undefined>;
     if (!body.name?.trim() || !body.countryCode?.trim()) {
       return reply.redirect('/admin/pilots?flash=Name+and+country+are+required');
     }
+    const targetingRules = parseFormTargetingRules(body);
     createPilot({
       name: body.name.trim(),
       countryCode: body.countryCode.toUpperCase(),
       description: body.description?.trim() || null,
       simulationId: body.simulationId?.trim() || null,
+      targetingRules,
       startDate: body.startDate?.trim() || null,
       endDate: body.endDate?.trim() || null,
       targetRecipients: body.targetRecipients ? parseInt(body.targetRecipients, 10) || null : null,

@@ -2,8 +2,55 @@ import { layout } from './layout.js';
 import { escapeHtml, formatNumber, formatCompact } from './helpers.js';
 import { t } from '../../i18n/index.js';
 import { getCurrencyForCountry, formatLocalCurrency } from '../../data/currencies.js';
-import type { Pilot, Disbursement, SavedSimulation } from '../../core/types.js';
+import type { Pilot, Disbursement, SavedSimulation, TargetingRules } from '../../core/types.js';
 import type { Country } from '../../core/types.js';
+
+function targetingRulesCard(rules: TargetingRules | null): string {
+  if (!rules) return '';
+  const rows: string[] = [];
+
+  if (rules.preset && rules.preset !== 'all') {
+    const labels: Record<string, string> = {
+      bottom_half: 'Bottom half',
+      bottom_third: 'Bottom third',
+      bottom_quintile: 'Bottom quintile',
+      bottom_decile: 'Bottom decile',
+    };
+    rows.push(`<tr><td class="text-bold">Population group</td><td>${escapeHtml(labels[rules.preset] ?? rules.preset)}</td></tr>`);
+  }
+  if (rules.urbanRural) {
+    rows.push(`<tr><td class="text-bold">Urban / Rural</td><td>${escapeHtml(rules.urbanRural)}</td></tr>`);
+  }
+  if (rules.ageRange) {
+    rows.push(`<tr><td class="text-bold">Age range</td><td>${escapeHtml(String(rules.ageRange[0]))}–${escapeHtml(String(rules.ageRange[1]))} years</td></tr>`);
+  }
+  if (rules.maxMonthlyIncomePppUsd != null) {
+    rows.push(`<tr><td class="text-bold">Max monthly income</td><td>$${escapeHtml(String(rules.maxMonthlyIncomePppUsd))} PPP-USD/mo</td></tr>`);
+  }
+  if (rules.identityProviders?.length) {
+    rows.push(`<tr><td class="text-bold">Identity providers</td><td>${rules.identityProviders.map(escapeHtml).join(', ')}</td></tr>`);
+  }
+  if (rules.excludeIfPaidWithinDays != null) {
+    rows.push(`<tr><td class="text-bold">Exclude if paid within</td><td>${escapeHtml(String(rules.excludeIfPaidWithinDays))} days</td></tr>`);
+  }
+  if (rules.regionIds?.length) {
+    rows.push(`<tr><td class="text-bold">Regions</td><td>${rules.regionIds.map(escapeHtml).join(', ')}</td></tr>`);
+  }
+
+  if (rows.length === 0) return '';
+
+  return `
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Targeting Rules</h2>
+      </div>
+      <div class="data-table-container">
+        <table class="data-table">
+          <tbody>${rows.join('')}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
 
 function statusBadge(status: string): string {
   const classes: Record<string, string> = {
@@ -96,6 +143,65 @@ export function renderPilotsPage(
           <label>${t('pilots.description')}</label>
           <input type="text" name="description" placeholder="${t('pilots.descriptionPlaceholder')}">
         </div>
+
+        <details class="targeting-details mt-1">
+          <summary class="targeting-summary">Targeting rules <span class="text-muted text-xs">(optional)</span></summary>
+          <div class="targeting-fields">
+            <div class="form-row">
+              <div class="form-group" style="flex:1">
+                <label>Population group <span class="text-muted text-xs">(preset)</span></label>
+                <select name="tr_preset">
+                  <option value="">No preset (all)</option>
+                  <option value="bottom_half">Bottom half</option>
+                  <option value="bottom_third">Bottom third</option>
+                  <option value="bottom_quintile">Bottom quintile</option>
+                  <option value="bottom_decile">Bottom decile</option>
+                </select>
+              </div>
+              <div class="form-group" style="flex:1">
+                <label>Urban / Rural</label>
+                <select name="tr_urban_rural">
+                  <option value="">Any</option>
+                  <option value="urban">Urban only</option>
+                  <option value="rural">Rural only</option>
+                  <option value="mixed">Mixed</option>
+                </select>
+              </div>
+              <div class="form-group" style="flex:0 0 120px">
+                <label>Min age</label>
+                <input type="number" name="tr_age_min" min="0" max="120" placeholder="e.g. 18">
+              </div>
+              <div class="form-group" style="flex:0 0 120px">
+                <label>Max age</label>
+                <input type="number" name="tr_age_max" min="0" max="120" placeholder="e.g. 65">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group" style="flex:1">
+                <label>Max monthly income <span class="text-muted text-xs">(PPP-USD)</span></label>
+                <input type="number" name="tr_max_income" min="1" placeholder="e.g. 300">
+              </div>
+              <div class="form-group" style="flex:1">
+                <label>Exclude if paid within <span class="text-muted text-xs">(days)</span></label>
+                <input type="number" name="tr_exclude_paid_days" min="1" placeholder="e.g. 30">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group" style="flex:1">
+                <label>Identity providers <span class="text-muted text-xs">(comma-separated)</span></label>
+                <input type="text" name="tr_identity_providers" placeholder="e.g. kyc-provider-a, kyc-provider-b">
+              </div>
+              <div class="form-group" style="flex:1">
+                <label>Region IDs <span class="text-muted text-xs">(comma-separated)</span></label>
+                <input type="text" name="tr_region_ids" placeholder="e.g. KE-NAI, KE-MOM">
+              </div>
+            </div>
+            <p class="text-xs text-muted" style="margin:0.25rem 0 0">
+              The population group preset affects budget estimates. Other filters are applied at disbursement time and shown in the pilot report.
+            </p>
+          </div>
+        </details>
+
         <div class="mt-1">
           <button type="submit" class="btn btn-primary">${t('pilots.createButton')}</button>
         </div>
@@ -230,6 +336,8 @@ export function renderPilotDetailPage(
       </div>
       ${availableTransitions.length > 0 ? `<div class="mt-1 flex gap-1">${t('pilots.transition')} ${transitionButtons}</div>` : ''}
     </div>
+
+    ${targetingRulesCard(pilot.targetingRules)}
 
     <div class="card">
       <div class="card-header">
