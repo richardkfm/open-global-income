@@ -57,17 +57,17 @@ interface MechanismDef {
 }
 
 const MECHANISMS: MechanismDef[] = [
-  { key: 'income_tax', titleKey: 'incomeTaxTitle', descKey: 'incomeTaxDesc', fieldName: 'income_tax_rate', min: '0.5', max: '15', step: '0.5', defaultVal: '2', suffix: '%', checked: true },
-  { key: 'vat', titleKey: 'vatTitle', descKey: 'vatDesc', fieldName: 'vat_points', min: '0.5', max: '10', step: '0.5', defaultVal: '2', suffix: 'pp', checked: false },
-  { key: 'carbon', titleKey: 'carbonTaxTitle', descKey: 'carbonTaxDesc', fieldName: 'carbon_rate', min: '5', max: '200', step: '5', defaultVal: '25', suffix: '$', checked: false },
-  { key: 'wealth', titleKey: 'wealthTaxTitle', descKey: 'wealthTaxDesc', fieldName: 'wealth_rate', min: '0.1', max: '5', step: '0.1', defaultVal: '1', suffix: '%', checked: false },
-  { key: 'ftt', titleKey: 'fttTitle', descKey: 'fttDesc', fieldName: 'ftt_rate', min: '0.01', max: '1', step: '0.01', defaultVal: '0.1', suffix: '%', checked: false },
-  { key: 'automation', titleKey: 'automationTaxTitle', descKey: 'automationTaxDesc', fieldName: 'automation_rate', min: '0.5', max: '15', step: '0.5', defaultVal: '3', suffix: '%', checked: false },
-  { key: 'redirect', titleKey: 'redirectTitle', descKey: 'redirectDesc', fieldName: 'redirect_pct', min: '5', max: '80', step: '5', defaultVal: '15', suffix: '%', checked: false },
+  { key: 'income_tax', titleKey: 'incomeTaxTitle', descKey: 'incomeTaxDesc', fieldName: 'income_tax_rate', min: '0', max: '15', step: '0.5', defaultVal: '0', suffix: '%', checked: true },
+  { key: 'vat', titleKey: 'vatTitle', descKey: 'vatDesc', fieldName: 'vat_points', min: '0', max: '10', step: '0.5', defaultVal: '0', suffix: 'pp', checked: false },
+  { key: 'carbon', titleKey: 'carbonTaxTitle', descKey: 'carbonTaxDesc', fieldName: 'carbon_rate', min: '0', max: '200', step: '5', defaultVal: '0', suffix: '$', checked: false },
+  { key: 'wealth', titleKey: 'wealthTaxTitle', descKey: 'wealthTaxDesc', fieldName: 'wealth_rate', min: '0', max: '5', step: '0.1', defaultVal: '0', suffix: '%', checked: false },
+  { key: 'ftt', titleKey: 'fttTitle', descKey: 'fttDesc', fieldName: 'ftt_rate', min: '0', max: '1', step: '0.01', defaultVal: '0', suffix: '%', checked: false },
+  { key: 'automation', titleKey: 'automationTaxTitle', descKey: 'automationTaxDesc', fieldName: 'automation_rate', min: '0', max: '15', step: '0.5', defaultVal: '0', suffix: '%', checked: false },
+  { key: 'redirect', titleKey: 'redirectTitle', descKey: 'redirectDesc', fieldName: 'redirect_pct', min: '0', max: '80', step: '5', defaultVal: '0', suffix: '%', checked: false },
 ];
 
 function renderMechanismCard(m: MechanismDef): string {
-  const prefix = m.suffix === '$' ? '$' : '';
+  const prefix = m.suffix === '$' ? '$' : '+';
   const postfix = m.suffix !== '$' ? m.suffix : '';
   const defaultDisplay = `${prefix}${m.defaultVal}${postfix}`;
   const disabledStyle = m.checked ? '' : 'opacity:0.5';

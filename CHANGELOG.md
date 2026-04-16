@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.20] - 2026-04-16
+
+### Fixed
+- Funding scenario builder started all tax sliders at non-zero values (e.g. income-tax surcharge +2%, VAT +2pp, carbon $25/t) implying a predetermined policy position. Sliders now default to zero so the first visible value is `+0%` / `+0pp` / `$0`, making the incremental nature of each mechanism explicit. The `+` prefix is now shown in the slider display for all non-dollar mechanisms. Fallback parse defaults in `src/admin/routes.ts` updated to match.
+
 ## [0.1.19] - 2026-04-16
 
 ### Added

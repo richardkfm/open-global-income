@@ -773,43 +773,43 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     if (body.enable_income_tax === '1') {
       mechanisms.push({
         type: 'income_tax_surcharge',
-        rate: parseFloat(body.income_tax_rate ?? '3') / 100,
+        rate: parseFloat(body.income_tax_rate ?? '0') / 100,
       });
     }
     if (body.enable_vat === '1') {
       mechanisms.push({
         type: 'vat_increase',
-        points: parseFloat(body.vat_points ?? '2'),
+        points: parseFloat(body.vat_points ?? '0'),
       });
     }
     if (body.enable_carbon === '1') {
       mechanisms.push({
         type: 'carbon_tax',
-        dollarPerTon: parseFloat(body.carbon_rate ?? '25'),
+        dollarPerTon: parseFloat(body.carbon_rate ?? '0'),
       });
     }
     if (body.enable_wealth === '1') {
       mechanisms.push({
         type: 'wealth_tax',
-        rate: parseFloat(body.wealth_rate ?? '1') / 100,
+        rate: parseFloat(body.wealth_rate ?? '0') / 100,
       });
     }
     if (body.enable_ftt === '1') {
       mechanisms.push({
         type: 'financial_transaction_tax',
-        rate: parseFloat(body.ftt_rate ?? '0.1') / 100,
+        rate: parseFloat(body.ftt_rate ?? '0') / 100,
       });
     }
     if (body.enable_automation === '1') {
       mechanisms.push({
         type: 'automation_tax',
-        rate: parseFloat(body.automation_rate ?? '3') / 100,
+        rate: parseFloat(body.automation_rate ?? '0') / 100,
       });
     }
     if (body.enable_redirect === '1') {
       mechanisms.push({
         type: 'redirect_social_spending',
-        percent: parseFloat(body.redirect_pct ?? '30') / 100,
+        percent: parseFloat(body.redirect_pct ?? '0') / 100,
       });
     }
 
