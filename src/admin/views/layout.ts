@@ -1,6 +1,9 @@
 /** Server-rendered HTML layout for the admin UI */
 import { escapeHtml } from './helpers.js';
 import { t } from '../../i18n/index.js';
+import { packageVersion } from '../../config.js';
+
+const REPO_URL = 'https://github.com/richardkfm/open-global-income';
 
 export interface LayoutOptions {
   activePage?: string;
@@ -84,6 +87,9 @@ export function layout(title: string, content: string, usernameOrOptions?: strin
       <a href="/admin/logout" class="sidebar-link">${t('nav.logout')}</a>
     </nav>
     ${userSection}
+    <div class="sidebar-footer">
+      <a href="${REPO_URL}" target="_blank" rel="noopener noreferrer" class="sidebar-footer-link">v${escapeHtml(packageVersion)}</a>
+    </div>
   </aside>
   <div class="mobile-header">
     <button class="mobile-hamburger" onclick="document.querySelector('.sidebar').classList.toggle('open');document.querySelector('.sidebar-overlay').classList.toggle('open')">&#9776;</button>

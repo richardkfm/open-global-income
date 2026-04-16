@@ -93,6 +93,14 @@ a:hover { text-decoration: underline; }
 .sidebar-user-info { overflow: hidden; flex: 1; }
 .sidebar-user-name { font-size: 0.8rem; color: #e2e8f0; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sidebar-user-role { font-size: 0.7rem; color: #64748b; text-transform: capitalize; }
+.sidebar-footer {
+  padding: 0.6rem 1rem; border-top: 1px solid rgba(255,255,255,0.08);
+  text-align: center;
+}
+.sidebar-footer-link {
+  font-size: 0.7rem; color: #64748b; text-decoration: none; font-family: var(--font-mono, monospace);
+}
+.sidebar-footer-link:hover { color: #e2e8f0; text-decoration: underline; }
 
 /* ── Main Content ───────────────────────────────────── */
 .main-content { margin-left: 240px; flex: 1; padding: 2rem; min-height: 100vh; }

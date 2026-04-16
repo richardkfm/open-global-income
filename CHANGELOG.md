@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.19] - 2026-04-16
+
+### Added
+- Admin sidebar footer shows the current package version as a link to the GitHub repository (`https://github.com/richardkfm/open-global-income`). Version is read from `package.json` via `packageVersion` in `src/config.ts`, so bumping the package version updates the footer automatically.
+- `.sidebar-footer` and `.sidebar-footer-link` styles in `public/css/ogi.css`.
+
+### Changed
+- `README.md`: updated the "Built" version header from v0.1.16 → v0.1.19 (now reflects the current stream).
+
 ## [0.1.18] - 2026-04-16
 
 ### Fixed
