@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.21] - 2026-04-16
+
+### Added
+- Cost savings dimension surfaced in the admin `/impact` view. Phase 24 added `estimateCostSavings()` and wired it into `ImpactAnalysisResult.costSavings`, but the admin UI only rendered four of the five impact dimensions. The impact page now shows:
+  - a 5th headline card (total central savings, labelled from the policy brief)
+  - a new "Cost Savings" progress bar (savings as % of annual UBI cost)
+  - a new "Cost Savings" tab with three category cards (Healthcare, Administrative/means-testing, Crime & Justice) — each with low/central/high range, elasticity, baseline basis, assumptions, and source citations
+  - a savings methodology block added to the Policy Brief tab
+  - a gate warning surfaced when the transfer is below the country poverty line (most savings categories zero out by design in that case)
+- New i18n keys under `impact.*`: `costSavings`, `tabCostSavings`, `costSavingsModel`, `savingsTotal`, `savingsRange`, `savingsAsPctUbi`, `savingsAsPctUbiSub`, `savingsCoverageFactor`, `savingsTransferAdequate`, `savingsTransferBelow`, `savingsCatHealthcare`, `savingsCatAdministrative`, `savingsCatCrimeJustice`, `savingsElasticity`, `savingsOf`, `savingsBarDetail`, `savingsGateWarning`, `savingsRedirectableNote`, `sources`.
+
 ## [0.1.20] - 2026-04-16
 
 ### Fixed

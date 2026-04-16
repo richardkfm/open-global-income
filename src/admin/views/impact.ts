@@ -10,6 +10,7 @@ import type {
   PurchasingPowerEstimate,
   SocialCoverageEstimate,
   FiscalMultiplierEstimate,
+  CostSavingsEstimate,
 } from '../../core/types.js';
 
 function fmtLarge(n: number): string {
@@ -236,13 +237,14 @@ export function renderImpactPage(
 // ── Preview panel (htmx target) ────────────────────────────────────────
 
 export function renderImpactPreview(result: ImpactAnalysisResult, saved?: boolean): string {
-  const { povertyReduction: pov, purchasingPower: pp, socialCoverage: sc, fiscalMultiplier: fm } = result;
+  const { povertyReduction: pov, purchasingPower: pp, socialCoverage: sc, fiscalMultiplier: fm, costSavings: cs } = result;
   const brief = result.policyBrief;
 
   // Determine which dimensions have usable data
   const hasPoverty = pov.dataQuality !== 'low';
   const hasPurchasing = pp.dataQuality !== 'low';
   const hasSocial = sc.dataQuality !== 'low';
+  const hasSavings = cs.dataQuality !== 'low' && cs.totalAnnualSavingsPppUsdCentral > 0;
 
   // Per-metric progress bars — only for dimensions with data
   const socialCoveragePct = sc.populationCurrentlyUncovered > 0
@@ -262,6 +264,10 @@ export function renderImpactPreview(result: ImpactAnalysisResult, saved?: boolea
   }
   barDefs.push({ label: t('impact.gdpStimulus'), value: fm.stimulusAsPercentOfGdp, max: Math.max(fm.stimulusAsPercentOfGdp * 2, 5), unit: '% GDP', color: '#ea580c', quality: 'high' as const,
     detail: `${fmtCurrency(fm.estimatedGdpStimulusPppUsd)} estimated GDP stimulus (${fm.multiplier.toFixed(1)}× multiplier)` });
+  if (hasSavings) {
+    barDefs.push({ label: t('impact.costSavings'), value: cs.savingsAsPercentOfUbiCostCentral, max: Math.max(cs.savingsAsPercentOfUbiCostCentral * 1.5, 25), unit: '% of UBI cost', color: '#0891b2', quality: cs.dataQuality,
+      detail: `${fmtCurrency(cs.totalAnnualSavingsPppUsdCentral)} ${t('impact.savingsBarDetail')}` });
+  }
   const impactBars = renderImpactBars(barDefs);
 
   // Missing data guidance
@@ -303,6 +309,7 @@ export function renderImpactPreview(result: ImpactAnalysisResult, saved?: boolea
   if (hasPurchasing) headlineCards.push(headlineCard(t('impact.purchasingPower'), brief.headline.purchasingPower.formatted, brief.headline.purchasingPower.label, pp.dataQuality));
   if (hasSocial) headlineCards.push(headlineCard(t('impact.socialCoverage'), brief.headline.socialCoverage.formatted, brief.headline.socialCoverage.label, sc.dataQuality));
   headlineCards.push(headlineCard(t('impact.gdpStimulus'), brief.headline.gdpStimulus.formatted, brief.headline.gdpStimulus.label, 'high'));
+  if (hasSavings) headlineCards.push(headlineCard(t('impact.costSavings'), brief.headline.costSavings.formatted, brief.headline.costSavings.label, cs.dataQuality));
 
   // Tabs — only show dimensions with data; first tab is visible, rest hidden
   const tabDefs: { id: string; label: string; genContent: (hidden: boolean) => string }[] = [];
@@ -310,6 +317,7 @@ export function renderImpactPreview(result: ImpactAnalysisResult, saved?: boolea
   if (hasPurchasing) tabDefs.push({ id: 'tab-power', label: t('impact.tabPurchasingPower'), genContent: (h) => purchasingPowerTab(pp, h) });
   if (hasSocial) tabDefs.push({ id: 'tab-social', label: t('impact.tabSocialCoverage'), genContent: (h) => socialCoverageTab(sc, h) });
   tabDefs.push({ id: 'tab-fiscal', label: t('impact.tabGdpStimulus'), genContent: (h) => fiscalTab(fm, h) });
+  if (hasSavings) tabDefs.push({ id: 'tab-savings', label: t('impact.tabCostSavings'), genContent: (h) => costSavingsTab(cs, h) });
   tabDefs.push({ id: 'tab-brief', label: t('impact.tabPolicyBrief'), genContent: (h) => briefTab(brief, h) });
   const tabs = tabDefs.map((tab, i) => ({ id: tab.id, label: tab.label, content: tab.genContent(i !== 0) }));
 
@@ -486,6 +494,60 @@ function fiscalTab(fm: FiscalMultiplierEstimate, hidden = true): string {
     </div>`;
 }
 
+function costSavingsTab(cs: CostSavingsEstimate, hidden = true): string {
+  const headerRow = `
+    <div class="grid grid-3 mb-2">
+      ${miniStat(t('impact.savingsTotal'), fmtCurrency(cs.totalAnnualSavingsPppUsdCentral), `${t('impact.savingsRange')} ${fmtCurrency(cs.totalAnnualSavingsPppUsdLow)} – ${fmtCurrency(cs.totalAnnualSavingsPppUsdHigh)}`)}
+      ${miniStat(t('impact.savingsAsPctUbi'), `${cs.savingsAsPercentOfUbiCostCentral.toFixed(1)}%`, t('impact.savingsAsPctUbiSub'))}
+      ${miniStat(t('impact.savingsCoverageFactor'), `${(cs.coverageFactor * 100).toFixed(0)}%`, cs.transferAdequateForSavings ? t('impact.savingsTransferAdequate') : t('impact.savingsTransferBelow'))}
+    </div>`;
+
+  const categoryCards = cs.categories.map((cat) => {
+    const pct = cat.centralElasticity != null ? `${(cat.centralElasticity * 100).toFixed(1)}%` : t('common.na');
+    const hasSavings = cat.annualSavingsPppUsdCentral > 0;
+    const valueClass = hasSavings ? '' : 'text-muted';
+    const idLabel: Record<typeof cat.id, string> = {
+      healthcare: t('impact.savingsCatHealthcare'),
+      administrative: t('impact.savingsCatAdministrative'),
+      crime_justice: t('impact.savingsCatCrimeJustice'),
+    };
+    return `
+      <div class="card mb-2">
+        <div class="flex-between">
+          <strong class="text-sm">${escapeHtml(idLabel[cat.id])}</strong>
+          ${dataQualityBadge(cat.dataQuality)}
+        </div>
+        <div class="stat-value ${valueClass}" style="margin-top:0.4rem">${fmtCurrency(cat.annualSavingsPppUsdCentral)}</div>
+        <div class="text-xs text-muted">
+          ${t('impact.savingsRange')} ${fmtCurrency(cat.annualSavingsPppUsdLow)} – ${fmtCurrency(cat.annualSavingsPppUsdHigh)} ·
+          ${t('impact.savingsElasticity')} ${pct} ${t('impact.savingsOf')} ${escapeHtml(cat.baselineBasis)}
+        </div>
+        <details class="text-sm mt-1">
+          <summary class="text-bold" style="cursor:pointer">${t('impact.assumptions')} (${cat.assumptions.length})</summary>
+          ${assumptionList(cat.assumptions)}
+        </details>
+        <details class="text-sm mt-1">
+          <summary class="text-bold" style="cursor:pointer">${t('impact.sources')} (${cat.sources.length})</summary>
+          <ul class="text-xs text-muted mt-1" style="padding-left:1.2rem">
+            ${cat.sources.map((s) => `<li>${escapeHtml(s)}</li>`).join('')}
+          </ul>
+        </details>
+      </div>`;
+  }).join('');
+
+  const gateNote = !cs.transferAdequateForSavings
+    ? `<div class="alert alert-warning text-sm mb-2">${t('impact.savingsGateWarning')}</div>`
+    : '';
+
+  return `
+    <div id="tab-savings"${hidden ? ' class="hidden"' : ''} data-ogi-tab-panel="tab-savings">
+      ${gateNote}
+      ${headerRow}
+      ${categoryCards}
+      <p class="text-xs text-muted mt-1">${t('impact.savingsRedirectableNote')}</p>
+    </div>`;
+}
+
 function briefTab(brief: import('../../core/types.js').PolicyBrief, hidden = true): string {
   return `
     <div id="tab-brief"${hidden ? ' class="hidden"' : ''} data-ogi-tab-panel="tab-brief">
@@ -500,6 +562,7 @@ function briefTab(brief: import('../../core/types.js').PolicyBrief, hidden = tru
           ${methodBlock(t('impact.incomeDistributionModel'), brief.methodology.incomeDistributionModel)}
           ${methodBlock(t('impact.socialCoverageModel'), brief.methodology.socialCoverageModel)}
           ${methodBlock(t('impact.fiscalMultiplierModel'), brief.methodology.fiscalMultiplierModel)}
+          ${methodBlock(t('impact.costSavingsModel'), brief.methodology.costSavingsModel)}
         </div>
       </details>
 

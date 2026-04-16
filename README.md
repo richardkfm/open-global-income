@@ -51,7 +51,7 @@ Open Global Income is a stack. Each layer builds on the one below it. The lower 
 └─────────────────────────────────────────────────┘
 ```
 
-### ✅ Built (v0.1.20)
+### ✅ Built (v0.1.21)
 
 **The API is the product.** Everything below is exposed through a REST API with OpenAPI docs, a generated TypeScript SDK, and webhook events — not locked behind a UI.
 
