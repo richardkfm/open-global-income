@@ -49,8 +49,21 @@ export interface CountryStats {
   laborForceParticipation?: number | null;
   /** Unemployment rate (% of labor force) */
   unemploymentRate?: number | null;
-  /** Population below $2.15/day poverty line (%) */
+  /** Population below $2.15/day poverty line (%) — World Bank SI.POV.DDAY */
   povertyHeadcountRatio?: number | null;
+  /** Population below $3.65/day poverty line (%) — World Bank SI.POV.LMIC */
+  povertyHeadcountRatio365Percent?: number | null;
+  /** Population below $6.85/day poverty line (%) — World Bank SI.POV.UMIC */
+  povertyHeadcountRatio685Percent?: number | null;
+  /** Population below the country's own national poverty line (%) — World Bank SI.POV.NAHC */
+  nationalPovertyHeadcountRatioPercent?: number | null;
+  /**
+   * Population below a relative at-risk-of-poverty threshold (60% of median
+   * equivalised income). Primarily populated for HIC/OECD countries from
+   * Eurostat / OECD IDD. World Bank indicator SI.POV.MDIM.MA is a rough
+   * proxy when OECD data is not yet wired up.
+   */
+  relativePovertyHeadcountRatioPercent?: number | null;
   /** Urban population as % of total */
   urbanizationRate?: number | null;
 
@@ -386,19 +399,46 @@ export interface ImpactParameters {
   simulationId: string | null;
 }
 
-/** Poverty reduction estimate — how many people lifted above the extreme poverty line */
+/** How the country-specific poverty line was chosen. See src/core/poverty.ts. */
+export type PovertyLineBasis =
+  | 'extreme'
+  | 'lower_middle'
+  | 'upper_middle'
+  | 'relative_median'
+  | 'national';
+
+/** Poverty reduction estimate — how many people lifted above the country-appropriate poverty line */
 export interface PovertyReductionEstimate {
-  /** Count of people in extreme poverty BEFORE the program ($2.15/day line) */
+  /**
+   * Count of people below the COUNTRY-APPROPRIATE poverty line BEFORE the program.
+   * This is the primary headline baseline — it uses a line calibrated to the
+   * country's income group (not a fixed $2.15/day). For backwards compatibility,
+   * the field name is unchanged.
+   */
   extremePoorBaseline: number;
-  /** Estimated count lifted above the extreme poverty line by this program */
+  /** Estimated count lifted above the country-appropriate poverty line by this program */
   estimatedLifted: number;
-  /** Share of extreme poor reached and lifted (0–100) */
+  /** Share of poor reached and lifted (0–100) */
   liftedAsPercentOfPoor: number;
-  /** Poverty line used in PPP-USD per month ($2.15/day × 30) */
+  /** The country-appropriate poverty line in PPP-USD per month */
   povertyLineMonthlyPppUsd: number;
-  /** Whether the transfer amount alone exceeds the poverty line */
+  /** The country-appropriate poverty line in PPP-USD per day */
+  povertyLineDailyPppUsd: number;
+  /** How the line was chosen (extreme / lower_middle / upper_middle / relative_median / national) */
+  povertyLineBasis: PovertyLineBasis;
+  /** Human-readable label for the line, suitable for UI display */
+  povertyLineLabel: string;
+  /** Citation / source for the chosen line */
+  povertyLineSource: string;
+  /**
+   * Count of people below the global $2.15/day extreme poverty line, shown
+   * alongside the country-appropriate line so global comparisons remain
+   * possible. May be `null` if no extreme headcount data is available.
+   */
+  extremePoorGlobalBaseline: number | null;
+  /** Whether the transfer amount alone exceeds the country poverty line */
   transferExceedsPovertyLine: boolean;
-  /** Data quality flag based on availability of povertyHeadcountRatio */
+  /** Data quality flag based on availability of matching headcount data */
   dataQuality: 'high' | 'medium' | 'low';
   assumptions: string[];
 }
@@ -448,6 +488,74 @@ export interface FiscalMultiplierEstimate {
   assumptions: string[];
 }
 
+/** One category of potential fiscal cost saving attributable to UBI */
+export interface CostSavingsCategory {
+  /** Stable machine ID (e.g. "healthcare", "administrative", "crime_justice") */
+  id: 'healthcare' | 'administrative' | 'crime_justice';
+  /** Human-readable short label */
+  label: string;
+  /**
+   * Range of annual savings in PPP-USD: low / central / high.
+   * All three are present; central is a point estimate for headlines.
+   * Zero if the effect is gated out (e.g. inadequate transfer, missing data).
+   */
+  annualSavingsPppUsdLow: number;
+  annualSavingsPppUsdCentral: number;
+  annualSavingsPppUsdHigh: number;
+  /**
+   * The elasticity / share used at the central estimate (e.g. 0.085 for an
+   * 8.5% hospitalization reduction). Null when the data is too sparse.
+   */
+  centralElasticity: number | null;
+  /** Which country stat served as the baseline the elasticity is applied to */
+  baselineBasis: string;
+  /** The baseline spend in PPP-USD that the elasticity was applied against */
+  baselineAnnualPppUsd: number | null;
+  /** All explicit assumptions used in the calculation */
+  assumptions: string[];
+  /** One or more citations — peer-reviewed where available */
+  sources: string[];
+  /** 'medium' when built on published evidence; 'low' when data is missing */
+  dataQuality: 'medium' | 'low';
+}
+
+/**
+ * Estimated fiscal cost savings from UBI across healthcare, social-benefits
+ * administration, and criminal-justice systems. Every number is a
+ * modeled estimate with a range and a source citation; nothing is point-
+ * estimated without an explicit elasticity.
+ *
+ * This is intentionally CONSERVATIVE: estimates are heavily gated on
+ * transfer adequacy (must meet the country poverty line), coverage
+ * fraction, and availability of the relevant country baseline data.
+ * Read: if any gate fails, the category's savings are zero.
+ *
+ * Savings in this dimension are REDIRECTABLE spending the government
+ * could repurpose — they are not added to the UBI budget automatically;
+ * policymakers decide whether to recycle them.
+ */
+export interface CostSavingsEstimate {
+  /** Bundled per-category results */
+  categories: CostSavingsCategory[];
+  /** Sum of category central estimates */
+  totalAnnualSavingsPppUsdCentral: number;
+  /** Sum of lows and highs */
+  totalAnnualSavingsPppUsdLow: number;
+  totalAnnualSavingsPppUsdHigh: number;
+  /** Savings as % of annual UBI cost (central / total UBI cost) */
+  savingsAsPercentOfUbiCostCentral: number;
+  /** Whether the transfer clears the country poverty line — gates most categories */
+  transferAdequateForSavings: boolean;
+  /** The coverage saturation factor applied uniformly (min(1, coverage × 1)) */
+  coverageFactor: number;
+  /** Top-level sources list for UI display */
+  sources: string[];
+  /** Aggregate assumptions across all categories (deduplicated) */
+  assumptions: string[];
+  /** Data quality: 'low' if no category yielded an estimate */
+  dataQuality: 'medium' | 'low';
+}
+
 /** A complete economic impact analysis result */
 export interface ImpactAnalysisResult {
   country: {
@@ -468,6 +576,7 @@ export interface ImpactAnalysisResult {
   purchasingPower: PurchasingPowerEstimate;
   socialCoverage: SocialCoverageEstimate;
   fiscalMultiplier: FiscalMultiplierEstimate;
+  costSavings: CostSavingsEstimate;
   policyBrief: PolicyBrief;
   meta: RulesetMeta & { generatedAt: string };
 }
@@ -483,6 +592,7 @@ export interface PolicyBrief {
     purchasingPower: { value: number; formatted: string; label: string };
     socialCoverage: { value: number; formatted: string; label: string };
     gdpStimulus: { value: number; formatted: string; label: string };
+    costSavings: { value: number; formatted: string; label: string };
   };
   programDescription: string;
   /** Summary methodology paragraphs — one per dimension */
@@ -491,6 +601,7 @@ export interface PolicyBrief {
     incomeDistributionModel: string;
     socialCoverageModel: string;
     fiscalMultiplierModel: string;
+    costSavingsModel: string;
   };
   /** Complete flat list of every assumption, explicitly stated */
   assumptions: string[];
