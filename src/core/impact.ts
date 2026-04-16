@@ -21,19 +21,27 @@ import type {
   PurchasingPowerEstimate,
   SocialCoverageEstimate,
   FiscalMultiplierEstimate,
+  CostSavingsEstimate,
   PolicyBrief,
   SimulationResult,
   TargetGroup,
 } from './types.js';
 import { GLOBAL_INCOME_FLOOR_PPP, RULESET_VERSION } from './constants.js';
+import {
+  resolveCountryPovertyLine,
+  POVERTY_LINE_EXTREME_DAILY_PPP_USD,
+} from './poverty.js';
+import { estimateCostSavings } from './savings.js';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
 /**
- * Extreme poverty line: $2.15 per person per day (World Bank, 2017 PPP).
- * Converted to per-month: 2.15 × 30 = 64.50 PPP-USD/month.
+ * Global extreme poverty line: $2.15 per person per day (World Bank, 2017
+ * PPP). Still used as a SECONDARY, globally-comparable baseline alongside
+ * the country-appropriate line — see resolveCountryPovertyLine() for the
+ * tiered approach used for the PRIMARY poverty estimate.
  */
-const EXTREME_POVERTY_LINE_DAILY_PPP_USD = 2.15;
+const EXTREME_POVERTY_LINE_DAILY_PPP_USD = POVERTY_LINE_EXTREME_DAILY_PPP_USD;
 const EXTREME_POVERTY_LINE_MONTHLY_PPP_USD = EXTREME_POVERTY_LINE_DAILY_PPP_USD * 30;
 
 /**
@@ -141,16 +149,28 @@ function estimateConcentrationFactor(
 // ── 1. Poverty Reduction ───────────────────────────────────────────────────
 
 /**
- * Estimate how many people the program lifts above the extreme poverty line.
+ * Estimate how many people the program lifts above the country-appropriate
+ * poverty line.
+ *
+ * Unlike earlier versions that used $2.15/day for every country, this
+ * function picks a tiered line from src/core/poverty.ts:
+ *   HIC → 60% of median (OECD/EU at-risk-of-poverty)
+ *   UMC → $6.85/day (World Bank)
+ *   LMC → $3.65/day (World Bank)
+ *   LIC → $2.15/day (World Bank)
+ *
+ * The extreme-line headcount is also reported alongside as
+ * `extremePoorGlobalBaseline` so cross-country comparisons at the global
+ * benchmark remain possible.
  *
  * Model:
- *   extremePoor = povertyHeadcountRatio × population
- *   If transfer ≥ poverty line: every covered poor person is lifted.
- *   Fraction of extreme poor reached = min(1, recipientCount / extremePoor)
- *     (assumes extreme poor are concentrated in the lowest income group and
+ *   poor = headcountRatioAtLine × population
+ *   If transfer ≥ countryLine: every covered poor person is lifted.
+ *   Fraction of poor reached = min(1, recipientCount / poor)
+ *     (assumes the poor are concentrated in the lowest income groups and
  *     the program targets them first — valid for bottom_quintile targeting;
  *     stated as assumption for universal targeting)
- *   lifted = fraction_reached × extremePoor
+ *   lifted = fraction_reached × poor
  */
 export function estimatePovertyReduction(
   country: Country,
@@ -158,32 +178,45 @@ export function estimatePovertyReduction(
   floorPppUsd: number,
   targetGroup: TargetGroup,
 ): PovertyReductionEstimate {
-  const povertyRate = country.stats.povertyHeadcountRatio;
-  const povertyLineMonthly = EXTREME_POVERTY_LINE_MONTHLY_PPP_USD;
+  const line = resolveCountryPovertyLine(country);
+  const povertyRate = line.headcountRatioPercent;
+  const povertyLineMonthly = line.monthlyPppUsd;
+  const extremeRate = country.stats.povertyHeadcountRatio ?? null;
+  const extremePoorGlobalBaseline =
+    extremeRate != null
+      ? Math.round((extremeRate / 100) * country.stats.population)
+      : null;
 
   const assumptions: string[] = [
-    `Extreme poverty line: $${povertyLineMonthly.toFixed(2)} PPP-USD/month ($${EXTREME_POVERTY_LINE_DAILY_PPP_USD}/day × 30), World Bank 2017 PPP benchmark.`,
+    `Poverty line (country-appropriate): $${povertyLineMonthly.toFixed(2)} PPP-USD/month ($${line.dailyPppUsd.toFixed(2)}/day) — ${line.label}.`,
+    `Source: ${line.source}`,
+    `Basis code: '${line.basis}' — selected because ${country.name} is classified as ${country.stats.incomeGroup}. The $2.15/day global extreme line is reported separately as extremePoorGlobalBaseline for comparability.`,
     `Transfer amount: $${floorPppUsd} PPP-USD/month per recipient.`,
     `Any recipient whose pre-transfer income was below $${povertyLineMonthly.toFixed(2)}/month is lifted above the poverty line if the transfer alone exceeds the line (conservative: ignores partial lifts).`,
     targetGroup === 'all'
-      ? 'Universal targeting: extreme poor are assumed uniformly distributed across recipients proportional to their population share.'
-      : `Targeting ${targetGroupLabel(targetGroup)}: extreme poor are assumed concentrated in the lowest income groups, so targeting reaches them disproportionately.`,
-    `Poverty headcount ratio sourced from World Bank PovcalNet (most recent available year).`,
+      ? 'Universal targeting: poor are assumed uniformly distributed across recipients proportional to their population share.'
+      : `Targeting ${targetGroupLabel(targetGroup)}: poor are assumed concentrated in the lowest income groups, so targeting reaches them disproportionately.`,
     'No behavioral effects or price changes assumed — static transfer model.',
   ];
 
   if (povertyRate == null) {
+    assumptions.push(
+      `WARNING: no matching headcount ratio is available for the '${line.basis}' poverty line in this country. ` +
+      `Country-appropriate poverty reduction cannot be estimated. Run \`npm run data:update\` to refresh World Bank / OECD inputs.`,
+    );
     return {
       extremePoorBaseline: 0,
       estimatedLifted: 0,
       liftedAsPercentOfPoor: 0,
       povertyLineMonthlyPppUsd: povertyLineMonthly,
+      povertyLineDailyPppUsd: line.dailyPppUsd,
+      povertyLineBasis: line.basis,
+      povertyLineLabel: line.label,
+      povertyLineSource: line.source,
+      extremePoorGlobalBaseline,
       transferExceedsPovertyLine: floorPppUsd >= povertyLineMonthly,
       dataQuality: 'low',
-      assumptions: [
-        ...assumptions,
-        'WARNING: povertyHeadcountRatio not available for this country — poverty reduction estimate unavailable.',
-      ],
+      assumptions,
     };
   }
 
@@ -199,14 +232,14 @@ export function estimatePovertyReduction(
     estimatedLifted = Math.round(extremePoorBaseline * fractionOfPoorReached * fractionLifted);
     assumptions.push(
       `Transfer ($${floorPppUsd}) is below the poverty line ($${povertyLineMonthly.toFixed(2)}). ` +
-      `Partial lifts modeled assuming incomes of the extreme poor are uniformly distributed between $0 and $${povertyLineMonthly.toFixed(2)}/month.`,
+      `Partial lifts modeled assuming incomes of the poor are uniformly distributed between $0 and $${povertyLineMonthly.toFixed(2)}/month.`,
     );
   } else {
     // Transfer exceeds poverty line: every covered poor person is lifted
     const fractionOfPoorReached = Math.min(1, recipientCount / Math.max(1, extremePoorBaseline));
     estimatedLifted = Math.round(extremePoorBaseline * fractionOfPoorReached);
     assumptions.push(
-      `Transfer ($${floorPppUsd}/month) exceeds the poverty line ($${povertyLineMonthly.toFixed(2)}/month): every extreme-poor recipient is counted as lifted.`,
+      `Transfer ($${floorPppUsd}/month) exceeds the poverty line ($${povertyLineMonthly.toFixed(2)}/month): every poor recipient is counted as lifted.`,
     );
   }
 
@@ -215,15 +248,18 @@ export function estimatePovertyReduction(
       ? Math.round((estimatedLifted / extremePoorBaseline) * 1000) / 10
       : 0;
 
-  const dataQuality = povertyRate !== null ? 'high' : 'low';
-
   return {
     extremePoorBaseline,
     estimatedLifted,
     liftedAsPercentOfPoor,
     povertyLineMonthlyPppUsd: povertyLineMonthly,
+    povertyLineDailyPppUsd: line.dailyPppUsd,
+    povertyLineBasis: line.basis,
+    povertyLineLabel: line.label,
+    povertyLineSource: line.source,
+    extremePoorGlobalBaseline,
     transferExceedsPovertyLine,
-    dataQuality,
+    dataQuality: line.dataQuality,
     assumptions,
   };
 }
@@ -441,6 +477,7 @@ function buildPolicyBrief(
   purchasing: PurchasingPowerEstimate,
   social: SocialCoverageEstimate,
   fiscal: FiscalMultiplierEstimate,
+  savings: CostSavingsEstimate,
 ): PolicyBrief {
   const floorPppUsd = params.floorOverride ?? GLOBAL_INCOME_FLOOR_PPP;
   const coveragePct = (params.coverage * 100).toFixed(0);
@@ -462,7 +499,7 @@ function buildPolicyBrief(
     povertyReduction: {
       value: poverty.estimatedLifted,
       formatted: `${formatLargeNumber(poverty.estimatedLifted)} people`,
-      label: `Lifted above the extreme poverty line ($${EXTREME_POVERTY_LINE_DAILY_PPP_USD}/day)`,
+      label: `Lifted above the country-appropriate poverty line (${poverty.povertyLineBasis})`,
     },
     purchasingPower: {
       value: purchasing.incomeIncreasePercent,
@@ -479,15 +516,20 @@ function buildPolicyBrief(
       formatted: `$${formatLargeNumber(fiscal.estimatedGdpStimulusPppUsd)}`,
       label: `Estimated GDP stimulus (${fiscal.multiplier}× fiscal multiplier, ${fiscal.incomeGroup})`,
     },
+    costSavings: {
+      value: savings.totalAnnualSavingsPppUsdCentral,
+      formatted: `$${formatLargeNumber(savings.totalAnnualSavingsPppUsdCentral)}`,
+      label: `Estimated annual government cost savings (range: $${formatLargeNumber(savings.totalAnnualSavingsPppUsdLow)}–$${formatLargeNumber(savings.totalAnnualSavingsPppUsdHigh)})`,
+    },
   };
 
   const methodology = {
     povertyModel:
-      `Extreme poverty baseline uses World Bank PovcalNet poverty headcount ratio at $${EXTREME_POVERTY_LINE_DAILY_PPP_USD}/day (2017 PPP). ` +
-      `The transfer amount ($${floorPppUsd} PPP-USD/month) is compared to the monthly poverty line ` +
-      `($${EXTREME_POVERTY_LINE_MONTHLY_PPP_USD.toFixed(2)}/month). Where the transfer exceeds the line, ` +
+      `Poverty baseline uses a country-appropriate poverty line (${poverty.povertyLineBasis}): ${poverty.povertyLineLabel}. ` +
+      `The transfer amount ($${floorPppUsd} PPP-USD/month) is compared to this line. Where the transfer exceeds the line, ` +
       `every covered poor person is counted as lifted. Where it does not, a uniform income distribution ` +
-      `below the poverty line is assumed to estimate partial lifts.`,
+      `below the poverty line is assumed to estimate partial lifts. The global extreme poverty line ($${EXTREME_POVERTY_LINE_DAILY_PPP_USD}/day) ` +
+      `is reported alongside for cross-country comparability.`,
     incomeDistributionModel:
       `Bottom quintile income share estimated using the Lorenz curve approximation L(p) = p^(1+2G), ` +
       `where G is the Gini coefficient (0–1 scale) and p=0.2 for the bottom quintile. ` +
@@ -504,6 +546,13 @@ function buildPolicyBrief(
       `LIC=${FISCAL_MULTIPLIERS.LIC}, LMC=${FISCAL_MULTIPLIERS.LMC}, UMC=${FISCAL_MULTIPLIERS.UMC}, HIC=${FISCAL_MULTIPLIERS.HIC}. ` +
       `These reflect estimated marginal propensity to consume by income group. ` +
       `Short-run estimate only. Supply-side effects not included.`,
+    costSavingsModel:
+      `Estimated fiscal cost savings from reduced demand on healthcare, criminal-justice, and social-benefit administration systems. ` +
+      `Savings are modeled as ranges (low/central/high) based on peer-reviewed evidence: healthcare elasticity from Mincome (Forget 2011, 8.5% ` +
+      `hospitalization reduction); crime reduction from EBT study (Wright et al. 2014, 9.2% crime reduction); administrative overhead ` +
+      `reduction estimated at 5–15% from consolidating fragmented means-tested programs. All categories are gated: only computed when the ` +
+      `transfer meets the country poverty line and are scaled by coverage saturation. Savings are REDIRECTABLE fiscal resources, ` +
+      `not automatically subtracted from UBI cost.`,
   };
 
   // Consolidate all assumptions
@@ -513,16 +562,19 @@ function buildPolicyBrief(
     ...purchasing.assumptions,
     ...social.assumptions,
     ...fiscal.assumptions,
+    ...savings.assumptions,
   ];
   // Deduplicate
   const assumptions = [...new Set(allAssumptions)];
 
   const dataSources: string[] = [
-    'World Bank Open Data (2023): GDP per capita, GNI per capita, PPP conversion factors, population, Gini index',
-    'World Bank PovcalNet: Poverty headcount ratio at $2.15/day (2017 PPP)',
+    'World Bank Open Data (2023+): GDP per capita, GNI per capita, PPP conversion factors, population, Gini index, poverty headcount ratios',
+    'World Bank PovcalNet: Multiple poverty lines ($2.15, $3.65, $6.85/day, 2017 PPP)',
+    'OECD/Eurostat: At-risk-of-poverty threshold (60% of median income) for HIC',
     'ILO World Social Protection Report (WSPR) 2022–24: Social protection coverage and expenditure',
-    'IMF Government Finance Statistics (GFS): Tax revenue breakdown',
+    'IMF Government Finance Statistics (GFS): Tax revenue, fiscal data',
     'Open Global Income Ruleset v1: Entitlement formula and PPP floor calculation',
+    ...savings.sources,
   ];
 
   const caveats: string[] = [
@@ -584,6 +636,14 @@ export function calculateImpactAnalysis(
 
   const fiscalMultiplier = estimateFiscalMultiplier(country, annualCostPppUsd);
 
+  const costSavings = estimateCostSavings(
+    country,
+    recipientCount,
+    floorPppUsd,
+    params.coverage,
+    annualCostPppUsd,
+  );
+
   const policyBrief = buildPolicyBrief(
     country,
     params,
@@ -593,6 +653,7 @@ export function calculateImpactAnalysis(
     purchasingPower,
     socialCoverage,
     fiscalMultiplier,
+    costSavings,
   );
 
   return {
@@ -614,6 +675,7 @@ export function calculateImpactAnalysis(
     purchasingPower,
     socialCoverage,
     fiscalMultiplier,
+    costSavings,
     policyBrief,
     meta: {
       rulesetVersion: RULESET_VERSION,
