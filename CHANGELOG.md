@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.18] - 2026-04-16
+
+### Fixed
+- Country detail admin page (`/admin/countries/:code`) showed "Poverty <$2.15/day" for every country regardless of income group, making HIC countries like Germany appear to have near-zero poverty. The tile now uses `resolveCountryPovertyLine()` so each country displays the poverty rate for its income-group-appropriate line (HIC → relative 60% of median, UMC → $6.85/day, LMC → $3.65/day, LIC → $2.15/day). The line's daily PPP value and basis label are shown beneath the value.
+- `src/core/impact.test.ts`: updated Kenya fixture (`povertyHeadcountRatio365Percent` added) and expectations to reflect the country-appropriate line introduced in Phase 24 (LMC Kenya now uses the $3.65/day line, monthly $109.50).
+
+### Added
+- `povertyCountryLine`, `povertyBasisExtreme`, `povertyBasisLowerMiddle`, `povertyBasisUpperMiddle`, `povertyBasisRelativeMedian`, `povertyBasisNational` i18n keys in `src/i18n/locales/en.ts`.
+
 ## [0.1.17] - 2026-04-15
 
 ### Added
