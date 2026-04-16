@@ -21,6 +21,7 @@ const kenya: Country = {
     population: 54030000,
     incomeGroup: 'LMC',
     povertyHeadcountRatio: 36.1,
+    povertyHeadcountRatio365Percent: 61.0,
     socialProtectionCoveragePercent: 17.8,
   },
 };
@@ -103,9 +104,10 @@ describe('estimatePovertyReduction', () => {
     expect(result.liftedAsPercentOfPoor).toBeLessThanOrEqual(100);
   });
 
-  it('poverty line is $64.50/month (2.15 × 30)', () => {
+  it('poverty line for LMC Kenya is $109.50/month ($3.65/day × 30)', () => {
     const result = estimatePovertyReduction(kenya, 1000, 210, 'all');
-    expect(result.povertyLineMonthlyPppUsd).toBeCloseTo(64.5, 1);
+    expect(result.povertyLineMonthlyPppUsd).toBeCloseTo(109.5, 1);
+    expect(result.povertyLineBasis).toBe('lower_middle');
   });
 
   it('lifted count is bounded by extreme poor baseline', () => {
@@ -123,7 +125,7 @@ describe('estimatePovertyReduction', () => {
   });
 
   it('partial lift when transfer is below poverty line', () => {
-    // Transfer of $30 < poverty line of $64.50 → partial lifts
+    // Transfer of $30 < LMC line of $109.50 → partial lifts
     const result = estimatePovertyReduction(kenya, 10000000, 30, 'bottom_quintile');
     expect(result.transferExceedsPovertyLine).toBe(false);
     expect(result.estimatedLifted).toBeGreaterThan(0);

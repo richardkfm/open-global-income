@@ -5,6 +5,7 @@ import { getCurrencyForCountry, formatLocalCurrency } from '../../data/currencie
 import type { Country, CountryStats } from '../../core/types.js';
 import type { DataCompleteness } from '../../data/loader.js';
 import { calculateEntitlement } from '../../core/rules.js';
+import { resolveCountryPovertyLine } from '../../core/poverty.js';
 
 function fmt(val: number | null | undefined, decimals = 1, suffix = ''): string {
   if (val === null || val === undefined) return t('common.none');
@@ -332,7 +333,19 @@ export function renderCountryDetail(
   const laborSection = section(t('countries.laborPoverty'), sourceBadge('wb'), [
     tile(t('countries.laborParticipation'), s.laborForceParticipation, fmt(s.laborForceParticipation, 1, '%'), getLevel(s.laborForceParticipation, { good: 60, warn: 50 }), avg('laborForceParticipation'), undefined, 100),
     tile(t('countries.unemployment'), s.unemploymentRate, fmt(s.unemploymentRate, 1, '%'), getLevel(s.unemploymentRate, { good: 5, warn: 10, invert: true }), avg('unemploymentRate'), undefined, 30, true, true),
-    tile(t('countries.poverty215'), s.povertyHeadcountRatio, fmt(s.povertyHeadcountRatio, 1, '%'), getLevel(s.povertyHeadcountRatio, { good: 3, warn: 15, invert: true }), avg('povertyHeadcountRatio'), undefined, 80, true, true),
+    (() => {
+      const line = resolveCountryPovertyLine(country);
+      const rate = line.headcountRatioPercent;
+      const basisLabel: Record<typeof line.basis, string> = {
+        extreme: t('countries.povertyBasisExtreme'),
+        lower_middle: t('countries.povertyBasisLowerMiddle'),
+        upper_middle: t('countries.povertyBasisUpperMiddle'),
+        relative_median: t('countries.povertyBasisRelativeMedian'),
+        national: t('countries.povertyBasisNational'),
+      };
+      const note = `$${line.dailyPppUsd.toFixed(2)}/day · ${basisLabel[line.basis]} `;
+      return tile(t('countries.povertyCountryLine'), rate, fmt(rate, 1, '%'), getLevel(rate, { good: 3, warn: 15, invert: true }), undefined, note, 80, true, true);
+    })(),
     tile(t('countries.inflation'), s.inflationRate, fmt(s.inflationRate, 1, '%'), getLevel(s.inflationRate, { good: 3, warn: 8, invert: true }), avg('inflationRate'), undefined, undefined, false, true),
     tile(t('countries.urbanization'), s.urbanizationRate, fmt(s.urbanizationRate, 1, '%'), 'neutral', avg('urbanizationRate'), undefined, 100),
   ].join(''));
