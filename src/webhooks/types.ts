@@ -15,6 +15,7 @@ export type WebhookEvent =
   | 'pilot.status_changed'
   | 'pilot.report_generated'
   | 'pilot.audit_export_generated'
+  | 'pilot.outcome_recorded'
   | 'funding_scenario.created'
   | 'impact_analysis.created';
 
