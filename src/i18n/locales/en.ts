@@ -98,6 +98,8 @@ const en = {
     targetGroupBottomQuintile: 'Bottom quintile (poorest 20%)',
     targetGroupBottomThird: 'Bottom third (poorest 33%)',
     targetGroupBottomHalf: 'Bottom half (poorest 50%)',
+    transferAmount: 'Transfer (PPP USD/mo)',
+    transferAmountHint: 'Default: $210',
     runButton: 'Run Simulation',
     compareCountries: 'Compare Countries',
     compareCountriesHint: 'Countries (hold Ctrl/Cmd to select multiple)',

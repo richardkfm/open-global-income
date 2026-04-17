@@ -78,6 +78,11 @@ export function renderSimulatePage(
                 <label class="form-label">${t('simulate.durationMonths')}</label>
                 <input class="form-input" type="number" name="durationMonths" min="1" max="120" value="12">
               </div>
+              <div class="form-field form-field-narrow">
+                <label class="form-label">${t('simulate.transferAmount')}</label>
+                <input class="form-input" type="number" name="transferAmount" min="1" max="10000" placeholder="210" step="1">
+                <span class="form-hint">${t('simulate.transferAmountHint')}</span>
+              </div>
               <div class="form-field">
                 <label class="form-label">${t('simulate.targetGroup')}</label>
                 <select class="form-select" name="targetGroup">
@@ -164,6 +169,10 @@ export function renderSimulatePage(
                 <div class="form-field form-field-narrow">
                   <label class="form-label">${t('simulate.durationMonths')}</label>
                   <input class="form-input" type="number" name="durationMonths" min="1" max="120" value="12">
+                </div>
+                <div class="form-field form-field-narrow">
+                  <label class="form-label">${t('simulate.transferAmount')}</label>
+                  <input class="form-input" type="number" name="transferAmount" min="1" max="10000" placeholder="210" step="1">
                 </div>
               </div>
             </div>

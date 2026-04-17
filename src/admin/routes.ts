@@ -343,6 +343,8 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     const coverage = Math.min(1, Math.max(0, parseFloat(body.coverage ?? '20') / 100));
     const durationMonths = Math.min(120, Math.max(1, parseInt(body.durationMonths ?? '12', 10)));
     const targetGroup = (body.targetGroup ?? 'all') as TargetGroup;
+    const rawTransfer = body.transferAmount ? parseFloat(body.transferAmount) : NaN;
+    const floorOverride = Number.isFinite(rawTransfer) && rawTransfer > 0 ? rawTransfer : null;
 
     // Build targeting rules from advanced filter fields; fall back to targetGroup preset
     const extraRules = parseFormTargetingRules(body);
@@ -363,12 +365,12 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       targetGroup,
       ...(targetingRules ? { targetingRules } : {}),
       durationMonths,
-      adjustments: { floorOverride: null, householdSize: null },
+      adjustments: { floorOverride, householdSize: null },
     };
 
     // Collect form fields to carry through to the save endpoint
     const savedFormFields: Record<string, string> = {};
-    for (const key of ['targetGroup', 'tr_preset', 'tr_age_min', 'tr_age_max', 'tr_urban_rural',
+    for (const key of ['targetGroup', 'transferAmount', 'tr_preset', 'tr_age_min', 'tr_age_max', 'tr_urban_rural',
       'tr_max_income', 'tr_identity_providers', 'tr_exclude_paid_days', 'tr_region_ids']) {
       if (body[key]) savedFormFields[key] = body[key] as string;
     }
@@ -378,7 +380,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.post<{
-    Body: { countries?: string | string[]; coverage?: string; durationMonths?: string };
+    Body: { countries?: string | string[]; coverage?: string; durationMonths?: string; transferAmount?: string };
   }>('/simulate/compare', async (request, reply) => {
     const body = request.body ?? {};
     const rawCountries = Array.isArray(body.countries)
@@ -388,6 +390,8 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
         : [];
     const coverage = Math.min(1, Math.max(0, parseFloat(body.coverage ?? '20') / 100));
     const durationMonths = Math.min(120, Math.max(1, parseInt(body.durationMonths ?? '12', 10)));
+    const rawTransfer = body.transferAmount ? parseFloat(body.transferAmount) : NaN;
+    const floorOverride = Number.isFinite(rawTransfer) && rawTransfer > 0 ? rawTransfer : null;
     const dataVersion = getDataVersion();
 
     const results = [];
@@ -399,7 +403,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
         coverage,
         targetGroup: 'all',
         durationMonths,
-        adjustments: { floorOverride: null, householdSize: null },
+        adjustments: { floorOverride, householdSize: null },
       };
       results.push(calculateSimulation(country, params, dataVersion));
     }
@@ -421,6 +425,8 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
         const result = JSON.parse(simulationJson);
         const countryCode = result.country?.code ?? 'XX';
         const targetGroup = (body.targetGroup ?? 'all') as TargetGroup;
+        const rawTransfer = body.transferAmount ? parseFloat(body.transferAmount) : NaN;
+        const floorOverride = Number.isFinite(rawTransfer) && rawTransfer > 0 ? rawTransfer : null;
         const extraRules = parseFormTargetingRules(body);
         const targetingRules: TargetingRules | undefined = extraRules
           ? { preset: targetGroup !== 'all' ? targetGroup : undefined, ...extraRules }
@@ -431,7 +437,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
           targetGroup,
           ...(targetingRules ? { targetingRules } : {}),
           durationMonths: result.simulation?.meta ? 12 : 12,
-          adjustments: { floorOverride: null, householdSize: null },
+          adjustments: { floorOverride, householdSize: null },
         };
         saveSimulation(name ?? null, countryCode, params, result);
         return reply.redirect('/admin/simulate?flash=Simulation+saved');
@@ -749,6 +755,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       coverage?: string;
       durationMonths?: string;
       targetGroup?: string;
+      transferAmount?: string;
       enable_income_tax?: string;
       income_tax_rate?: string;
       enable_vat?: string;
@@ -850,12 +857,14 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       const coverage = Math.min(1, Math.max(0, parseFloat(body.coverage ?? '20') / 100));
       const durationMonths = Math.min(120, Math.max(1, parseInt(body.durationMonths ?? '12', 10)));
       const targetGroup = (body.targetGroup ?? 'all') as TargetGroup;
+      const rawTransfer = body.transferAmount ? parseFloat(body.transferAmount) : NaN;
+      const floorOverride = Number.isFinite(rawTransfer) && rawTransfer > 0 ? rawTransfer : null;
       const params: SimulationParameters = {
         country: country.code,
         coverage,
         targetGroup,
         durationMonths,
-        adjustments: { floorOverride: null, householdSize: null },
+        adjustments: { floorOverride, householdSize: null },
       };
       simulation = calculateSimulation(country, params, getDataVersion());
     }
@@ -945,6 +954,9 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       const targetGroup = (typeof body.targetGroup === 'string' ? body.targetGroup : 'bottom_quintile') as TargetGroup;
       const durationMonths = typeof body.durationMonths === 'number' ? body.durationMonths : 12;
       const name = typeof body.name === 'string' ? body.name || null : null;
+      const rawTransfer = typeof body.transferAmount === 'number' ? body.transferAmount
+        : typeof body.transferAmount === 'string' ? parseFloat(body.transferAmount) : NaN;
+      const floorOverride = Number.isFinite(rawTransfer) && rawTransfer > 0 ? rawTransfer : null;
 
       let simulation;
       let country;
@@ -973,7 +985,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
           coverage: Math.min(1, Math.max(0, coverage)),
           targetGroup,
           durationMonths: Math.min(120, Math.max(1, durationMonths)),
-          adjustments: { floorOverride: null, householdSize: null },
+          adjustments: { floorOverride, householdSize: null },
         };
         simulation = calculateSimulation(country, params, getDataVersion());
         resolvedSimulationId = null;
@@ -984,7 +996,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
         coverage: Math.min(1, Math.max(0, coverage)),
         targetGroup,
         durationMonths: Math.min(120, Math.max(1, durationMonths)),
-        floorOverride: null,
+        floorOverride,
         simulationId: resolvedSimulationId,
       };
 

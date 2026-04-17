@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.23] - 2026-04-17
+
+### Added
+- Transfer amount input in the admin simulation form. Users can now set a custom monthly transfer (PPP USD) instead of being locked to the $210 default. The field appears in both the single-country simulation form and the multi-country comparison form. Empty field falls back to the $210 global income floor. The override is carried through to the save, funding, and impact routes.
+- New i18n keys: `simulate.transferAmount`, `simulate.transferAmountHint`.
+
 ## [0.1.22] - 2026-04-17
 
 ### Fixed
