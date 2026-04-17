@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.22] - 2026-04-17
+
+### Fixed
+- Cost Savings tab was hidden whenever total savings were zero — which is the default state for HIC/UMC countries where the UBI floor ($210/month) is below the country poverty line. The tab is now always shown; when savings are gated out, the tab displays the gate warning explaining why savings are zero rather than silently disappearing.
+
 ## [0.1.21] - 2026-04-16
 
 ### Added

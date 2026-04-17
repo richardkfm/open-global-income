@@ -317,7 +317,10 @@ export function renderImpactPreview(result: ImpactAnalysisResult, saved?: boolea
   if (hasPurchasing) tabDefs.push({ id: 'tab-power', label: t('impact.tabPurchasingPower'), genContent: (h) => purchasingPowerTab(pp, h) });
   if (hasSocial) tabDefs.push({ id: 'tab-social', label: t('impact.tabSocialCoverage'), genContent: (h) => socialCoverageTab(sc, h) });
   tabDefs.push({ id: 'tab-fiscal', label: t('impact.tabGdpStimulus'), genContent: (h) => fiscalTab(fm, h) });
-  if (hasSavings) tabDefs.push({ id: 'tab-savings', label: t('impact.tabCostSavings'), genContent: (h) => costSavingsTab(cs, h) });
+  // Always show the savings tab — when the transfer is below the country
+  // poverty line or data is missing, the tab explains *why* savings are zero
+  // rather than being silently hidden.
+  tabDefs.push({ id: 'tab-savings', label: t('impact.tabCostSavings'), genContent: (h) => costSavingsTab(cs, h) });
   tabDefs.push({ id: 'tab-brief', label: t('impact.tabPolicyBrief'), genContent: (h) => briefTab(brief, h) });
   const tabs = tabDefs.map((tab, i) => ({ id: tab.id, label: tab.label, content: tab.genContent(i !== 0) }));
 
