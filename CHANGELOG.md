@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.25] - 2026-04-17
+
+### Fixed
+- Country detail admin page (`/admin/countries/:code`) displayed every monetary figure in USD regardless of which country was selected, so Germany's GDP per capita appeared as `$52,746` with no indication that the underlying World Bank value is USD-denominated. The page now renders amounts in the country's local currency by default (Germany → EUR) with a compact toggle that lets users switch to any supported reserve currency (USD, EUR, GBP, JPY, CNY) or to the pluggable pivot unit (today USD, IMF SDR already wired in the snapshot). The `asOf` date of the FX snapshot is shown whenever a converted amount is displayed.
+
+### Added
+- `src/data/fx-rates.json` — snapshotted FX rates for all 45 currencies used by countries in `countries.json`, plus an `SDR` entry to make the pluggable-base design concrete. Every rate carries an `asOf` field and a `source` provenance string — no runtime API calls, so conversions are deterministic and auditable. Refreshed via the existing `npm run data:update` workflow.
+- `src/core/fx.ts` — pure conversion module: `convert()`, `crossRate()`, `isSupportedCurrency()`, `pickDisplayCurrency()`, `resolveRequestedCurrency()`. The math is symmetric in the `baseCurrency` field, so the protocol is not locked to USD; a future pivot to IMF SDR or a PPP-adjusted international dollar requires only updating the JSON snapshot.
+- `GET /v1/income/calc` and `POST /v1/income/batch` now accept a `currency` parameter (`?currency=EUR` / `{"currency":"EUR"}` in the body). The response adds a `display` block containing `currency`, `monthlyAmount`, `rate`, `rateAsOf`, `baseCurrency`, `source`, and an explanatory `note` — existing fields (`pppUsdPerMonth`, `localCurrencyPerMonth`, `score`, `meta`) are unchanged so existing clients are unaffected.
+- `getFxSnapshot()` / `resetFxCache()` exported from `src/data/loader.ts`.
+- 16 new tests in `src/core/fx.test.ts` covering cross-rates, round-trips, base-currency pluggability (USD vs. SDR pivot producing the same cross-rate), unsupported-currency validation, and the display-currency fallback chain.
+- 3 new integration tests in `src/api/api.test.ts` verifying the `display` block, the `?currency=` override, and the fallback when an unknown currency is requested.
+- `countries.currencyToggleLabel`, `countries.currencyToggleHint`, `countries.currencyRateAsOf`, `countries.currencyBaseNote` i18n keys.
+
+### Changed
+- Test count: **534 tests** across 29 suites (was 513).
+
 ## [0.1.24] - 2026-04-17
 
 ### Added

@@ -67,6 +67,34 @@ describe('GET /v1/income/calc', () => {
     expect(body.ok).toBe(false);
     expect(body.error.code).toBe('COUNTRY_NOT_FOUND');
   });
+
+  it('includes a display block in the country local currency by default', async () => {
+    const res = await app.inject({ method: 'GET', url: '/v1/income/calc?country=DE' });
+    const body = res.json();
+    expect(body.data.display.currency).toBe('EUR');
+    expect(body.data.display.monthlyAmount).toBeGreaterThan(0);
+    expect(body.data.display.rate).toBeGreaterThan(0);
+    expect(typeof body.data.display.rateAsOf).toBe('string');
+    expect(body.data.display.baseCurrency).toBe('USD');
+  });
+
+  it('honours an explicit ?currency= query parameter', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/income/calc?country=DE&currency=GBP',
+    });
+    const body = res.json();
+    expect(body.data.display.currency).toBe('GBP');
+  });
+
+  it('falls back to the country default when ?currency= is unknown', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/income/calc?country=DE&currency=XYZ',
+    });
+    const body = res.json();
+    expect(body.data.display.currency).toBe('EUR');
+  });
 });
 
 // --- Batch ---
