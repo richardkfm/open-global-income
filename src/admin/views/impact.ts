@@ -136,6 +136,13 @@ export function renderImpactPage(
           </div>
 
           <div class="form-group mb-2">
+            <label>${t('impact.transferAmount')}</label>
+            <input type="number" name="transferAmount" id="transfer-input" min="1" max="10000" step="1" placeholder="210"
+              style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:0.25rem">
+            <div class="form-help">${t('impact.transferAmountHint')}</div>
+          </div>
+
+          <div class="form-group mb-2">
             <label>${t('impact.targetGroup')}</label>
             <select name="targetGroup">
               <option value="all">${t('impact.targetGroupAll')}</option>
@@ -199,8 +206,12 @@ export function renderImpactPage(
       var duration = parseInt(document.getElementById('dur-range')?.value || '12');
       var targetGroup = document.querySelector('select[name=targetGroup]')?.value || 'bottom_quintile';
       var name = document.getElementById('analysis-name')?.value || '';
+      var transferRaw = document.getElementById('transfer-input')?.value || '';
+      var transferAmount = transferRaw ? parseFloat(transferRaw) : undefined;
+      if (!transferAmount || !isFinite(transferAmount) || transferAmount <= 0) transferAmount = undefined;
       return { simulationId: simId || undefined, country: simId ? undefined : country,
-               coverage: coverage, durationMonths: duration, targetGroup: targetGroup, name: name };
+               coverage: coverage, durationMonths: duration, targetGroup: targetGroup,
+               transferAmount: transferAmount, name: name };
     }
 
     function runPreview(save) {
@@ -539,7 +550,13 @@ function costSavingsTab(cs: CostSavingsEstimate, hidden = true): string {
   }).join('');
 
   const gateNote = !cs.transferAdequateForSavings
-    ? `<div class="alert alert-warning text-sm mb-2">${t('impact.savingsGateWarning')}</div>`
+    ? `<div class="alert alert-warning text-sm mb-2">
+        <div>${t('impact.savingsGateWarning')}</div>
+        <div class="mt-1">
+          <strong>${t('impact.savingsGateCurrent')}:</strong> $${cs.transferPppUsdPerMonth.toFixed(0)} PPP/mo ·
+          <strong>${t('impact.savingsGateActionable')}</strong> $${cs.countryPovertyLineMonthlyPppUsd.toFixed(0)} PPP/mo.
+        </div>
+      </div>`
     : '';
 
   return `

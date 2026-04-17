@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.24] - 2026-04-17
+
+### Added
+- Transfer amount input on the admin `/impact` form. The impact route already accepted `transferAmount`, but the UI had no field — so the analysis was locked to the $210 default. Users can now set a custom monthly transfer (PPP USD) and see how it affects every dimension: poverty lift, purchasing power, GDP stimulus, and — most importantly — cost savings, which are gated on whether the transfer clears the country poverty line.
+- Cost Savings gate warning is now actionable: it shows the current transfer and the specific poverty-line value needed to unlock category estimates (e.g. *"Current transfer: $210 PPP/mo · To unlock savings estimates, raise the transfer amount to at least $2194 PPP/mo."*). Previously the warning only stated *that* savings were gated out, not the threshold required to unlock them.
+- Two new fields on `CostSavingsEstimate`: `transferPppUsdPerMonth` and `countryPovertyLineMonthlyPppUsd` — so the UI (and API consumers) can surface both sides of the adequacy check without re-resolving the country poverty line.
+- New i18n keys: `impact.transferAmount`, `impact.transferAmountHint`, `impact.savingsGateActionable`, `impact.savingsGateCurrent`.
+
 ## [0.1.23] - 2026-04-17
 
 ### Added

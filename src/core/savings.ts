@@ -379,6 +379,8 @@ export function estimateCostSavings(
     totalAnnualSavingsPppUsdHigh: totalHigh,
     savingsAsPercentOfUbiCostCentral: savingsAsPctCentral,
     transferAdequateForSavings: adequate,
+    transferPppUsdPerMonth: floorPppUsd,
+    countryPovertyLineMonthlyPppUsd: line.monthlyPppUsd,
     coverageFactor: coverage,
     sources: Array.from(allSources),
     assumptions,
