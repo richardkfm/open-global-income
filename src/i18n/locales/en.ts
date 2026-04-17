@@ -263,6 +263,8 @@ const en = {
 
   // Impact (impact.ts)
   impact: {
+    transferAmount: 'Transfer (PPP USD/mo)',
+    transferAmountHint: 'Default: $210. Raise above the country poverty line to unlock savings estimates.',
     title: 'Economic Impact Modeling',
     subtitle: 'Model the real-world impact of a basic income program: poverty reduction, purchasing power increase, social coverage gap, and GDP stimulus. Every assumption is listed explicitly. Export as a policy brief.',
     configureAnalysis: 'Configure Analysis',
@@ -366,6 +368,8 @@ const en = {
     savingsOf: 'of',
     savingsBarDetail: 'central annual savings — redirectable',
     savingsGateWarning: 'The per-person transfer is below the country poverty line. Most savings categories are conservatively gated to zero because published effects (Forget 2011, Wright 2014) were measured against adequate transfers.',
+    savingsGateActionable: 'To unlock savings estimates, raise the transfer amount to at least',
+    savingsGateCurrent: 'Current transfer',
     savingsRedirectableNote: 'These are REDIRECTABLE fiscal resources — not added to the UBI budget automatically. Policymakers decide whether to recycle them.',
     sources: 'Sources',
     // Policy brief tab

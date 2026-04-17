@@ -546,6 +546,10 @@ export interface CostSavingsEstimate {
   savingsAsPercentOfUbiCostCentral: number;
   /** Whether the transfer clears the country poverty line — gates most categories */
   transferAdequateForSavings: boolean;
+  /** The per-person monthly transfer used in this estimate (PPP USD) */
+  transferPppUsdPerMonth: number;
+  /** Country poverty line used as the adequacy threshold (PPP USD / month) */
+  countryPovertyLineMonthlyPppUsd: number;
   /** The coverage saturation factor applied uniformly (min(1, coverage × 1)) */
   coverageFactor: number;
   /** Top-level sources list for UI display */
