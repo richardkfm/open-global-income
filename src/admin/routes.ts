@@ -12,7 +12,7 @@ import { renderFundingPage, renderFundingPreview } from './views/funding.js';
 import { renderImpactPage, renderImpactPreview, renderAnalysesTable } from './views/impact.js';
 import { listApiKeys, createApiKey, revokeApiKey, type ApiKeyTier } from '../db/api-keys.js';
 import { getRecentAuditEntries, getAuditStats } from '../db/audit.js';
-import { getAllCountries, getCountryByCode, getDataVersion, getCountryDataCompleteness, getAllRegions, getRegionById, getRegionsDataVersion } from '../data/loader.js';
+import { getAllCountries, getCountryByCode, getDataVersion, getCountryDataCompleteness, getAllRegions, getRegionById, getRegionsDataVersion, getFxSnapshot } from '../data/loader.js';
 import { buildRegionAdjustedCountry } from '../core/regions.js';
 import { calculateEntitlement } from '../core/rules.js';
 import { getDb } from '../db/database.js';
@@ -1062,7 +1062,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       .send(renderCountryList(items, getDataVersion()));
   });
 
-  app.get<{ Params: { code: string } }>('/countries/:code', async (request, reply) => {
+  app.get<{ Params: { code: string }; Querystring: { currency?: string } }>('/countries/:code', async (request, reply) => {
     const code = request.params.code.toUpperCase();
     const country = getCountryByCode(code);
     if (!country) {
@@ -1079,9 +1079,19 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       presentFields: [],
     };
     const allCountries = getAllCountries();
+    const fxSnapshot = getFxSnapshot();
     return reply
       .type('text/html')
-      .send(renderCountryDetail(country, completeness, allCountries, getDataVersion()));
+      .send(
+        renderCountryDetail(
+          country,
+          completeness,
+          allCountries,
+          getDataVersion(),
+          undefined,
+          { fxSnapshot, displayCurrency: request.query.currency },
+        ),
+      );
   });
 
   // ── Regions ──────────────────────────────────────────────────────────────

@@ -1,11 +1,12 @@
 import { layout } from './layout.js';
 import { escapeHtml, formatCompact, formatNumber } from './helpers.js';
 import { t } from '../../i18n/index.js';
-import { getCurrencyForCountry, formatLocalCurrency } from '../../data/currencies.js';
+import { getCurrencyForCountry, formatLocalCurrency, CURRENCIES, COUNTRY_CURRENCY_MAP } from '../../data/currencies.js';
 import type { Country, CountryStats } from '../../core/types.js';
 import type { DataCompleteness } from '../../data/loader.js';
 import { calculateEntitlement } from '../../core/rules.js';
 import { resolveCountryPovertyLine } from '../../core/poverty.js';
+import { convert, pickDisplayCurrency, type FxSnapshot } from '../../core/fx.js';
 
 function fmt(val: number | null | undefined, decimals = 1, suffix = ''): string {
   if (val === null || val === undefined) return t('common.none');
@@ -227,18 +228,91 @@ export function renderCountryList(
   );
 }
 
+/**
+ * Options for the country detail view. `fxSnapshot` + `displayCurrency`
+ * together drive the currency toggle. When omitted, amounts render in USD
+ * as before — so the function stays backwards-compatible.
+ */
+export interface CountryDetailOptions {
+  fxSnapshot?: FxSnapshot;
+  /** User-selected display currency (ISO 4217). Defaults to the country's local currency. */
+  displayCurrency?: string;
+}
+
+/** Render a compact dropdown that reloads the page with ?currency=<code>. */
+function renderCurrencyToggle(
+  countryCode: string,
+  snapshot: FxSnapshot,
+  active: string,
+): string {
+  const localCode = COUNTRY_CURRENCY_MAP[countryCode.toUpperCase()];
+  // Offer: the country's local, the base, and a short curated list of reserves.
+  // Using a Set de-dupes when local === base.
+  const curated = new Set<string>([snapshot.baseCurrency]);
+  if (localCode) curated.add(localCode);
+  for (const code of ['EUR', 'GBP', 'JPY', 'CNY', 'SDR']) {
+    if (snapshot.rates[code]) curated.add(code);
+  }
+  const options = Array.from(curated)
+    .map((code) => {
+      const label = CURRENCIES[code]?.name ?? code;
+      const selected = code === active ? ' selected' : '';
+      return `<option value="${escapeHtml(code)}"${selected}>${escapeHtml(code)} — ${escapeHtml(label)}</option>`;
+    })
+    .join('');
+  return `
+    <form method="get" action="" class="flex flex-center gap-1" style="margin:0">
+      <label class="text-xs text-muted" for="currency-toggle">${t('countries.currencyToggleLabel')}</label>
+      <select id="currency-toggle" name="currency" class="form-select" onchange="this.form.submit()" style="width:auto;min-width:200px;padding:0.25rem 0.5rem;font-size:0.85rem">
+        ${options}
+      </select>
+      <noscript><button type="submit" class="btn btn-xs">Apply</button></noscript>
+    </form>`;
+}
+
 export function renderCountryDetail(
   country: Country,
   completeness: DataCompleteness,
   allCountries: Country[],
   dataVersion: string,
   username?: string,
+  options: CountryDetailOptions = {},
 ): string {
   const s = country.stats;
   const group = s.incomeGroup;
   const entitlement = calculateEntitlement(country, dataVersion);
   const currency = getCurrencyForCountry(country.code);
   const currencyCode = currency?.code ?? 'USD';
+
+  // ── Display-currency resolution ──────────────────────────────────────────
+  // The USD figures from World Bank (gdpPerCapitaUsd, gniPerCapitaUsd) are
+  // converted via the injected FX snapshot. If no snapshot is provided, fall
+  // back to the prior USD-only rendering so callers that don't opt in are
+  // unaffected.
+  const fx = options.fxSnapshot;
+  const displayCode = fx
+    ? pickDisplayCurrency(fx, options.displayCurrency ?? currencyCode)
+    : 'USD';
+  const displaySymbol = CURRENCIES[displayCode]?.symbol ?? displayCode;
+  const fmtMoney = (usdAmount: number): string => {
+    if (!fx || displayCode === 'USD') {
+      return `$${Math.round(usdAmount).toLocaleString('en-US')}`;
+    }
+    const c = convert(usdAmount, fx.baseCurrency, displayCode, fx);
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: displayCode,
+        maximumFractionDigits: 0,
+      }).format(c.amount);
+    } catch {
+      return `${displaySymbol}${Math.round(c.amount).toLocaleString('en-US')}`;
+    }
+  };
+  const toggleHtml = fx ? renderCurrencyToggle(country.code, fx, displayCode) : '';
+  const rateAsOfLine = fx && displayCode !== fx.baseCurrency
+    ? `<div class="text-xs text-muted mt-1">${t('countries.currencyRateAsOf')} ${escapeHtml(fx.asOf)} · ${t('countries.currencyBaseNote')} ${escapeHtml(fx.baseCurrency)}</div>`
+    : '';
 
   // Group averages
   const macroFields: (keyof CountryStats)[] = [
@@ -265,6 +339,7 @@ export function renderCountryDetail(
             <span class="mono text-muted">${escapeHtml(country.code)}</span>
           </div>
           <span class="badge ${incomeGroupClass(group)}">${incomeGroupLabel(group)}</span>
+          ${toggleHtml ? `<div class="mt-1">${toggleHtml}${rateAsOfLine}</div>` : ''}
         </div>
         <div class="text-center">
           <div class="text-xs text-muted mb-1">${t('countries.needScore')}</div>
@@ -282,7 +357,7 @@ export function renderCountryDetail(
       </div>
       <div class="card stat-card">
         <div class="stat-label">${t('countries.gdpPerCapita')}</div>
-        <div class="stat-value">$${s.gdpPerCapitaUsd.toLocaleString('en-US')}</div>
+        <div class="stat-value">${fmtMoney(s.gdpPerCapitaUsd)}</div>
       </div>
       <div class="card stat-card">
         <div class="stat-label">${t('countries.population')}</div>
@@ -304,8 +379,8 @@ export function renderCountryDetail(
 
   // ── Core Economics ────────────────────────────────────────────────────────
   const coreSection = section(t('countries.coreEconomics'), sourceBadge('wb'), [
-    tile(t('countries.gdpCapita'), s.gdpPerCapitaUsd, `$${s.gdpPerCapitaUsd.toLocaleString('en-US')}`, 'neutral', undefined, undefined, undefined, false),
-    tile(t('countries.gniCapita'), s.gniPerCapitaUsd, `$${s.gniPerCapitaUsd.toLocaleString('en-US')}`, 'neutral', undefined, undefined, undefined, false),
+    tile(t('countries.gdpCapita'), s.gdpPerCapitaUsd, fmtMoney(s.gdpPerCapitaUsd), 'neutral', undefined, undefined, undefined, false),
+    tile(t('countries.gniCapita'), s.gniPerCapitaUsd, fmtMoney(s.gniPerCapitaUsd), 'neutral', undefined, undefined, undefined, false),
     tile(t('countries.pppFactor'), s.pppConversionFactor, `${s.pppConversionFactor.toFixed(2)}`, 'neutral', undefined, t('countries.noteLocalPerIntlDollar'), undefined, false),
     tile(t('countries.giniIndex'), s.giniIndex, s.giniIndex != null ? `${s.giniIndex}` : t('common.none'),
       s.giniIndex != null ? getLevel(s.giniIndex, { good: 35, warn: 45, invert: true }) : 'neutral', undefined, t('countries.noteInequality'), 100),

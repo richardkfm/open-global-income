@@ -2,6 +2,7 @@ import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import type { Country, Region } from '../core/types.js';
+import type { FxSnapshot } from '../core/fx.js';
 
 interface RegionDataFile {
   dataVersion: string;
@@ -245,4 +246,34 @@ export function getRegionsByCountry(countryCode: string): Region[] {
 /** Reset the regions cache (for testing) */
 export function resetRegionsCache(): void {
   cachedRegions = null;
+}
+
+// ── FX snapshot loader ────────────────────────────────────────────────────────
+
+let cachedFx: FxSnapshot | null = null;
+
+/**
+ * Load the FX snapshot from src/data/fx-rates.json.
+ *
+ * The snapshot's `baseCurrency` field is the pivot unit; today it's USD
+ * because the underlying World Bank indicators are USD-denominated. If the
+ * protocol later pivots to a neutral unit (e.g. IMF SDR or PPP-adjusted
+ * international dollar), only the JSON file changes — the conversion math
+ * in `src/core/fx.ts` is already symmetric.
+ */
+export function getFxSnapshot(): FxSnapshot {
+  if (cachedFx) return cachedFx;
+  const filePath = join(__dirname, 'fx-rates.json');
+  const raw = readFileSync(filePath, 'utf-8');
+  const parsed = JSON.parse(raw) as FxSnapshot;
+  if (!parsed.baseCurrency || !parsed.rates || typeof parsed.rates !== 'object') {
+    throw new Error(`fx: invalid snapshot at ${filePath}`);
+  }
+  cachedFx = parsed;
+  return cachedFx;
+}
+
+/** Reset the FX cache (for testing) */
+export function resetFxCache(): void {
+  cachedFx = null;
 }

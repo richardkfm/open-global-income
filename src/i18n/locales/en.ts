@@ -466,6 +466,11 @@ const en = {
     // Notes
     noteLocalPerIntlDollar: 'local per intl $',
     noteInequality: 'inequality (0–100)',
+    // Currency toggle
+    currencyToggleLabel: 'Display currency',
+    currencyToggleHint: 'Amounts converted via FX snapshot',
+    currencyRateAsOf: 'FX rates as of',
+    currencyBaseNote: 'pivot:',
   },
 
   // Regions (regions.ts)
