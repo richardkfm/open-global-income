@@ -1350,11 +1350,14 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
 
   // ── Regions ──────────────────────────────────────────────────────────────
 
-  app.get('/regions', async (_request, reply) => {
+  app.get('/regions', async (request, reply) => {
+    const url = new URL(request.url, 'http://localhost');
+    const view = (url.searchParams.get('view') ?? 'table') === 'map' ? 'map' : 'table';
+    const indicator = (url.searchParams.get('indicator') ?? 'col') === 'poverty' ? 'poverty' : 'col';
     const regions = getAllRegions();
     return reply
       .type('text/html')
-      .send(renderRegionList(regions, getRegionsDataVersion()));
+      .send(renderRegionList(regions, getRegionsDataVersion(), undefined, view, indicator));
   });
 
   app.get<{ Params: { id: string } }>('/regions/:id', async (request, reply) => {

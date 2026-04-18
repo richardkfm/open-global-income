@@ -1,5 +1,6 @@
 import { layout } from './layout.js';
 import { escapeHtml, formatCompact } from './helpers.js';
+import { renderChoropleth } from './chart-helpers.js';
 import { t } from '../../i18n/index.js';
 import type { Region } from '../../core/types.js';
 
@@ -22,6 +23,8 @@ export function renderRegionList(
   regions: Region[],
   dataVersion: string,
   username?: string,
+  view: 'table' | 'map' = 'table',
+  indicator: 'col' | 'poverty' = 'col',
 ): string {
   // Group by country
   const byCountry = new Map<string, Region[]>();
@@ -38,8 +41,46 @@ export function renderRegionList(
     </div>`;
 
   for (const [countryCode, countryRegions] of byCountry) {
+    const isKenya = countryCode === 'KE';
+    const toggleHtml = isKenya ? `
+      <div class="view-toggle mb-1">
+        <span class="text-xs text-muted">View as:</span>
+        <a href="?view=table&indicator=${indicator}" class="btn btn-sm ${view === 'table' ? 'btn-primary' : 'btn-secondary'}">Table</a>
+        <a href="?view=map&indicator=${indicator}" class="btn btn-sm ${view === 'map' ? 'btn-primary' : 'btn-secondary'}">Map</a>
+        ${view === 'map' ? `
+          <span class="text-xs text-muted ml-1">Color by:</span>
+          <a href="?view=map&indicator=col" class="btn btn-sm ${indicator === 'col' ? 'btn-primary' : 'btn-secondary'}">Cost-of-living</a>
+          <a href="?view=map&indicator=poverty" class="btn btn-sm ${indicator === 'poverty' ? 'btn-primary' : 'btn-secondary'}">Poverty rate</a>
+        ` : ''}
+      </div>` : '';
+
+    // Choropleth section (Kenya map mode only)
+    let choroplethHtml = '';
+    if (isKenya && view === 'map') {
+      const values: Record<string, number> = {};
+      for (const r of countryRegions) {
+        const val = indicator === 'poverty'
+          ? (r.stats.povertyHeadcountRatio ?? null)
+          : r.stats.costOfLivingIndex;
+        if (val != null) values[r.id] = val;
+      }
+      const vals = Object.values(values);
+      const min = vals.length ? Math.min(...vals) : 0;
+      const max = vals.length ? Math.max(...vals) : 1;
+      choroplethHtml = renderChoropleth({
+        svgPath: '/geo/ke-counties.svg',
+        values,
+        scale: { min, max },
+        colorRamp: indicator === 'poverty' ? ['#fee5d9', '#a50f15'] : ['#deebf7', '#08519c'],
+        label: indicator === 'poverty' ? 'Poverty headcount ratio (%)' : 'Cost-of-living index',
+        unit: indicator === 'poverty' ? '%' : '',
+      });
+    }
+
     html += `<div class="section"><h2>${escapeHtml(countryCode)} &mdash; ${countryRegions.length} ${t('regions.regions')}</h2>`;
-    html += `<div class="data-table-container"><table class="data-table">
+    html += toggleHtml;
+    html += choroplethHtml;
+    html += `<div class="data-table-container mt-1"><table class="data-table">
 <thead><tr>
   <th>${t('regions.colId')}</th>
   <th>${t('regions.colName')}</th>

@@ -138,6 +138,22 @@ const en = {
     colPerPersonMonthLocal: 'Per Person/Mo (Local)',
     colAnnualCostPpp: 'Annual Cost (PPP USD)',
     colPercentGdp: '% of GDP',
+    // Citations + data quality
+    dataSources: 'Data sources',
+    dqIndicator: 'Indicator',
+    dqSource: 'Source',
+    dqYear: 'Year',
+    dqValue: 'Value',
+    // Methodology drawer
+    drawerCostTitle: 'Cost calculation formula',
+    drawerCostFormula: 'Annual cost = monthly transfer × 12 × recipient count, where recipient count = coverage % × total population. Per-person amounts are converted to local currency using the World Bank PPP conversion factor.',
+    drawerInputTransfer: 'Monthly transfer:',
+    drawerInputTransferNote: 'ruleset-derived income floor',
+    drawerInputPopulation: 'Population:',
+    drawerInputCoverage: 'Coverage:',
+    drawerInputCoverageNote: 'recipients',
+    drawerInputPpp: 'PPP conversion factor:',
+    drawerRuleset: 'Ruleset version:',
   },
 
   // Pilots (pilots.ts)
@@ -269,6 +285,7 @@ const en = {
     scenarioNamePlaceholder: 'Scenario name...',
     exportJson: 'Export JSON',
     gap: 'Gap',
+    dataSources: 'Data sources',
   },
 
   // Impact (impact.ts)
