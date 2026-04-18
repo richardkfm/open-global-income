@@ -45,6 +45,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { key: 'countries', href: '/admin/countries', labelKey: 'nav.countries' },
       { key: 'regions',   href: '/admin/regions',   labelKey: 'nav.regions'   },
       { key: 'simulate',  href: '/admin/simulate',  labelKey: 'nav.simulate'  },
+      { key: 'compare',   href: '/admin/compare',   labelKey: 'nav.compare'   },
     ],
   },
   {
@@ -64,6 +65,12 @@ export const NAV_SECTIONS: NavSection[] = [
     labelKey: 'nav.sectionRun',
     items: [
       { key: 'pilots', href: '/admin/pilots', labelKey: 'nav.pilots' },
+    ],
+  },
+  {
+    labelKey: 'nav.sectionProve',
+    items: [
+      { key: 'evidence', href: '/admin/evidence', labelKey: 'nav.evidence' },
     ],
   },
   {

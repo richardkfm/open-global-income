@@ -39,7 +39,9 @@ import {
 } from './views/programs.js';
 import { renderDataSourcesPage, renderDataSourceDetail } from './views/data-sources.js';
 import { renderEvidencePage } from './views/evidence.js';
-import { recordOutcome, getPilotOutcomes, getOutcomeComparison } from '../db/outcomes-db.js';
+import { renderComparePage, renderCompareResults } from './views/compare.js';
+import { renderEvidenceAggregatePage } from './views/evidence-aggregate.js';
+import { recordOutcome, getPilotOutcomes, getOutcomeComparison, aggregateOutcomes } from '../db/outcomes-db.js';
 import { getLatestImpactAnalysisBySimulation } from '../db/impact-db.js';
 import { escapeHtml } from './views/helpers.js';
 import { listDataSources, getDataSourceById, createDataSource, updateDataSource, deleteDataSource, seedDefaultDataSources } from '../db/data-sources-db.js';
@@ -386,7 +388,15 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     }
 
     const result = calculateSimulation(country, params, getDataVersion());
-    return reply.type('text/html').send(renderSimulationPreview(result, undefined, country, { savedFormFields, fullCountry: country }));
+    const annualCost = result.simulation.cost.annualPppUsd;
+    const fiscalContext = annualCost > 0 ? calculateFiscalContext(country, annualCost) : null;
+    return reply.type('text/html').send(
+      renderSimulationPreview(result, undefined, country, {
+        savedFormFields,
+        fullCountry: country,
+        fiscalContext,
+      }),
+    );
   });
 
   app.post<{
@@ -463,6 +473,90 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     return reply.redirect('/admin/simulate?flash=Simulation+deleted');
   });
 
+  // ── Compare (multi-country pilot-site selection) ──────────────────────────
+
+  app.get('/compare', async (request, reply) => {
+    const countries = getAllCountries();
+    const url = new URL(request.url, 'http://localhost');
+    const flash = url.searchParams.get('flash') ?? undefined;
+    return reply.type('text/html').send(renderComparePage(countries, flash));
+  });
+
+  app.post<{
+    Body: {
+      countries?: string | string[];
+      coverage?: string;
+      durationMonths?: string;
+      targetGroup?: string;
+      transferAmount?: string;
+      rulesetVersion?: string;
+    };
+  }>('/compare/preview', async (request, reply) => {
+    const body = request.body ?? {};
+    const rawCountries = Array.isArray(body.countries)
+      ? body.countries
+      : body.countries
+        ? [body.countries]
+        : [];
+    const coverage = Math.min(1, Math.max(0, parseFloat(body.coverage ?? '20') / 100));
+    const durationMonths = Math.min(120, Math.max(1, parseInt(body.durationMonths ?? '12', 10)));
+    const targetGroup = (body.targetGroup ?? 'bottom_quintile') as TargetGroup;
+    const rawTransfer = body.transferAmount ? parseFloat(body.transferAmount) : NaN;
+    const floorOverride = Number.isFinite(rawTransfer) && rawTransfer > 0 ? rawTransfer : null;
+    const dataVersion = getDataVersion();
+
+    const results = [];
+    for (const code of rawCountries) {
+      const country = getCountryByCode(code.toUpperCase());
+      if (!country) continue;
+      const params: SimulationParameters = {
+        country: country.code,
+        coverage,
+        targetGroup,
+        durationMonths,
+        adjustments: { floorOverride, householdSize: null },
+      };
+      results.push(calculateSimulation(country, params, dataVersion));
+    }
+
+    return reply.type('text/html').send(renderCompareResults(results));
+  });
+
+  // ── Evidence Aggregate (cross-pilot outcomes) ─────────────────────────────
+
+  app.get('/evidence', async (request, reply) => {
+    const url = new URL(request.url, 'http://localhost');
+    const incomeGroup = url.searchParams.get('incomeGroup') ?? '';
+    const country = url.searchParams.get('country') ?? '';
+    const minSampleSize = Math.max(0, parseInt(url.searchParams.get('minSampleSize') ?? '0', 10) || 0);
+
+    const aggregate = aggregateOutcomes({
+      country: country || undefined,
+      incomeGroup: incomeGroup || undefined,
+    });
+    const countries = getAllCountries();
+
+    return reply.type('text/html').send(
+      renderEvidenceAggregatePage({
+        aggregate,
+        countries,
+        filters: { incomeGroup, country, minSampleSize },
+      }),
+    );
+  });
+
+  app.post<{
+    Body: { incomeGroup?: string; country?: string; minSampleSize?: string };
+  }>('/evidence', async (request, reply) => {
+    const body = request.body ?? {};
+    const qs = new URLSearchParams();
+    if (body.incomeGroup) qs.set('incomeGroup', body.incomeGroup);
+    if (body.country) qs.set('country', body.country);
+    if (body.minSampleSize) qs.set('minSampleSize', body.minSampleSize);
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    return reply.redirect(`/admin/evidence${suffix}`);
+  });
+
   // ── Pilots ─────────────────────────────────────────────────────────────────
 
   app.get('/pilots', async (request, reply) => {
@@ -486,9 +580,32 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     const simulation = pilot.simulationId ? getSimulationById(pilot.simulationId) : null;
     const url = new URL(request.url, 'http://localhost');
     const flash = url.searchParams.get('flash') ?? undefined;
+
+    const outcomes = getPilotOutcomes(pilot.id);
+    const impactAnalysis = pilot.simulationId
+      ? getLatestImpactAnalysisBySimulation(pilot.simulationId)
+      : null;
+    const projectedImpact = impactAnalysis
+      ? {
+          povertyReductionPercent: impactAnalysis.results.povertyReduction.liftedAsPercentOfPoor ?? null,
+          incomeIncreasePercent: impactAnalysis.results.purchasingPower.incomeIncreasePercent ?? null,
+        }
+      : null;
+    const comparison = outcomes.length > 0 ? getOutcomeComparison(pilot.id, projectedImpact) : null;
+
     return reply
       .type('text/html')
-      .send(renderPilotDetailPage(pilot, disbursements, simulation, flash));
+      .send(
+        renderPilotDetailPage(
+          pilot,
+          disbursements,
+          simulation,
+          flash,
+          outcomes,
+          comparison,
+          impactAnalysis,
+        ),
+      );
   });
 
   app.post<{ Body: Record<string, string | undefined> }>('/pilots/create', async (request, reply) => {
