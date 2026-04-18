@@ -1,10 +1,11 @@
 import { layout } from './layout.js';
 import { escapeHtml, formatNumber, formatCompact, formatPercent, formatCurrency } from './helpers.js';
+import { renderDrawer } from './helpers.js';
 import { barChart, lineChart } from './chart-helpers.js';
 import { projectYearly, yearLabels } from '../../core/projections.js';
 import { t } from '../../i18n/index.js';
 import { getCurrencyForCountry, formatLocalCurrency } from '../../data/currencies.js';
-import type { Country } from '../../core/types.js';
+import type { Country, FiscalContext } from '../../core/types.js';
 import type { SimulationResult } from '../../core/types.js';
 import type { SavedSimulation } from '../../core/types.js';
 
@@ -216,6 +217,96 @@ export interface SimulationPreviewContext {
   fullCountry?: Country;
   /** Flat form fields to carry through to the save endpoint */
   savedFormFields?: Record<string, string>;
+  /**
+   * Optional fiscal context computed by `calculateFiscalContext` from
+   * `src/core/funding.ts`. When present, a `.fiscal-card` section is
+   * rendered beneath the main stat grid. Gracefully omitted when null.
+   */
+  fiscalContext?: FiscalContext | null;
+}
+
+// ---------------------------------------------------------------------------
+// Fiscal context card (used inside renderSimulationPreview)
+// ---------------------------------------------------------------------------
+
+function fmtPct(n: number | null | undefined, decimals = 1): string {
+  if (n == null) return `<span class="text-muted">${t('common.na')}</span>`;
+  return escapeHtml(`${n.toFixed(decimals)}%`);
+}
+
+function fmtUsd(n: number | null | undefined): string {
+  if (n == null) return `<span class="text-muted">${t('common.na')}</span>`;
+  const abs = Math.abs(n);
+  if (abs >= 1e12) return `$${(n / 1e12).toFixed(1)}T`;
+  if (abs >= 1e9) return `$${(n / 1e9).toFixed(1)}B`;
+  if (abs >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
+  return escapeHtml(formatCurrency(n, 'USD'));
+}
+
+function renderFiscalContextCard(fc: FiscalContext): string {
+  const ubiPctTax = fc.ubiAsPercentOfTaxRevenue;
+  const ubiTaxClass = ubiPctTax != null && ubiPctTax > 100 ? 'text-danger' : 'text-success';
+  const ubiPctSocial = fc.ubiAsPercentOfSocialSpending;
+
+  const taxRevAbsLabel = fc.totalTaxRevenue.absolutePppUsd != null
+    ? ` (${fmtUsd(fc.totalTaxRevenue.absolutePppUsd)})`
+    : '';
+  const socialAbsLabel = fc.currentSocialSpending.absolutePppUsd != null
+    ? ` (${fmtUsd(fc.currentSocialSpending.absolutePppUsd)})`
+    : '';
+
+  const drawer = renderDrawer(
+    'sim-fiscal-methodology',
+    t('common.calculations'),
+    'How fiscal context is calculated',
+    `<p class="text-sm text-muted">
+      Tax revenue and social spending are sourced from World Bank, ILO, and IMF
+      indicators for the selected country and expressed as a percentage of GDP.
+      Absolute amounts are derived by multiplying those percentages by the
+      country&rsquo;s total GDP (GDP per capita &times; population) in PPP-USD.
+      UBI cost as a share of tax revenue and social spending gives a sense of
+      fiscal headroom — values above 100&thinsp;% indicate the program would
+      exceed the entire existing budget in that category.
+    </p>`,
+  );
+
+  return `
+  <div class="fiscal-card mt-2">
+    <h3 class="section-title">${t('funding.fiscalContext')}</h3>
+    <div class="grid grid-4 mb-1">
+      <div class="card">
+        <div class="metric-tile">
+          <div class="metric-tile-label">${t('funding.taxRevenue')}</div>
+          <div class="metric-tile-value">${fmtPct(fc.totalTaxRevenue.percentGdp)}</div>
+          <div class="text-xs text-muted">${t('funding.ofGdp')}${taxRevAbsLabel}</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="metric-tile">
+          <div class="metric-tile-label">${t('funding.socialSpending')}</div>
+          <div class="metric-tile-value">${fmtPct(fc.currentSocialSpending.percentGdp)}</div>
+          <div class="text-xs text-muted">${t('funding.ofGdp')}${socialAbsLabel}</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="metric-tile">
+          <div class="metric-tile-label">${t('funding.governmentDebt')}</div>
+          <div class="metric-tile-value">${fmtPct(fc.governmentDebt.percentGdp)}</div>
+          <div class="text-xs text-muted">${t('funding.ofGdp')}</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="metric-tile">
+          <div class="metric-tile-label">UBI as % of tax revenue</div>
+          <div class="metric-tile-value ${ubiTaxClass}">${fmtPct(ubiPctTax)}</div>
+          <div class="text-xs text-muted">
+            ${ubiPctSocial != null ? `${ubiPctSocial.toFixed(1)}% of social spending` : ''}
+          </div>
+        </div>
+      </div>
+    </div>
+    ${drawer}
+  </div>`;
 }
 
 export function renderSimulationPreview(result: SimulationResult, saveName?: string, fullCountry?: Country, ctx?: SimulationPreviewContext): string {
@@ -275,6 +366,7 @@ export function renderSimulationPreview(result: SimulationResult, saveName?: str
           <div class="stat-value">${formatPercent(cost.asPercentOfGdp, 2)}</div>
         </div>
       </div>
+      ${ctx?.fiscalContext ? renderFiscalContextCard(ctx.fiscalContext) : ''}
       ${(() => {
         if (!_fullCountry) return '';
         const hasGdpGrowth = _fullCountry.stats.gdpGrowthRate != null;

@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.28] - 2026-04-18
+
+### Added
+- **Compare Countries** (`/admin/compare`) — multi-country scenario modelling for pilot-site selection. Select 2–5 candidate countries, apply the same coverage/duration/target-group/transfer, then see a cost-vs-recipients scatter chart (Chart.js bubble type) plus a sortable table of recipients, monthly transfer, annual cost, % of GDP, and cost per recipient. Includes a takeaway line that calls out lowest cost/recipient, highest total recipients, and lowest total cost.
+- **Evidence Aggregate** (`/admin/evidence`) — cross-pilot outcome dashboard backed by `aggregateOutcomes()` in `src/db/outcomes-db.ts`. Filters by income group, country, and minimum sample size; renders per-indicator median tiles with IQR, a horizontal bar chart of normalised medians, and a methodology drawer documenting anonymisation, small-sample warnings, and data version. CSV export link and a raw-JSON API link are included.
+- **Projected vs Actual** section on the pilot detail page — when outcomes have been recorded, the page now renders baseline/latest/change tiles plus a recipient-vs-control overlay line chart (employment rate or income over time) and a variance badge comparing to any linked impact-analysis projection. Small-sample warnings surface automatically.
+- **Fiscal context card** on the Simulate preview — when a country has tax-revenue, social-spending, and government-debt indicators, the preview now shows a four-tile fiscal context card with UBI cost as % of tax revenue/social spending, so stakeholders see the fiscal headroom alongside the cost headline. Derived from `calculateFiscalContext()` in `src/core/funding.ts`.
+- **Nav** — `PLAN` gains `Compare Countries`, and a new `PROVE` section hosts `Evidence Aggregate`.
+- **i18n** — full `compare.*` keys plus `nav.compare` / `nav.evidence` in `src/i18n/locales/en.ts`.
+- New route handlers in `src/admin/routes.ts`: `GET /admin/compare`, `POST /admin/compare/preview`, `GET/POST /admin/evidence`. Simulate preview and pilot detail handlers now feed fiscal-context and outcome data into their views.
+- New views: `src/admin/views/compare.ts`, `src/admin/views/evidence-aggregate.ts`. 19 new tests in `src/admin/views/compare.test.ts`.
+
+### Changed
+- Test count: **603 tests** across 32 suites (was 584).
+- `renderSimulationPreview()` accepts `ctx.fiscalContext` — when present, the preview renders a `.fiscal-card` section below the stat grid.
+- `renderPilotDetailPage()` accepts optional `outcomes`, `comparison`, and `impactAnalysis` args and inserts the Projected-vs-Actual section between the simulation-variance card and the disbursements table.
+
 ## [0.1.27] - 2026-04-18
 
 ### Added

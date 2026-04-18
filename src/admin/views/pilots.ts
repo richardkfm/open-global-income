@@ -1,8 +1,10 @@
 import { layout } from './layout.js';
-import { escapeHtml, formatNumber, formatCompact } from './helpers.js';
+import { escapeHtml, formatNumber, formatCompact, formatPercent } from './helpers.js';
+import { renderDrawer } from './helpers.js';
+import { overlayLineChart } from './chart-helpers.js';
 import { t } from '../../i18n/index.js';
 import { getCurrencyForCountry, formatLocalCurrency } from '../../data/currencies.js';
-import type { Pilot, Disbursement, SavedSimulation, TargetingRules } from '../../core/types.js';
+import type { Pilot, Disbursement, SavedSimulation, TargetingRules, OutcomeRecord, OutcomeComparison, SavedImpactAnalysis, OutcomeIndicators } from '../../core/types.js';
 import type { Country } from '../../core/types.js';
 
 function targetingRulesCard(rules: TargetingRules | null): string {
@@ -60,6 +62,300 @@ function statusBadge(status: string): string {
     completed: 'badge-info',
   };
   return `<span class="badge ${classes[status] ?? 'badge-neutral'}">${escapeHtml(status)}</span>`;
+}
+
+// ---------------------------------------------------------------------------
+// Projected vs Actual outcome section
+// ---------------------------------------------------------------------------
+
+interface IndicatorMeta {
+  key: keyof OutcomeIndicators;
+  label: string;
+  /** format value for display — e.g. rate (0-1) as percentage, raw USD, score */
+  format: (v: number) => string;
+}
+
+const INDICATOR_META: IndicatorMeta[] = [
+  { key: 'employmentRate', label: 'Employment rate', format: (v) => formatPercent(v * 100) },
+  { key: 'averageMonthlyIncomeUsd', label: 'Avg monthly income (USD)', format: (v) => `$${formatNumber(Math.round(v))}` },
+  { key: 'foodSecurityScore', label: 'Food security score', format: (v) => String(Math.round(v * 10) / 10) },
+  { key: 'childSchoolAttendanceRate', label: 'Child school attendance', format: (v) => formatPercent(v * 100) },
+  { key: 'abovePovertyLinePercent', label: 'Above poverty line', format: (v) => formatPercent(v * 100) },
+  { key: 'selfReportedHealthScore', label: 'Self-reported health', format: (v) => formatPercent(v * 100) },
+  { key: 'savingsRate', label: 'Savings rate', format: (v) => formatPercent(v * 100) },
+];
+
+/** Variance colour class: green ≥ 0, amber within –20%, red worse than –20% */
+function varianceClass(variancePct: number): string {
+  if (variancePct >= 0) return 'text-success';
+  if (variancePct >= -20) return 'text-warning';
+  return 'text-danger';
+}
+
+function varianceBadgeClass(variancePct: number): string {
+  if (variancePct >= 0) return 'badge-success';
+  if (variancePct >= -20) return 'badge-warning';
+  return 'badge-danger';
+}
+
+/**
+ * Derive a "projected" value for a single indicator from the linked impact
+ * analysis. The analysis only exposes poverty reduction % and income increase %,
+ * so we can derive projected values for two indicators if baseline data exists.
+ */
+function deriveProjected(
+  key: keyof OutcomeIndicators,
+  baselineVal: number | null | undefined,
+  impactAnalysis: SavedImpactAnalysis | null,
+): number | null {
+  if (!impactAnalysis) return null;
+
+  if (key === 'averageMonthlyIncomeUsd' && baselineVal != null) {
+    const pct = impactAnalysis.results.purchasingPower.incomeIncreasePercent;
+    if (pct != null) return baselineVal * (1 + pct / 100);
+  }
+  if (key === 'abovePovertyLinePercent' && baselineVal != null) {
+    const pct = impactAnalysis.results.povertyReduction.liftedAsPercentOfPoor;
+    if (pct != null) {
+      // liftedAsPercentOfPoor: % of the poor cohort lifted — apply as additive lift
+      return Math.min(1, baselineVal + (1 - baselineVal) * (pct / 100));
+    }
+  }
+  return null;
+}
+
+function renderIndicatorTiles(
+  comparison: OutcomeComparison,
+  impactAnalysis: SavedImpactAnalysis | null,
+): string {
+  const delta = comparison.recipient.delta;
+  if (!delta) return '';
+
+  const tiles = INDICATOR_META.map(({ key, label, format }) => {
+    const d = delta[key];
+    if (!d) return '';
+
+    const baselineVal = d.baseline;
+    const latestVal = d.latest;
+    const change = d.change;
+
+    if (baselineVal == null && latestVal == null) return '';
+
+    const baselineStr = baselineVal != null ? format(baselineVal) : '<span class="text-muted">—</span>';
+    const latestStr = latestVal != null ? format(latestVal) : '<span class="text-muted">—</span>';
+
+    let changeStr = '<span class="text-muted">—</span>';
+    let changePctStr = '';
+    if (change != null) {
+      const sign = change > 0 ? '+' : '';
+      const cls = change > 0 ? 'text-success' : change < 0 ? 'text-danger' : 'text-muted';
+      const pct = baselineVal != null && baselineVal !== 0
+        ? Math.round((change / Math.abs(baselineVal)) * 1000) / 10
+        : null;
+      changeStr = `<span class="${cls}">${sign}${escapeHtml(String(Math.round(change * 1000) / 1000))}</span>`;
+      if (pct != null) {
+        const pctSign = pct > 0 ? '+' : '';
+        changePctStr = `<span class="${cls} text-xs"> (${pctSign}${pct.toFixed(1)}%)</span>`;
+      }
+    }
+
+    const projected = deriveProjected(key, baselineVal, impactAnalysis);
+    let projectedHtml = '';
+    let varianceHtml = '';
+    if (projected != null && latestVal != null) {
+      const variancePct = projected !== 0
+        ? Math.round(((latestVal - projected) / Math.abs(projected)) * 1000) / 10
+        : 0;
+      const vSign = variancePct > 0 ? '+' : '';
+      const vClass = varianceClass(variancePct);
+      const badgeClass = varianceBadgeClass(variancePct);
+      projectedHtml = `
+        <div class="tile-row">
+          <span class="tile-label text-muted text-xs">Projected</span>
+          <span class="tile-value text-xs">${escapeHtml(format(projected))}</span>
+        </div>`;
+      varianceHtml = `
+        <div class="tile-row">
+          <span class="tile-label text-muted text-xs">vs projected</span>
+          <span class="badge ${badgeClass} text-xs ${vClass}">${vSign}${variancePct.toFixed(1)}%</span>
+        </div>`;
+    }
+
+    return `
+      <div class="card impact-tile">
+        <div class="impact-tile-header text-bold text-xs text-muted">${escapeHtml(label)}</div>
+        <div class="tile-row">
+          <span class="tile-label text-muted text-xs">Baseline</span>
+          <span class="tile-value">${baselineStr}</span>
+        </div>
+        <div class="tile-row">
+          <span class="tile-label text-muted text-xs">Latest</span>
+          <span class="tile-value">${latestStr}</span>
+        </div>
+        <div class="tile-row">
+          <span class="tile-label text-muted text-xs">Change</span>
+          <span class="tile-value">${changeStr}${changePctStr}</span>
+        </div>
+        ${projectedHtml}
+        ${varianceHtml}
+      </div>`;
+  }).filter(Boolean);
+
+  if (tiles.length === 0) return '';
+
+  return `<div class="grid grid-3 mt-1">${tiles.join('')}</div>`;
+}
+
+function renderOutcomeChart(
+  outcomes: OutcomeRecord[],
+  _comparison: OutcomeComparison,
+): string {
+  // Build time-series for employment rate (primary) or income (fallback)
+  const recipientMeasurements = outcomes
+    .filter((o) => o.cohortType === 'recipient' && !o.isBaseline)
+    .sort((a, b) => a.measurementDate.localeCompare(b.measurementDate));
+
+  const controlMeasurements = outcomes
+    .filter((o) => o.cohortType === 'control' && !o.isBaseline)
+    .sort((a, b) => a.measurementDate.localeCompare(b.measurementDate));
+
+  // Choose primary indicator: employment rate if available, else income
+  const hasEmployment = recipientMeasurements.some((o) => o.indicators.employmentRate != null);
+  const indicatorKey: keyof OutcomeIndicators = hasEmployment ? 'employmentRate' : 'averageMonthlyIncomeUsd';
+  const yLabel = hasEmployment ? 'Employment rate (0–1)' : 'Avg income (USD/mo)';
+
+  // Collect all unique dates from both cohorts
+  const allDates = [
+    ...new Set([
+      ...recipientMeasurements.map((o) => o.measurementDate),
+      ...controlMeasurements.map((o) => o.measurementDate),
+    ]),
+  ].sort();
+
+  if (allDates.length === 0) return '';
+
+  // Build value arrays aligned to allDates
+  function buildValues(records: OutcomeRecord[]): Array<number | null> {
+    return allDates.map((date) => {
+      const match = records.find((o) => o.measurementDate === date);
+      return match?.indicators[indicatorKey] ?? null;
+    });
+  }
+
+  const recipientValues = buildValues(recipientMeasurements);
+  const controlValues = buildValues(controlMeasurements);
+
+  const recipientSeries = [{ label: 'Recipient cohort', values: recipientValues }];
+  const controlSeries = controlMeasurements.length > 0
+    ? [{ label: 'Control cohort', values: controlValues }]
+    : undefined;
+
+  return overlayLineChart({
+    labels: allDates,
+    recipientSeries,
+    controlSeries,
+    yLabel,
+    title: hasEmployment ? 'Employment Rate Over Time' : 'Average Monthly Income Over Time',
+    height: 280,
+    downloadFilename: 'pilot-outcomes-chart',
+  });
+}
+
+/**
+ * Renders the Projected vs Actual summary section for the pilot detail page.
+ * Returns an empty string if no outcomes have been recorded yet.
+ */
+function renderProjectedVsActual(
+  pilotId: string,
+  outcomes: OutcomeRecord[],
+  comparison: OutcomeComparison | null,
+  impactAnalysis: SavedImpactAnalysis | null,
+): string {
+  if (!comparison || outcomes.length === 0) return '';
+
+  const hasBaseline = comparison.recipient.baseline !== null;
+  const hasLatest = comparison.recipient.latest !== null;
+
+  // Need at least a baseline or a latest measurement to show anything meaningful
+  if (!hasBaseline && !hasLatest) return '';
+
+  // Compute headline: measurement count and date range
+  const recipientMeasurements = outcomes.filter((o) => o.cohortType === 'recipient');
+  const measurementCount = outcomes.length;
+  const dates = outcomes.map((o) => o.measurementDate).sort();
+  const firstDate = dates[0];
+  const lastDate = dates[dates.length - 1];
+
+  let monthRange = 0;
+  if (firstDate && lastDate && firstDate !== lastDate) {
+    const d1 = new Date(firstDate);
+    const d2 = new Date(lastDate);
+    monthRange = Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24 * 30.44));
+  }
+
+  const headlineText = monthRange > 0
+    ? `${measurementCount} measurement${measurementCount !== 1 ? 's' : ''} over ${monthRange} month${monthRange !== 1 ? 's' : ''}`
+    : `${measurementCount} measurement${measurementCount !== 1 ? 's' : ''}`;
+
+  const smallNWarning = recipientMeasurements.length > 0 &&
+    recipientMeasurements.some((o) => o.sampleSize < 50)
+    ? `<span class="badge badge-warning text-xs">Small sample — interpret with caution</span>`
+    : '';
+
+  // Indicator tiles (only when we have delta data)
+  const tilesHtml = (hasBaseline && hasLatest)
+    ? renderIndicatorTiles(comparison, impactAnalysis)
+    : `<p class="text-muted" style="padding:0.5rem 0">${
+        !hasBaseline
+          ? 'Record a baseline measurement to enable before/after comparison.'
+          : 'Record a follow-up measurement to see changes over time.'
+      }</p>`;
+
+  // Overlay chart (only when non-baseline follow-up measurements exist)
+  const followUpCount = outcomes.filter((o) => !o.isBaseline).length;
+  const chartHtml = followUpCount >= 2 ? renderOutcomeChart(outcomes, comparison) : '';
+
+  // Methodology drawer
+  const methodologyContent = `
+    <p>This section compares observed outcome measurements (recorded on the Evidence page) against the originally projected impact analysis.</p>
+    <ul>
+      <li><strong>Baseline</strong> — the earliest measurement flagged as a baseline for the recipient cohort.</li>
+      <li><strong>Latest</strong> — the most recent non-baseline measurement for the recipient cohort.</li>
+      <li><strong>Projected</strong> — derived from the linked impact analysis. Income projections use <em>purchasingPower.incomeIncreasePercent</em>; poverty projections use <em>povertyReduction.liftedAsPercentOfPoor</em>. Other indicators have no linked projection.</li>
+      <li><strong>Variance colour</strong> — green: actual meets or exceeds projected; amber: actual is within 20% below projected; red: actual is more than 20% below projected.</li>
+      <li><strong>Chart</strong> — shows post-baseline follow-up measurements only. Recipient cohort is solid; control cohort (if present) is dashed.</li>
+    </ul>
+    <p class="text-muted text-xs">Small N caution: fewer than 50 participants in a cohort is flagged. Results may not be statistically significant. Record measurements on the <a href="javascript:void(0)">Evidence</a> page to build up the data series.</p>
+  `;
+
+  const drawerHtml = renderDrawer(
+    'pva-methodology-drawer',
+    'How is this calculated?',
+    'Methodology & Caveats',
+    methodologyContent,
+  );
+
+  return `
+    <div class="card program-section">
+      <div class="card-header" style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap">
+        <h2 class="card-title" style="margin:0">Projected vs Actual Outcomes</h2>
+        <span class="badge badge-neutral text-xs">${escapeHtml(headlineText)}</span>
+        ${smallNWarning}
+        <a href="/admin/pilots/${escapeHtml(pilotId)}/evidence" class="btn btn-secondary btn-sm" style="margin-left:auto">Record measurements</a>
+      </div>
+
+      ${tilesHtml}
+
+      ${chartHtml ? `
+      <div class="mt-2">
+        <div class="section-subheading text-muted text-xs" style="margin-bottom:0.5rem">Outcome trend (recipient vs control)</div>
+        ${chartHtml}
+      </div>` : ''}
+
+      <div class="mt-2">
+        ${drawerHtml}
+      </div>
+    </div>`;
 }
 
 export function renderPilotsPage(
@@ -238,6 +534,9 @@ export function renderPilotDetailPage(
   disbursements: Disbursement[],
   simulation: SavedSimulation | null,
   flash?: string,
+  outcomes: OutcomeRecord[] = [],
+  comparison: OutcomeComparison | null = null,
+  impactAnalysis: SavedImpactAnalysis | null = null,
 ): string {
   let totalDisbursed = 0;
   let totalRecipients = 0;
@@ -364,6 +663,8 @@ export function renderPilotDetailPage(
     </div>
 
     ${varianceHtml}
+
+    ${renderProjectedVsActual(pilot.id, outcomes, comparison, impactAnalysis)}
 
     <div class="card">
       <div class="card-header">
