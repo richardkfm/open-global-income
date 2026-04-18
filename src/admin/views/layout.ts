@@ -1,5 +1,7 @@
 /** Server-rendered HTML layout for the admin UI */
 import { escapeHtml } from './helpers.js';
+import { renderToast } from './helpers.js';
+import { iconCountry, iconRegion, iconCoins, iconChart, iconRocket, iconEvidence, iconSystem } from './icons.js';
 import { t } from '../../i18n/index.js';
 import { packageVersion } from '../../config.js';
 
@@ -11,6 +13,9 @@ export interface LayoutOptions {
   role?: string;
   /** Optional breadcrumb trail rendered above the main content area. */
   breadcrumbs?: Array<{ label: string; href?: string }>;
+  /** Optional flash message displayed above the content as a toast. */
+  flash?: string;
+  flashVariant?: 'success' | 'error' | 'info' | 'warning';
 }
 
 // ---------------------------------------------------------------------------
@@ -30,17 +35,21 @@ interface NavSection {
   /** i18n key for the section heading */
   labelKey: string;
   items: NavItem[];
+  /** Optional inline-SVG icon rendered before the section label */
+  icon?: () => string;
 }
 
 export const NAV_SECTIONS: NavSection[] = [
   {
     labelKey: 'nav.sectionOverview',
+    icon: iconChart,
     items: [
       { key: 'dashboard', href: '/admin', labelKey: 'nav.dashboard' },
     ],
   },
   {
     labelKey: 'nav.sectionPlan',
+    icon: iconCountry,
     items: [
       { key: 'countries', href: '/admin/countries', labelKey: 'nav.countries' },
       { key: 'regions',   href: '/admin/regions',   labelKey: 'nav.regions'   },
@@ -50,12 +59,14 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     labelKey: 'nav.sectionFund',
+    icon: iconCoins,
     items: [
       { key: 'funding', href: '/admin/funding', labelKey: 'nav.funding' },
     ],
   },
   {
     labelKey: 'nav.sectionModel',
+    icon: iconRegion,
     items: [
       { key: 'impact',   href: '/admin/impact',    labelKey: 'nav.impact'   },
       { key: 'programs', href: '/admin/programs',  labelKey: 'nav.briefs'   },
@@ -63,18 +74,21 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     labelKey: 'nav.sectionRun',
+    icon: iconRocket,
     items: [
       { key: 'pilots', href: '/admin/pilots', labelKey: 'nav.pilots' },
     ],
   },
   {
     labelKey: 'nav.sectionProve',
+    icon: iconEvidence,
     items: [
       { key: 'evidence', href: '/admin/evidence', labelKey: 'nav.evidence' },
     ],
   },
   {
     labelKey: 'nav.sectionSystem',
+    icon: iconSystem,
     items: [
       { key: 'data-sources', href: '/admin/data-sources', labelKey: 'nav.dataSources' },
       { key: 'api-keys',     href: '/admin/api-keys',     labelKey: 'nav.apiKeys'     },
@@ -88,6 +102,8 @@ export function layout(title: string, content: string, usernameOrOptions?: strin
   let username = '';
   let role = '';
   let breadcrumbs: Array<{ label: string; href?: string }> | undefined;
+  let flash: string | undefined;
+  let flashVariant: 'success' | 'error' | 'info' | 'warning' = 'info';
 
   if (typeof usernameOrOptions === 'string') {
     username = usernameOrOptions;
@@ -96,6 +112,8 @@ export function layout(title: string, content: string, usernameOrOptions?: strin
     username = usernameOrOptions.username ?? '';
     role = usernameOrOptions.role ?? '';
     breadcrumbs = usernameOrOptions.breadcrumbs;
+    flash = usernameOrOptions.flash;
+    flashVariant = usernameOrOptions.flashVariant ?? 'info';
   }
 
   function navLink(href: string, label: string, page: string): string {
@@ -108,8 +126,9 @@ export function layout(title: string, content: string, usernameOrOptions?: strin
     const itemsHtml = section.items
       .map(item => navLink(item.href, t(item.labelKey as Parameters<typeof t>[0]), item.key))
       .join('\n      ');
+    const iconHtml = section.icon ? `<span class="sidebar-section-icon">${section.icon()}</span>` : '';
     return `<div class="sidebar-section">
-        <div class="sidebar-section-label">${t(section.labelKey as Parameters<typeof t>[0])}</div>
+        <div class="sidebar-section-label">${iconHtml}${t(section.labelKey as Parameters<typeof t>[0])}</div>
         ${itemsHtml}
       </div>`;
   }).join('\n      ');
@@ -175,6 +194,7 @@ export function layout(title: string, content: string, usernameOrOptions?: strin
   </div>
   <main class="main-content">
     ${breadcrumbHtml}
+    ${flash ? renderToast(flash, flashVariant) : ''}
     <div class="main-content-inner">
       ${content}
     </div>

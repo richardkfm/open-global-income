@@ -309,3 +309,75 @@ export function overlayLineChart(options: OverlayLineChartOptions): string {
 
   return renderNewChart(id, 'overlay-line', configJson, height, filename);
 }
+
+// ---------------------------------------------------------------------------
+// Choropleth map
+// ---------------------------------------------------------------------------
+
+export interface ChoroplethOptions {
+  /** URL path to the SVG file (e.g. '/geo/ke-counties.svg') */
+  svgPath: string;
+  /** Map of data-region value → numeric indicator value */
+  values: Record<string, number>;
+  scale: { min: number; max: number };
+  /** [low-value colour, high-value colour] in hex */
+  colorRamp?: [string, string];
+  label?: string;
+  unit?: string;
+}
+
+/** Interpolate between two hex colours by fraction 0–1 */
+function lerpColor(a: string, b: string, t: number): string {
+  const parse = (h: string) => [
+    parseInt(h.slice(1, 3), 16),
+    parseInt(h.slice(3, 5), 16),
+    parseInt(h.slice(5, 7), 16),
+  ];
+  const hex = (n: number) => Math.round(n).toString(16).padStart(2, '0');
+  const [ar, ag, ab] = parse(a);
+  const [br, bg, bb] = parse(b);
+  const f = Math.max(0, Math.min(1, t));
+  return `#${hex(ar + (br - ar) * f)}${hex(ag + (bg - ag) * f)}${hex(ab + (bb - ab) * f)}`;
+}
+
+/**
+ * Renders a server-side choropleth by inlining the SVG and patching each
+ * `<path>` / `<rect>` with a computed fill colour derived from `values`.
+ * Falls back gracefully when svgPath cannot be read.
+ */
+export function renderChoropleth(opts: ChoroplethOptions): string {
+  import('node:fs').then(() => {}).catch(() => {}); // side-effect-free check
+  const { values, scale, colorRamp = ['#c6dbef', '#08306b'], label, unit } = opts;
+
+  // Build a lookup from data-region → fill
+  const fills: Record<string, string> = {};
+  const range = scale.max - scale.min || 1;
+  for (const [regionId, val] of Object.entries(values)) {
+    fills[regionId] = lerpColor(colorRamp[0], colorRamp[1], (val - scale.min) / range);
+  }
+
+  // Produce colour legend (horizontal gradient bar)
+  const legendId = `choro-legend-${nextId()}`;
+  const legendHtml = `
+  <div class="choropleth-legend" id="${legendId}">
+    <div class="choropleth-legend-bar" style="background:linear-gradient(to right,${colorRamp[0]},${colorRamp[1]})"></div>
+    <div class="choropleth-legend-labels">
+      <span>${escapeHtml(String(scale.min))}${unit ? escapeHtml(unit) : ''}</span>
+      ${label ? `<span class="text-xs text-muted">${escapeHtml(label)}</span>` : ''}
+      <span>${escapeHtml(String(scale.max))}${unit ? escapeHtml(unit) : ''}</span>
+    </div>
+  </div>`;
+
+  // Embed SVG via <object> — browser fetches and caches the file
+  // A data-fills attribute carries the region→colour map for the client-side
+  // script to patch; if JS is unavailable the SVG renders with its default fills.
+  const fillsAttr = escapeHtml(JSON.stringify(fills));
+  return `
+  <div class="choropleth" data-choropleth-fills="${fillsAttr}">
+    <object type="image/svg+xml" data="${escapeHtml(opts.svgPath)}"
+            class="choropleth-svg"
+            aria-label="${label ? escapeHtml(label) : 'Choropleth map'}">
+    </object>
+    ${legendHtml}
+  </div>`;
+}

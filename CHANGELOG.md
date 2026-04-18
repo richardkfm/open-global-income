@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.29] - 2026-04-18
+
+### Added
+- **Inline citations** on Simulate and Funding views — every computed headline number now carries a superscript reference (e.g. ¹) that links to a numbered footnote block at the bottom of the page. Sources: World Bank population, GDP/PPP, tax-revenue, social-spending, and government-debt indicators with year stamps.
+- **Methodology drawers** on computed cards in Simulate and Funding — a `<details>` element (CSS-only, no JS) labelled "How this is calculated" opens to show the formula, enumerated inputs, and the active ruleset version.
+- **Data-quality table** on Simulate — replaces amber warning boxes with a compact `indicator / source / year / value-or-default` table so stakeholders can see data provenance at a glance.
+- **Hand-rolled SVG icon set** (`src/admin/views/icons.ts`) — 13 inline 16×16 icons (country, region, coins, chart, shield, check, warn, info, link, download, rocket, evidence, system) used in the sidebar nav sections and stat cards.
+- **Sidebar section icons** — each `NAV_SECTIONS` entry now renders its icon to the left of the section label.
+- **Flash toast wiring** — `layout()` accepts `flash` / `flashVariant` in `LayoutOptions`; a `renderToast()` call is injected above `main-content-inner` when set.
+- **Kenya county choropleth** (`public/geo/ke-counties.svg`) — schematic 47-county grid SVG with `data-region="KE-{code}"` attributes and click-through to `/admin/regions/KE-{code}`.
+- `renderChoropleth()` helper in `chart-helpers.ts` — server-side helper that emits an `<object type="image/svg+xml">` + legend; a `data-choropleth-fills` JSON attribute carries the region→colour map for client-side fill patching.
+- **Choropleth client-side init** (`public/js/charts.js`) — `initChoropleths()` patches SVG `<path>`/`<rect>` fills on `DOMContentLoaded`, `htmx:afterSwap`, and `htmx:afterSettle`.
+- **Regions map view** — `/admin/regions?view=map&indicator=col|poverty` renders the Kenya choropleth with a Table/Map toggle and a COL/Poverty indicator toggle.
+- **Choropleth legend, view-toggle, and sidebar-icon CSS** in `public/css/ogi.css`.
+- **i18n keys**: `simulate.dataSources`, `simulate.dqIndicator/Source/Year/Value`, `simulate.drawer*`, `funding.dataSources`, `nav.compare`, `nav.evidence`.
+
+### Changed
+- Test count: **603 tests** across 32 suites (unchanged — all existing tests pass).
+
 ## [0.1.28] - 2026-04-18
 
 ### Added

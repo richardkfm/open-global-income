@@ -1,5 +1,5 @@
 import { layout } from './layout.js';
-import { escapeHtml, formatNumber, formatCompact, formatPercent } from './helpers.js';
+import { escapeHtml, formatNumber, formatCompact, formatPercent, renderCitations, renderCitationSup } from './helpers.js';
 import { stackedBarChart, lineChart } from './chart-helpers.js';
 import { projectYearly, yearLabels } from '../../core/projections.js';
 import { t } from '../../i18n/index.js';
@@ -12,6 +12,7 @@ import type {
   FundingMechanismInput,
   FiscalContext,
   SavedFundingScenario,
+  Citation,
 } from '../../core/types.js';
 
 function fmtCurrency(n: number): string {
@@ -240,6 +241,42 @@ export function renderFundingPreview(
   const gapPct = total > 0 ? Math.max(0, (gapPppUsd / total) * 100) : 100;
   const gapSegment = gapPct > 0.5 ? `<div style="width:${gapPct.toFixed(2)}%;background:var(--color-border-light);display:inline-flex;align-items:center;justify-content:center;font-size:0.65rem;color:var(--color-text-secondary);float:left;height:100%">${gapPct >= 5 ? t('funding.gap') : ''}</div>` : '';
 
+  // Build funding citations keyed by mechanism type + fiscal context
+  const fundingCitations: Citation[] = [
+    {
+      id: 'fc1',
+      indicatorCode: 'GC.TAX.TOTL.GD.ZS',
+      source: 'World Bank',
+      year: 2023,
+      url: 'https://data.worldbank.org/indicator/GC.TAX.TOTL.GD.ZS',
+      note: 'Tax revenue (% of GDP) — base for income-tax surcharge and redirect estimates',
+    },
+    {
+      id: 'fc2',
+      indicatorCode: 'GC.XPN.SOCL.ZS',
+      source: 'World Bank / ILO',
+      year: 2023,
+      url: 'https://data.worldbank.org/indicator/GC.XPN.SOCL.ZS',
+      note: 'Social protection expenditure (% of GDP) — fiscal context tile and redirect mechanism base',
+    },
+    {
+      id: 'fc3',
+      indicatorCode: 'GC.DOD.TOTL.GD.ZS',
+      source: 'World Bank',
+      year: 2023,
+      url: 'https://data.worldbank.org/indicator/GC.DOD.TOTL.GD.ZS',
+      note: 'Central government debt, total (% of GDP) — fiscal context tile',
+    },
+    {
+      id: 'fc4',
+      indicatorCode: 'NY.GDP.PCAP.PP.CD',
+      source: 'World Bank',
+      year: 2023,
+      url: 'https://data.worldbank.org/indicator/NY.GDP.PCAP.PP.CD',
+      note: 'GDP per capita, PPP — used to convert % of GDP figures to absolute PPP-USD amounts',
+    },
+  ];
+
   // Mechanism breakdown
   const mechRows = mechanisms
     .map(
@@ -248,7 +285,7 @@ export function renderFundingPreview(
       <span style="width:12px;height:12px;border-radius:50%;background:${BAR_COLORS[i % 6]};flex-shrink:0"></span>
       <div style="flex:1">
         <div class="text-bold text-sm">${escapeHtml(m.label)}</div>
-        <div class="text-xs text-muted">${fmtPct(m.coversPercentOfUbiCost)} ${t('funding.ofUbiCost')}</div>
+        <div class="text-xs text-muted">${fmtPct(m.coversPercentOfUbiCost)} ${t('funding.ofUbiCost')}${renderCitationSup('fc1')}</div>
       </div>
       <div class="text-bold">${fmtCurrency(m.annualRevenuePppUsd)}</div>
     </div>`,
@@ -345,32 +382,36 @@ export function renderFundingPreview(
       <div class="grid grid-4 mb-2">
         <div class="card">
           <div class="metric-tile">
-            <div class="metric-tile-label">${t('funding.taxRevenue')}</div>
+            <div class="metric-tile-label">${t('funding.taxRevenue')}${renderCitationSup('fc1')}</div>
             <div class="metric-tile-value">${fmtPct(fiscalContext.totalTaxRevenue.percentGdp)}</div>
             <div class="text-xs text-muted">${t('funding.ofGdp')}${fiscalContext.totalTaxRevenue.absolutePppUsd ? ` (${fmtCurrency(fiscalContext.totalTaxRevenue.absolutePppUsd)})` : ''}</div>
           </div>
         </div>
         <div class="card">
           <div class="metric-tile">
-            <div class="metric-tile-label">${t('funding.socialSpending')}</div>
+            <div class="metric-tile-label">${t('funding.socialSpending')}${renderCitationSup('fc2')}</div>
             <div class="metric-tile-value">${fmtPct(fiscalContext.currentSocialSpending.percentGdp)}</div>
             <div class="text-xs text-muted">${t('funding.ofGdp')}${fiscalContext.currentSocialSpending.absolutePppUsd ? ` (${fmtCurrency(fiscalContext.currentSocialSpending.absolutePppUsd)})` : ''}</div>
           </div>
         </div>
         <div class="card">
           <div class="metric-tile">
-            <div class="metric-tile-label">${t('funding.governmentDebt')}</div>
+            <div class="metric-tile-label">${t('funding.governmentDebt')}${renderCitationSup('fc3')}</div>
             <div class="metric-tile-value">${fmtPct(fiscalContext.governmentDebt.percentGdp)}</div>
             <div class="text-xs text-muted">${t('funding.ofGdp')}</div>
           </div>
         </div>
         <div class="card">
           <div class="metric-tile">
-            <div class="metric-tile-label">${t('funding.ubiAsPercentTaxRevenue')}</div>
+            <div class="metric-tile-label">${t('funding.ubiAsPercentTaxRevenue')}${renderCitationSup('fc4')}</div>
             <div class="metric-tile-value ${ubiTaxClass}">${fmtPct(fiscalContext.ubiAsPercentOfTaxRevenue)}</div>
             <div class="text-xs text-muted">${ubiPctTaxRev > 100 ? t('funding.exceedsTaxRevenue') : t('funding.withinFiscalCapacity')}</div>
           </div>
         </div>
+      </div>
+      <div class="mb-2">
+        <strong class="text-xs text-muted">${t('funding.dataSources')}</strong>
+        ${renderCitations(fundingCitations)}
       </div>
 
       ${allAssumptions.length > 0 ? `

@@ -333,39 +333,86 @@ export function renderSimulationPreview(result: SimulationResult, saveName?: str
   const localMonthlyCost = formatLocalCurrency(cost.monthlyLocalCurrency, currencyCode);
   const annualPppFormatted = formatCurrency(cost.annualPppUsd, 'USD');
 
+  // Build inline citations for the stat-grid
+  const simCitations: Citation[] = [
+    {
+      id: 'sc1',
+      indicatorCode: 'SP.POP.TOTL',
+      source: 'World Bank',
+      year: 2023,
+      url: 'https://data.worldbank.org/indicator/SP.POP.TOTL',
+      note: 'Total population — used to derive recipient count from coverage %',
+    },
+    {
+      id: 'sc2',
+      indicatorCode: 'NY.GDP.PCAP.PP.CD',
+      source: 'World Bank',
+      year: 2023,
+      url: 'https://data.worldbank.org/indicator/NY.GDP.PCAP.PP.CD',
+      note: 'GDP per capita, PPP — used to compute cost as % of GDP and PPP conversion',
+    },
+    {
+      id: 'sc3',
+      source: 'Open Global Income',
+      note: `Ruleset ${escapeHtml(simulation.meta.rulesetVersion)} entitlement formula — sets per-person PPP floor and local-currency conversion`,
+    },
+    {
+      id: 'sc4',
+      source: 'Open Global Income',
+      note: `FX snapshot date: ${escapeHtml(simulation.meta.dataVersion)} — PPP conversion factor applied to derive local-currency amounts`,
+    },
+  ];
+
   return `
     <div class="card">
       <h2>${escapeHtml(country.name)} <span class="badge badge-secondary">${escapeHtml(country.code)}</span></h2>
       <div class="stat-grid">
         <div class="stat-tile">
-          <div class="stat-label">${t('simulate.recipients')}</div>
+          <div class="stat-label">${t('simulate.recipients')}${renderCitationSup('sc1')}</div>
           <div class="stat-value">${formatCompact(recipientCount)}</div>
         </div>
         <div class="stat-tile">
-          <div class="stat-label">${t('simulate.coverage')}</div>
+          <div class="stat-label">${t('simulate.coverage')}${renderCitationSup('sc1')}</div>
           <div class="stat-value">${formatPercent(simulation.coverageRate * 100)}</div>
         </div>
         <div class="stat-tile">
-          <div class="stat-label">${t('simulate.perPersonMonthPpp')}</div>
+          <div class="stat-label">${t('simulate.perPersonMonthPpp')}${renderCitationSup('sc3')}</div>
           <div class="stat-value">${formatCurrency(entitlementPerPerson.pppUsdPerMonth, 'USD')}</div>
         </div>
         <div class="stat-tile">
-          <div class="stat-label">${t('simulate.perPersonMonthLocal')} (${escapeHtml(currencyCode)})</div>
+          <div class="stat-label">${t('simulate.perPersonMonthLocal')} (${escapeHtml(currencyCode)})${renderCitationSup('sc4')}</div>
           <div class="stat-value">${localMonthlyPerPerson}</div>
         </div>
         <div class="stat-tile">
-          <div class="stat-label">${t('simulate.monthlyCostLocal')} (${escapeHtml(currencyCode)})</div>
+          <div class="stat-label">${t('simulate.monthlyCostLocal')} (${escapeHtml(currencyCode)})${renderCitationSup('sc4')}</div>
           <div class="stat-value">${localMonthlyCost}</div>
         </div>
         <div class="stat-tile">
-          <div class="stat-label">${t('simulate.annualCostPpp')}</div>
+          <div class="stat-label">${t('simulate.annualCostPpp')}${renderCitationSup('sc2')}</div>
           <div class="stat-value">${annualPppFormatted}</div>
         </div>
         <div class="stat-tile">
-          <div class="stat-label">${t('simulate.asPercentGdp')}</div>
+          <div class="stat-label">${t('simulate.asPercentGdp')}${renderCitationSup('sc2')}</div>
           <div class="stat-value">${formatPercent(cost.asPercentOfGdp, 2)}</div>
         </div>
       </div>
+      <div class="mt-1">
+        <strong class="text-xs text-muted">${t('simulate.dataSources')}</strong>
+        ${renderCitations(simCitations)}
+      </div>
+      ${renderDrawer(
+        'sim-cost-formula',
+        t('common.calculations'),
+        t('simulate.drawerCostTitle'),
+        `<p class="text-sm text-muted">${t('simulate.drawerCostFormula')}</p>
+        <ul class="text-sm text-muted" style="padding-left:1.2rem;margin:0.5rem 0">
+          <li><strong>${t('simulate.drawerInputTransfer')}</strong> $${entitlementPerPerson.pppUsdPerMonth} PPP-USD/month &mdash; ${t('simulate.drawerInputTransferNote')}</li>
+          <li><strong>${t('simulate.drawerInputPopulation')}</strong> ${formatCompact(country.population)} &mdash; World Bank 2023 (SP.POP.TOTL)</li>
+          <li><strong>${t('simulate.drawerInputCoverage')}</strong> ${formatPercent(simulation.coverageRate * 100)} &rarr; ${formatCompact(recipientCount)} ${t('simulate.drawerInputCoverageNote')}</li>
+          <li><strong>${t('simulate.drawerInputPpp')}</strong> ${escapeHtml(currencyCode)} &mdash; World Bank 2023 (PA.NUS.PPP)</li>
+          <li><strong>${t('simulate.drawerRuleset')}</strong> ${escapeHtml(simulation.meta.rulesetVersion)}</li>
+        </ul>`,
+      )}
       ${ctx?.fiscalContext ? renderFiscalContextCard(ctx.fiscalContext) : ''}
       ${(() => {
         if (!_fullCountry) return '';
@@ -374,9 +421,13 @@ export function renderSimulationPreview(result: SimulationResult, saveName?: str
         const gdpGrowth = _fullCountry.stats.gdpGrowthRate ?? 3;
         const inflRate = _fullCountry.stats.inflationRate ?? 4;
 
-        const missingIndicators: string[] = [];
-        if (!hasGdpGrowth) missingIndicators.push('GDP growth rate (using 3% default)');
-        if (!hasInflation) missingIndicators.push('Inflation rate (using 4% default)');
+        const dqRows: { indicator: string; source: string; year: string; value: string; isDefault: boolean }[] = [];
+        if (!hasGdpGrowth) {
+          dqRows.push({ indicator: 'GDP growth rate', source: 'World Bank (NY.GDP.MKTP.KD.ZG)', year: '—', value: '3% (default)', isDefault: true });
+        }
+        if (!hasInflation) {
+          dqRows.push({ indicator: 'Inflation rate (CPI)', source: 'World Bank (FP.CPI.TOTL.ZG)', year: '—', value: '4% (default)', isDefault: true });
+        }
 
         const projYears = 10;
         const labels = yearLabels(projYears);
@@ -387,15 +438,21 @@ export function renderSimulationPreview(result: SimulationResult, saveName?: str
         const gdpProj = projectYearly(gdpTotal, gdpGrowth / 100, projYears);
         const pctGdpProj = costProj.map((c, i) => Math.round((c / gdpProj[i]) * 10000) / 100);
 
-        const dataWarning = missingIndicators.length > 0
-          ? `<div class="data-warning mb-1">
-              <strong>Data gaps:</strong> ${missingIndicators.map(i => escapeHtml(i)).join('; ')}. Projection accuracy is reduced.
-            </div>`
+        const dataQualityTable = dqRows.length > 0
+          ? `<table class="data-quality-table mb-1">
+              <thead><tr><th>${t('simulate.dqIndicator')}</th><th>${t('simulate.dqSource')}</th><th>${t('simulate.dqYear')}</th><th>${t('simulate.dqValue')}</th></tr></thead>
+              <tbody>${dqRows.map(r => `<tr>
+                <td>${escapeHtml(r.indicator)}</td>
+                <td>${escapeHtml(r.source)}</td>
+                <td>${escapeHtml(r.year)}</td>
+                <td class="${r.isDefault ? 'dq-default' : ''}">${escapeHtml(r.value)}</td>
+              </tr>`).join('')}</tbody>
+            </table>`
           : '';
 
         return `
         <h3 class="section-title mt-2">10-Year Cost Projection</h3>
-        ${dataWarning}
+        ${dataQualityTable}
         <p class="text-xs text-muted mb-1">Costs grow at ${hasInflation ? '' : '~'}${inflRate.toFixed(1)}%/yr inflation + 1.5% population growth. GDP grows at ${hasGdpGrowth ? '' : '~'}${gdpGrowth.toFixed(1)}%/yr.</p>
         ${lineChart(
           labels,

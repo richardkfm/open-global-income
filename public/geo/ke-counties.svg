@@ -1,0 +1,78 @@
+<!--
+  Kenya Counties — Schematic Grid Layout
+  Approach: 7-column × 7-row rectangular grid (47 cells, 2 omitted from last row).
+  Geographic accuracy is intentionally sacrificed for file-size and simplicity.
+  Each county is represented as a fixed-size rect with data-region matching the
+  IDs in src/data/regions.json (KE-{REGIONCODE}).
+  Counties are arranged in a rough north→south, west→east order:
+    Row 0 (far north): TUR, SAM, MAR, WAJ, MAN, — , —
+    Row 1 (north):     WPO, BAR, ISI, GAR, MAN, — , —
+    Row 2 (rift):      TNZ, LAI, LAM, GAR, — , — , —
+    Row 3 (central-w): UGI, NAK, NYA, MER, THN, ISI, LAM
+    Row 4 (western):   EMN, NAN, KER, KIR, EMB, TAN, —
+    Row 5 (nyanza):    KAK, VIH, BOM, NAR, MAC, KIT, —
+    Row 6 (coast/nbi): BUN, BUS, SIA, HOM, MIG, KSI, NYM
+  Final rows: KIS, KIA, MUR, NYE, MAK, MOM, KIL
+              NAI, KAJ, — , — , TAS, KWA, —
+  Note: some liberties taken to fit 47 counties into 7x7=49 minus 2 empty cells.
+  Interaction: click any county to navigate to /admin/regions/KE-{code}
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 350 350" width="350" height="350"
+     role="img" aria-label="Kenya counties choropleth map">
+  <title>Kenya Counties</title>
+  <!-- Row 0: far north -->
+  <a href="/admin/regions/KE-TUR"><rect data-region="KE-TUR" class="choropleth-region" x="0"   y="0"   width="48" height="48" rx="2"><title>Turkana</title></rect></a>
+  <a href="/admin/regions/KE-SAM"><rect data-region="KE-SAM" class="choropleth-region" x="50"  y="0"   width="48" height="48" rx="2"><title>Samburu</title></rect></a>
+  <a href="/admin/regions/KE-MAR"><rect data-region="KE-MAR" class="choropleth-region" x="100" y="0"   width="48" height="48" rx="2"><title>Marsabit</title></rect></a>
+  <a href="/admin/regions/KE-WAJ"><rect data-region="KE-WAJ" class="choropleth-region" x="150" y="0"   width="48" height="48" rx="2"><title>Wajir</title></rect></a>
+  <a href="/admin/regions/KE-MAN"><rect data-region="KE-MAN" class="choropleth-region" x="200" y="0"   width="48" height="48" rx="2"><title>Mandera</title></rect></a>
+  <a href="/admin/regions/KE-ISI"><rect data-region="KE-ISI" class="choropleth-region" x="250" y="0"   width="48" height="48" rx="2"><title>Isiolo</title></rect></a>
+  <a href="/admin/regions/KE-GAR"><rect data-region="KE-GAR" class="choropleth-region" x="300" y="0"   width="48" height="48" rx="2"><title>Garissa</title></rect></a>
+  <!-- Row 1 -->
+  <a href="/admin/regions/KE-WPO"><rect data-region="KE-WPO" class="choropleth-region" x="0"   y="50"  width="48" height="48" rx="2"><title>West Pokot</title></rect></a>
+  <a href="/admin/regions/KE-BAR"><rect data-region="KE-BAR" class="choropleth-region" x="50"  y="50"  width="48" height="48" rx="2"><title>Baringo</title></rect></a>
+  <a href="/admin/regions/KE-LAI"><rect data-region="KE-LAI" class="choropleth-region" x="100" y="50"  width="48" height="48" rx="2"><title>Laikipia</title></rect></a>
+  <a href="/admin/regions/KE-MER"><rect data-region="KE-MER" class="choropleth-region" x="150" y="50"  width="48" height="48" rx="2"><title>Meru</title></rect></a>
+  <a href="/admin/regions/KE-THN"><rect data-region="KE-THN" class="choropleth-region" x="200" y="50"  width="48" height="48" rx="2"><title>Tharaka-Nithi</title></rect></a>
+  <a href="/admin/regions/KE-EMB"><rect data-region="KE-EMB" class="choropleth-region" x="250" y="50"  width="48" height="48" rx="2"><title>Embu</title></rect></a>
+  <a href="/admin/regions/KE-TAN"><rect data-region="KE-TAN" class="choropleth-region" x="300" y="50"  width="48" height="48" rx="2"><title>Tana River</title></rect></a>
+  <!-- Row 2 -->
+  <a href="/admin/regions/KE-TNZ"><rect data-region="KE-TNZ" class="choropleth-region" x="0"   y="100" width="48" height="48" rx="2"><title>Trans-Nzoia</title></rect></a>
+  <a href="/admin/regions/KE-UGI"><rect data-region="KE-UGI" class="choropleth-region" x="50"  y="100" width="48" height="48" rx="2"><title>Uasin Gishu</title></rect></a>
+  <a href="/admin/regions/KE-NAK"><rect data-region="KE-NAK" class="choropleth-region" x="100" y="100" width="48" height="48" rx="2"><title>Nakuru</title></rect></a>
+  <a href="/admin/regions/KE-NYA"><rect data-region="KE-NYA" class="choropleth-region" x="150" y="100" width="48" height="48" rx="2"><title>Nyandarua</title></rect></a>
+  <a href="/admin/regions/KE-NYE"><rect data-region="KE-NYE" class="choropleth-region" x="200" y="100" width="48" height="48" rx="2"><title>Nyeri</title></rect></a>
+  <a href="/admin/regions/KE-KIR"><rect data-region="KE-KIR" class="choropleth-region" x="250" y="100" width="48" height="48" rx="2"><title>Kirinyaga</title></rect></a>
+  <a href="/admin/regions/KE-KIT"><rect data-region="KE-KIT" class="choropleth-region" x="300" y="100" width="48" height="48" rx="2"><title>Kitui</title></rect></a>
+  <!-- Row 3 -->
+  <a href="/admin/regions/KE-EMN"><rect data-region="KE-EMN" class="choropleth-region" x="0"   y="150" width="48" height="48" rx="2"><title>Elgeyo-Marakwet</title></rect></a>
+  <a href="/admin/regions/KE-NAN"><rect data-region="KE-NAN" class="choropleth-region" x="50"  y="150" width="48" height="48" rx="2"><title>Nandi</title></rect></a>
+  <a href="/admin/regions/KE-KER"><rect data-region="KE-KER" class="choropleth-region" x="100" y="150" width="48" height="48" rx="2"><title>Kericho</title></rect></a>
+  <a href="/admin/regions/KE-NAR"><rect data-region="KE-NAR" class="choropleth-region" x="150" y="150" width="48" height="48" rx="2"><title>Narok</title></rect></a>
+  <a href="/admin/regions/KE-KAJ"><rect data-region="KE-KAJ" class="choropleth-region" x="200" y="150" width="48" height="48" rx="2"><title>Kajiado</title></rect></a>
+  <a href="/admin/regions/KE-MUR"><rect data-region="KE-MUR" class="choropleth-region" x="250" y="150" width="48" height="48" rx="2"><title>Murang'a</title></rect></a>
+  <a href="/admin/regions/KE-MAC"><rect data-region="KE-MAC" class="choropleth-region" x="300" y="150" width="48" height="48" rx="2"><title>Machakos</title></rect></a>
+  <!-- Row 4 -->
+  <a href="/admin/regions/KE-KAK"><rect data-region="KE-KAK" class="choropleth-region" x="0"   y="200" width="48" height="48" rx="2"><title>Kakamega</title></rect></a>
+  <a href="/admin/regions/KE-VIH"><rect data-region="KE-VIH" class="choropleth-region" x="50"  y="200" width="48" height="48" rx="2"><title>Vihiga</title></rect></a>
+  <a href="/admin/regions/KE-BOM"><rect data-region="KE-BOM" class="choropleth-region" x="100" y="200" width="48" height="48" rx="2"><title>Bomet</title></rect></a>
+  <a href="/admin/regions/KE-KIA"><rect data-region="KE-KIA" class="choropleth-region" x="150" y="200" width="48" height="48" rx="2"><title>Kiambu</title></rect></a>
+  <a href="/admin/regions/KE-NAI"><rect data-region="KE-NAI" class="choropleth-region" x="200" y="200" width="48" height="48" rx="2"><title>Nairobi</title></rect></a>
+  <a href="/admin/regions/KE-MAK"><rect data-region="KE-MAK" class="choropleth-region" x="250" y="200" width="48" height="48" rx="2"><title>Makueni</title></rect></a>
+  <a href="/admin/regions/KE-LAM"><rect data-region="KE-LAM" class="choropleth-region" x="300" y="200" width="48" height="48" rx="2"><title>Lamu</title></rect></a>
+  <!-- Row 5 -->
+  <a href="/admin/regions/KE-BUN"><rect data-region="KE-BUN" class="choropleth-region" x="0"   y="250" width="48" height="48" rx="2"><title>Bungoma</title></rect></a>
+  <a href="/admin/regions/KE-BUS"><rect data-region="KE-BUS" class="choropleth-region" x="50"  y="250" width="48" height="48" rx="2"><title>Busia</title></rect></a>
+  <a href="/admin/regions/KE-SIA"><rect data-region="KE-SIA" class="choropleth-region" x="100" y="250" width="48" height="48" rx="2"><title>Siaya</title></rect></a>
+  <a href="/admin/regions/KE-KIS"><rect data-region="KE-KIS" class="choropleth-region" x="150" y="250" width="48" height="48" rx="2"><title>Kisumu</title></rect></a>
+  <a href="/admin/regions/KE-HOM"><rect data-region="KE-HOM" class="choropleth-region" x="200" y="250" width="48" height="48" rx="2"><title>Homa Bay</title></rect></a>
+  <a href="/admin/regions/KE-MIG"><rect data-region="KE-MIG" class="choropleth-region" x="250" y="250" width="48" height="48" rx="2"><title>Migori</title></rect></a>
+  <a href="/admin/regions/KE-MOM"><rect data-region="KE-MOM" class="choropleth-region" x="300" y="250" width="48" height="48" rx="2"><title>Mombasa</title></rect></a>
+  <!-- Row 6: last row, 5 counties (2 cells empty) -->
+  <a href="/admin/regions/KE-KSI"><rect data-region="KE-KSI" class="choropleth-region" x="0"   y="300" width="48" height="48" rx="2"><title>Kisii</title></rect></a>
+  <a href="/admin/regions/KE-NYM"><rect data-region="KE-NYM" class="choropleth-region" x="50"  y="300" width="48" height="48" rx="2"><title>Nyamira</title></rect></a>
+  <a href="/admin/regions/KE-TAS"><rect data-region="KE-TAS" class="choropleth-region" x="100" y="300" width="48" height="48" rx="2"><title>Taita-Taveta</title></rect></a>
+  <a href="/admin/regions/KE-KWA"><rect data-region="KE-KWA" class="choropleth-region" x="150" y="300" width="48" height="48" rx="2"><title>Kwale</title></rect></a>
+  <a href="/admin/regions/KE-KIL"><rect data-region="KE-KIL" class="choropleth-region" x="200" y="300" width="48" height="48" rx="2"><title>Kilifi</title></rect></a>
+  <!-- cells at (250,300) and (300,300) intentionally empty — 47 counties fit in 49 cells minus 2 -->
+</svg>

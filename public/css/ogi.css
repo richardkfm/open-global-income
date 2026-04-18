@@ -506,6 +506,167 @@ details[open] .targeting-summary::before { transform: rotate(90deg); }
   color: var(--color-warning); font-weight: 600; font-size: 0.72rem;
 }
 
+/* ── Missing-data warning card ───────────────────────── */
+.missing-data-card {
+  background: var(--color-warning-bg);
+  border: 1px solid var(--color-warning-border);
+  border-radius: var(--radius-lg);
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+.missing-data-card h3 {
+  color: #92400e;
+  font-size: 0.85rem;
+  margin-bottom: 0.25rem;
+}
+.missing-data-card p {
+  color: #78350f;
+  margin: 0.5rem 0;
+}
+
+/* ── Missing-data indicator table ────────────────────── */
+.missing-indicators-table {
+  width: 100%;
+  font-size: 0.8rem;
+  border-collapse: collapse;
+  margin-top: 0.5rem;
+  color: #78350f;
+}
+.missing-indicators-table thead tr {
+  border-bottom: 1px solid #fbbf24;
+}
+.missing-indicators-table th {
+  text-align: left;
+  padding: 0.3rem 0.5rem;
+  color: #92400e;
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+.missing-indicators-table td {
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid #fde68a;
+}
+.missing-indicators-table td:first-child {
+  font-weight: 600;
+}
+.missing-indicator-code {
+  background: #fef3c7;
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  font-size: 0.75rem;
+  font-family: monospace;
+}
+.missing-data-note {
+  color: #92400e;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+}
+
+/* ── Assumption list ─────────────────────────────────── */
+.assumption-list {
+  padding-left: 1.2rem;
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+.assumption-list li {
+  margin-bottom: 0.4rem;
+}
+
+/* ── Impact bar value ────────────────────────────────── */
+.impact-bar-value {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+/* ── Transfer amount input ───────────────────────────── */
+.transfer-amount-input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.25rem;
+}
+
+/* ── Details cursor ──────────────────────────────────── */
+.details-summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+/* ── Improved empty states ───────────────────────────── */
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--color-text-secondary);
+}
+.empty-state-title {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--color-text);
+  margin-bottom: 0.25rem;
+}
+.empty-state-illustration {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+  color: var(--color-border);
+}
+.empty-state-illustration svg {
+  width: 100px;
+  height: 100px;
+}
+.empty-state-desc {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  margin: 0.5rem auto 1.5rem;
+  max-width: 320px;
+  line-height: 1.5;
+}
+.empty-state-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* ── Sidebar section icons ───────────────────────────── */
+.sidebar-section-label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.sidebar-section-icon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+/* ── Related views footer strip ──────────────────────── */
+.related-views {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 1rem;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  margin-top: 1.5rem;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+.related-views-label {
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.related-views-sep {
+  color: var(--color-border);
+  user-select: none;
+}
+
 /* ── Choropleth (Phase 4 placeholder) ────────────────── */
 .choropleth { width: 100%; max-width: 600px; }
 .choropleth-region {
@@ -514,3 +675,36 @@ details[open] .targeting-summary::before { transform: rotate(90deg); }
   transition: fill 0.15s;
 }
 .choropleth-region:hover { fill: color-mix(in srgb, var(--choropleth-fill, var(--color-primary-light)) 70%, var(--color-primary) 30%); cursor: pointer; }
+
+/* ── Choropleth legend ───────────────────────────────── */
+.choropleth-svg {
+  width: 100%;
+  max-width: 500px;
+  display: block;
+}
+.choropleth-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+  max-width: 350px;
+}
+.choropleth-legend-bar {
+  height: 12px;
+  border-radius: 4px;
+}
+.choropleth-legend-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: var(--color-text-secondary);
+}
+
+/* ── View toggle (map/table, indicator) ──────────────── */
+.view-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}

@@ -538,12 +538,35 @@ function initOgiTabs() {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Choropleth colour patching
+// ---------------------------------------------------------------------------
+
+function initChoropleths() {
+  document.querySelectorAll('[data-choropleth-fills]').forEach((el) => {
+    let fills;
+    try { fills = JSON.parse(el.dataset.choroplethFills); } catch { return; }
+    const obj = el.querySelector('object[type="image/svg+xml"]');
+    if (!obj) return;
+    function patchSvg() {
+      const doc = obj.contentDocument;
+      if (!doc) return;
+      doc.querySelectorAll('[data-region]').forEach((shape) => {
+        const fill = fills[shape.dataset.region];
+        if (fill) shape.setAttribute('fill', fill);
+      });
+    }
+    if (obj.contentDocument) { patchSvg(); }
+    obj.addEventListener('load', patchSvg);
+  });
+}
+
 // Initialize on page load
-document.addEventListener('DOMContentLoaded', () => { initOgiCharts(); initOgiTabs(); });
+document.addEventListener('DOMContentLoaded', () => { initOgiCharts(); initOgiTabs(); initChoropleths(); });
 
 // Re-initialize after htmx content swaps
-document.addEventListener('htmx:afterSwap', () => { initOgiCharts(); initOgiTabs(); });
-document.addEventListener('htmx:afterSettle', () => { initOgiCharts(); initOgiTabs(); });
+document.addEventListener('htmx:afterSwap', () => { initOgiCharts(); initOgiTabs(); initChoropleths(); });
+document.addEventListener('htmx:afterSettle', () => { initOgiCharts(); initOgiTabs(); initChoropleths(); });
 
 // Expose globally for download buttons and dynamic content
 window.OGI = window.OGI || {};
