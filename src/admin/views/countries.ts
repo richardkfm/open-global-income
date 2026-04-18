@@ -1,10 +1,11 @@
 import { layout } from './layout.js';
-import { escapeHtml, formatCompact, formatNumber } from './helpers.js';
+import { escapeHtml, formatCompact, formatNumber, renderDrawer } from './helpers.js';
 import { t } from '../../i18n/index.js';
 import { getCurrencyForCountry, formatLocalCurrency, CURRENCIES, COUNTRY_CURRENCY_MAP } from '../../data/currencies.js';
 import type { Country, CountryStats } from '../../core/types.js';
 import type { DataCompleteness } from '../../data/loader.js';
 import { calculateEntitlement } from '../../core/rules.js';
+import { GLOBAL_INCOME_FLOOR_PPP } from '../../core/constants.js';
 import { resolveCountryPovertyLine } from '../../core/poverty.js';
 import { convert, pickDisplayCurrency, type FxSnapshot } from '../../core/fx.js';
 
@@ -365,6 +366,47 @@ export function renderCountryDetail(
       </div>
     </div>`;
 
+  // ── Income Calculation card ───────────────────────────────────────────────
+  const entitlementDrawer = renderDrawer(
+    'country-entitlement-formula',
+    t('common.calculations'),
+    t('countries.drawerEntitlementTitle'),
+    `<p class="text-sm text-muted">${t('countries.drawerEntitlementFormula')}</p>
+    <ul class="text-sm text-muted" style="padding-left:1.2rem;margin:0.5rem 0">
+      <li><strong>${t('countries.drawerInputFloor')}</strong> $${GLOBAL_INCOME_FLOOR_PPP} PPP-USD/month — ${t('countries.drawerInputFloorNote')}</li>
+      <li><strong>${t('countries.drawerInputPpp')}</strong> ${s.pppConversionFactor.toFixed(2)} — ${t('countries.worldBank')} 2023 (PA.NUS.PPP)</li>
+      <li><strong>${t('countries.drawerInputGni')}</strong> $${s.gniPerCapitaUsd.toLocaleString('en-US')}/yr — ${t('countries.worldBank')} 2023 (NY.GNP.PCAP.CD)</li>
+      <li><strong>${t('countries.drawerInputGini')}</strong> ${s.giniIndex != null ? s.giniIndex : t('common.none')} — ${t('countries.worldBank')} 2023 (SI.POV.GINI)</li>
+      <li><strong>${t('countries.drawerRuleset')}</strong> ${escapeHtml(entitlement.meta.rulesetVersion)}</li>
+    </ul>
+    <p class="text-xs text-muted" style="font-style:italic">${t('countries.drawerEntitlementNote')}</p>`,
+  );
+
+  const incomeCalcCard = `
+    <div class="card mb-2">
+      <div class="card-header">
+        <h2 class="card-title">${t('countries.incomeCalculation')}</h2>
+        ${sourceBadge('wb')}
+      </div>
+      <div class="grid grid-3">
+        <div class="card stat-card">
+          <div class="stat-label">${t('countries.ubiFloorMonth')}</div>
+          <div class="stat-value">$${entitlement.pppUsdPerMonth} <span class="text-sm text-muted">${t('countries.pppUsdUnit')}</span></div>
+          <div class="text-sm text-muted">${localFmt.format(entitlement.localCurrencyPerMonth)} ${t('countries.localUnit')} (${escapeHtml(currencyCode)})</div>
+        </div>
+        <div class="card stat-card">
+          <div class="stat-label">${t('countries.needScore')}</div>
+          <div class="stat-value">${(entitlement.score * 100).toFixed(1)} / 100</div>
+          <div class="text-sm text-muted">${scoreRing(entitlement.score)}</div>
+        </div>
+        <div class="card stat-card">
+          <div class="stat-label">${t('countries.rulesetVersion')}</div>
+          <div class="stat-value mono">${escapeHtml(entitlement.meta.rulesetVersion)}</div>
+        </div>
+      </div>
+      ${entitlementDrawer}
+    </div>`;
+
   // ── Section helper ────────────────────────────────────────────────────────
   function section(title: string, badge: string, tiles: string): string {
     return `
@@ -492,6 +534,7 @@ export function renderCountryDetail(
     `${country.name} — ${t('countries.title')}`,
     `
     ${hero}
+    ${incomeCalcCard}
     ${coreSection}
     ${fiscalSection}
     ${socialSection}

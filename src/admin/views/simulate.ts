@@ -1,11 +1,11 @@
 import { layout } from './layout.js';
-import { escapeHtml, formatNumber, formatCompact, formatPercent, formatCurrency } from './helpers.js';
+import { escapeHtml, formatNumber, formatCompact, formatPercent, formatCurrency, renderCitations, renderCitationSup } from './helpers.js';
 import { renderDrawer } from './helpers.js';
 import { barChart, lineChart } from './chart-helpers.js';
 import { projectYearly, yearLabels } from '../../core/projections.js';
 import { t } from '../../i18n/index.js';
 import { getCurrencyForCountry, formatLocalCurrency } from '../../data/currencies.js';
-import type { Country, FiscalContext } from '../../core/types.js';
+import type { Country, FiscalContext, Citation } from '../../core/types.js';
 import type { SimulationResult } from '../../core/types.js';
 import type { SavedSimulation } from '../../core/types.js';
 
