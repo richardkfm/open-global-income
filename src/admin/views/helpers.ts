@@ -4,6 +4,7 @@
  * These functions were previously duplicated across every view module.
  * Import from here instead of redefining locally.
  */
+import type { Citation } from '../../core/types.js';
 
 // ---------------------------------------------------------------------------
 // Security
@@ -104,4 +105,86 @@ export function formatDate(iso: string, locale = 'en-US'): string {
     month: 'short',
     day: 'numeric',
   });
+}
+
+// ---------------------------------------------------------------------------
+// UI Component helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Render a horizontal breadcrumb trail.
+ * Items with an `href` are rendered as links; the last item is always rendered
+ * as a plain span (current page). Items are separated by a `›` glyph.
+ */
+export function renderBreadcrumbs(crumbs: Array<{ label: string; href?: string }>): string {
+  if (!crumbs.length) return '';
+  const items = crumbs.map((crumb, i) => {
+    const isLast = i === crumbs.length - 1;
+    const sep = i > 0 ? '<span class="breadcrumb-sep" aria-hidden="true">›</span>' : '';
+    const item = isLast || !crumb.href
+      ? `<span class="breadcrumb-item breadcrumb-current">${escapeHtml(crumb.label)}</span>`
+      : `<a class="breadcrumb-item" href="${crumb.href}">${escapeHtml(crumb.label)}</a>`;
+    return sep + item;
+  });
+  return `<nav class="breadcrumbs" aria-label="Breadcrumb">${items.join('\n')}</nav>`;
+}
+
+/**
+ * Render a CSS-only collapsible drawer using the <details>/<summary> pattern.
+ * No JavaScript required. The drawer opens/closes natively.
+ *
+ * @param id           Unique id applied to the <details> element.
+ * @param triggerLabel Text shown in the summary (e.g. "How this is calculated").
+ * @param title        Heading rendered inside the open drawer.
+ * @param contentHtml  Pre-built HTML for the drawer body.
+ */
+export function renderDrawer(id: string, triggerLabel: string, title: string, contentHtml: string): string {
+  return `<details class="drawer" id="${escapeHtml(id)}">
+  <summary class="drawer-summary">${escapeHtml(triggerLabel)}</summary>
+  <div class="drawer-body">
+    <div class="drawer-title">${escapeHtml(title)}</div>
+    ${contentHtml}
+  </div>
+</details>`;
+}
+
+/**
+ * Render an inline dismissible toast notification.
+ * Use CSS `:target` or htmx `hx-swap-oob` to show/hide it.
+ * The `variant` controls the colour scheme.
+ */
+export function renderToast(message: string, variant: 'success' | 'error' | 'info' | 'warning' = 'info'): string {
+  return `<div class="toast toast-${escapeHtml(variant)}" role="alert" aria-live="polite">
+  ${escapeHtml(message)}
+</div>`;
+}
+
+/**
+ * Render a numbered citation footnote list from a Citation[].
+ * Each item is anchored at `#cite-{id}` so inline superscripts can link to it.
+ */
+export function renderCitations(citations: Citation[]): string {
+  if (!citations.length) return '';
+  const items = citations.map(c => {
+    const parts: string[] = [];
+    parts.push(`<strong>${escapeHtml(c.source)}</strong>`);
+    if (c.year) parts.push(escapeHtml(String(c.year)));
+    if (c.indicatorCode) parts.push(`<code>${escapeHtml(c.indicatorCode)}</code>`);
+    if (c.note) parts.push(escapeHtml(c.note));
+    const link = c.url
+      ? ` <a href="${escapeHtml(c.url)}" target="_blank" rel="noopener noreferrer" class="citation-link">↗</a>`
+      : '';
+    return `<li class="citation-item" id="cite-${escapeHtml(c.id)}">${parts.join(' · ')}${link}</li>`;
+  });
+  return `<ol class="citation-list">${items.join('\n')}</ol>`;
+}
+
+/**
+ * Render an inline superscript link to a citation footnote.
+ * Typically placed immediately after a statistic in body copy.
+ *
+ * @param citationId The `id` from the Citation object (e.g. "c1").
+ */
+export function renderCitationSup(citationId: string): string {
+  return `<sup class="citation-sup"><a href="#cite-${escapeHtml(citationId)}">[${escapeHtml(citationId)}]</a></sup>`;
 }

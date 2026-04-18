@@ -126,11 +126,285 @@ const DEFAULT_OPTIONS = {
 };
 
 /**
+ * Initialize a scatter chart from a canvas with data-ogi-chart="scatter".
+ */
+function initScatterChart(canvas) {
+  const rawConfig = canvas.getAttribute('data-ogi-config');
+  if (!rawConfig) return;
+  const config = JSON.parse(rawConfig);
+
+  const whiteBackground = {
+    id: 'whiteBackground',
+    beforeDraw(chart) {
+      const ctx = chart.canvas.getContext('2d');
+      ctx.save();
+      ctx.globalCompositeOperation = 'destination-over';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, chart.width, chart.height);
+      ctx.restore();
+    },
+  };
+
+  const datasets = (config.datasets || []).map((ds, i) => {
+    const color = ds.colour || OGI_PALETTE[i % OGI_PALETTE.length];
+    return {
+      label: ds.label,
+      data: (ds.points || []).map((p) => ({
+        x: p.x,
+        y: p.y,
+        r: p.r != null ? p.r : 6,
+        _label: p.label || null,
+      })),
+      backgroundColor: color + 'cc', // slight transparency
+      borderColor: color,
+      borderWidth: 1.5,
+      pointRadius: (ds.points || []).map((p) => p.r != null ? p.r : 6),
+      pointHoverRadius: (ds.points || []).map((p) => (p.r != null ? p.r : 6) + 3),
+    };
+  });
+
+  const scales = {
+    x: {
+      grid: { display: false },
+      ticks: {
+        font: { family: "'Inter', system-ui, sans-serif", size: 11 },
+        color: '#6b7280',
+        callback: function(value) {
+          return formatAxisTick(value);
+        },
+      },
+      border: { display: false },
+    },
+    y: {
+      grid: { color: '#f3f4f6', drawBorder: false },
+      ticks: {
+        font: { family: "'Inter', system-ui, sans-serif", size: 11 },
+        color: '#6b7280',
+        callback: function(value) {
+          return formatAxisTick(value);
+        },
+      },
+      border: { display: false },
+    },
+  };
+  if (config.xLabel) scales.x.title = { display: true, text: config.xLabel, font: { size: 11 }, color: '#6b7280' };
+  if (config.yLabel) scales.y.title = { display: true, text: config.yLabel, font: { size: 11 }, color: '#6b7280' };
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 400 },
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: {
+          padding: 16,
+          usePointStyle: true,
+          pointStyleWidth: 8,
+          font: { family: "'Inter', system-ui, sans-serif", size: 12 },
+        },
+      },
+      title: config.title
+        ? { display: true, text: config.title, font: { family: "'Inter', system-ui, sans-serif", size: 14, weight: '600' }, color: '#111827', padding: { bottom: 12 } }
+        : { display: false },
+      tooltip: {
+        backgroundColor: '#1f2937',
+        titleFont: { family: "'Inter', system-ui, sans-serif", size: 13, weight: '600' },
+        bodyFont: { family: "'Inter', system-ui, sans-serif", size: 12 },
+        padding: 12,
+        cornerRadius: 8,
+        displayColors: true,
+        boxPadding: 6,
+        callbacks: {
+          label: function(context) {
+            var raw = context.raw;
+            var parts = [];
+            if (raw._label) parts.push(raw._label);
+            parts.push('x: ' + formatAxisTick(raw.x) + ', y: ' + formatAxisTick(raw.y));
+            if (raw.r && raw.r !== 6) parts.push('size: ' + formatAxisTick(raw.r));
+            return parts;
+          },
+        },
+      },
+    },
+    scales,
+  };
+
+  const chart = new Chart(canvas, {
+    type: 'bubble',
+    data: { datasets },
+    options,
+    plugins: [whiteBackground],
+  });
+  canvas._ogiChart = chart;
+}
+
+/**
+ * Initialize an overlay-line chart from a canvas with data-ogi-chart="overlay-line".
+ * Recipient series are solid; control series are dashed.
+ */
+function initOverlayLineChart(canvas) {
+  const rawConfig = canvas.getAttribute('data-ogi-config');
+  if (!rawConfig) return;
+  const config = JSON.parse(rawConfig);
+
+  const whiteBackground = {
+    id: 'whiteBackground',
+    beforeDraw(chart) {
+      const ctx = chart.canvas.getContext('2d');
+      ctx.save();
+      ctx.globalCompositeOperation = 'destination-over';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, chart.width, chart.height);
+      ctx.restore();
+    },
+  };
+
+  const datasets = [];
+  const recipientSeries = config.recipientSeries || [];
+  const controlSeries = config.controlSeries || [];
+
+  recipientSeries.forEach((s, i) => {
+    const color = OGI_PALETTE[i % OGI_PALETTE.length];
+    datasets.push({
+      label: s.label,
+      data: s.values,
+      borderColor: color,
+      backgroundColor: color + '14',
+      fill: false,
+      tension: 0.35,
+      borderWidth: 2.5,
+      borderDash: [],
+      pointRadius: 3,
+      pointHoverRadius: 6,
+      pointBackgroundColor: '#ffffff',
+      pointBorderColor: color,
+      pointBorderWidth: 2,
+      spanGaps: false,
+    });
+  });
+
+  controlSeries.forEach((s, i) => {
+    const color = OGI_PALETTE[i % OGI_PALETTE.length];
+    datasets.push({
+      label: s.label,
+      data: s.values,
+      borderColor: color,
+      backgroundColor: 'transparent',
+      fill: false,
+      tension: 0.35,
+      borderWidth: 2,
+      borderDash: [6, 4],
+      pointRadius: 3,
+      pointHoverRadius: 6,
+      pointBackgroundColor: '#ffffff',
+      pointBorderColor: color,
+      pointBorderWidth: 2,
+      spanGaps: false,
+    });
+  });
+
+  const scales = {
+    x: {
+      grid: { display: false },
+      ticks: {
+        font: { family: "'Inter', system-ui, sans-serif", size: 11 },
+        color: '#6b7280',
+      },
+      border: { display: false },
+    },
+    y: {
+      grid: { color: '#f3f4f6', drawBorder: false },
+      ticks: {
+        font: { family: "'Inter', system-ui, sans-serif", size: 11 },
+        color: '#6b7280',
+        callback: function(value) {
+          if (typeof value === 'number' && Math.abs(value) >= 1000) {
+            return formatAxisTick(value);
+          }
+          return value;
+        },
+      },
+      border: { display: false },
+    },
+  };
+  if (config.yLabel) scales.y.title = { display: true, text: config.yLabel, font: { size: 11 }, color: '#6b7280' };
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 400 },
+    plugins: {
+      legend: {
+        position: 'top',
+        labels: {
+          padding: 16,
+          usePointStyle: true,
+          pointStyleWidth: 8,
+          font: { family: "'Inter', system-ui, sans-serif", size: 12 },
+        },
+      },
+      title: config.title
+        ? { display: true, text: config.title, font: { family: "'Inter', system-ui, sans-serif", size: 14, weight: '600' }, color: '#111827', padding: { bottom: 12 } }
+        : { display: false },
+      tooltip: {
+        mode: 'index',
+        intersect: false,
+        backgroundColor: '#1f2937',
+        titleFont: { family: "'Inter', system-ui, sans-serif", size: 13, weight: '600' },
+        bodyFont: { family: "'Inter', system-ui, sans-serif", size: 12 },
+        padding: 12,
+        cornerRadius: 8,
+        displayColors: true,
+        boxPadding: 6,
+        callbacks: {
+          label: function(context) {
+            var label = context.dataset.label || '';
+            var value = context.parsed.y;
+            if (value == null) return label + ': —';
+            if (label) label += ': ';
+            if (typeof value === 'number') {
+              if (Math.abs(value) >= 1000) {
+                label += formatChartValue(value);
+              } else {
+                label += value < 1 ? value.toFixed(3) : value.toFixed(1);
+              }
+            }
+            return label;
+          },
+        },
+      },
+    },
+    scales,
+  };
+
+  const chart = new Chart(canvas, {
+    type: 'line',
+    data: { labels: config.labels || [], datasets },
+    options,
+    plugins: [whiteBackground],
+  });
+  canvas._ogiChart = chart;
+}
+
+/**
  * Initialize all un-rendered OGI charts on the page.
  */
 function initOgiCharts() {
   document.querySelectorAll('canvas[data-ogi-chart]').forEach((canvas) => {
     if (canvas._ogiChart) return; // Already initialized
+
+    const chartType = canvas.getAttribute('data-ogi-chart');
+
+    // New chart types with separate data-ogi-config attribute
+    if (chartType === 'scatter') {
+      try { initScatterChart(canvas); } catch (err) { console.error('Failed to initialize scatter chart:', err); }
+      return;
+    }
+    if (chartType === 'overlay-line') {
+      try { initOverlayLineChart(canvas); } catch (err) { console.error('Failed to initialize overlay-line chart:', err); }
+      return;
+    }
 
     try {
       const config = JSON.parse(canvas.getAttribute('data-ogi-chart'));

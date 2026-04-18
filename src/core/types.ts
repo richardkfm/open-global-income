@@ -585,6 +585,25 @@ export interface ImpactAnalysisResult {
   meta: RulesetMeta & { generatedAt: string };
 }
 
+/**
+ * A typed citation linking a claim in the policy brief to its data source.
+ * Used to render inline superscripts and a numbered footnote block.
+ */
+export interface Citation {
+  /** Stable identifier used for anchor links, e.g. "c1" */
+  id: string;
+  /** World Bank / ILO / IMF indicator code, e.g. "SI.POV.DDAY" */
+  indicatorCode?: string;
+  /** Name of the publishing organisation, e.g. "World Bank" */
+  source: string;
+  /** Year of the data vintage */
+  year?: number;
+  /** Optional canonical URL */
+  url?: string;
+  /** Short human-readable description of what the citation supports */
+  note?: string;
+}
+
 /** Exportable policy brief — every assumption explicitly listed */
 export interface PolicyBrief {
   title: string;
@@ -611,6 +630,13 @@ export interface PolicyBrief {
   assumptions: string[];
   dataSources: string[];
   caveats: string[];
+  /**
+   * Typed citation list — deduplicated across all data sources referenced
+   * in the brief. Always present; may be empty if no indicator data is used.
+   * Each entry has a stable `id` (e.g. "c1") that can be used for anchor
+   * links and inline superscripts via renderCitationSup().
+   */
+  citations: Citation[];
 }
 
 /** A saved impact analysis record from the database */

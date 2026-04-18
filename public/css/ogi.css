@@ -350,3 +350,143 @@ select {
 .targeting-summary::before { content: '▶'; font-size: 0.65rem; color: var(--color-text-secondary); transition: transform 0.15s; }
 details[open] .targeting-summary::before { transform: rotate(90deg); }
 .targeting-fields { padding: 0.75rem 0.85rem 0.85rem; border-top: 1px solid var(--color-border); background: var(--color-bg-alt, #fafafa); }
+
+/* ── Print / Export ──────────────────────────────────── */
+@media print {
+  .sidebar, .mobile-header, .sidebar-overlay { display: none !important; }
+  .main-content { margin: 0 !important; padding: 0 !important; }
+  .chart-container { break-inside: avoid; }
+  @page { size: A4; margin: 15mm; }
+}
+.page-break-before { page-break-before: always; }
+.print-only { display: none; }
+@media print {
+  .print-only { display: block; }
+  .no-print { display: none !important; }
+}
+
+/* ── Breadcrumbs ─────────────────────────────────────── */
+.breadcrumbs {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 0.25rem;
+  font-size: 0.78rem; color: var(--color-text-secondary);
+  margin: 0 0 1rem 2rem; padding: 0;
+}
+.breadcrumb-item {
+  color: var(--color-text-secondary); text-decoration: none;
+  transition: color 0.15s;
+}
+.breadcrumb-item:hover { color: var(--color-primary); text-decoration: underline; }
+.breadcrumb-current {
+  color: var(--color-text); font-weight: 500;
+}
+.breadcrumb-sep {
+  color: var(--color-text-tertiary); font-size: 0.9em; padding: 0 0.1rem;
+  user-select: none;
+}
+
+/* ── Drawer (details/summary collapsible) ────────────── */
+.drawer {
+  border: 1px solid var(--color-border); border-radius: var(--radius-md);
+  background: var(--color-surface); margin-bottom: 1rem;
+}
+.drawer-summary {
+  padding: 0.75rem 1rem; cursor: pointer; font-weight: 500; font-size: 0.875rem;
+  user-select: none; list-style: none; display: flex; align-items: center; gap: 0.4rem;
+  color: var(--color-primary);
+}
+.drawer-summary::-webkit-details-marker { display: none; }
+.drawer-summary::before {
+  content: '▶'; font-size: 0.65rem; color: var(--color-text-secondary);
+  transition: transform 0.15s;
+}
+.drawer[open] > .drawer-summary::before { transform: rotate(90deg); }
+.drawer-body {
+  padding: 0.75rem 1rem 1rem; border-top: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+.drawer-title { font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--color-text); }
+
+/* ── Toast notifications ─────────────────────────────── */
+.toast {
+  padding: 0.75rem 1rem; border-radius: var(--radius-md); font-size: 0.875rem;
+  margin-bottom: 1rem; border-width: 1px; border-style: solid;
+}
+.toast-success { background: var(--color-success-bg); color: #065f46; border-color: var(--color-success-border); }
+.toast-error   { background: var(--color-danger-bg);  color: #991b1b; border-color: var(--color-danger-border);  }
+.toast-warning { background: var(--color-warning-bg); color: #92400e; border-color: var(--color-warning-border); }
+.toast-info    { background: var(--color-info-bg);    color: #1e40af; border-color: var(--color-info-border);    }
+
+/* ── Program Brief layout ────────────────────────────── */
+.program-hero {
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg); padding: 2rem; margin-bottom: 1.5rem;
+  box-shadow: var(--shadow-md);
+}
+.program-hero-country { font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-secondary); margin-bottom: 0.25rem; }
+.program-hero-title   { font-size: 2rem; font-weight: 700; letter-spacing: -0.025em; line-height: 1.15; margin-bottom: 0.5rem; }
+.program-hero-subtitle { font-size: 0.95rem; color: var(--color-text-secondary); margin-bottom: 1.5rem; }
+.program-hero-tiles   { display: flex; gap: 1rem; flex-wrap: wrap; }
+
+.program-section {
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+.program-section-title {
+  font-size: 1rem; font-weight: 600; letter-spacing: -0.01em;
+  margin-bottom: 1rem; padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+/* ── Impact tiles ────────────────────────────────────── */
+.impact-tile {
+  flex: 1; min-width: 160px; display: flex; flex-direction: column; gap: 0.25rem;
+  padding: 1rem; background: var(--color-bg); border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-light);
+}
+.impact-tile-label {
+  font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--color-text-secondary);
+}
+.impact-tile-value {
+  font-size: 1.75rem; font-weight: 700; color: var(--color-primary);
+  letter-spacing: -0.02em; line-height: 1.2;
+}
+.impact-tile-note {
+  font-size: 0.75rem; color: var(--color-text-secondary); line-height: 1.4;
+}
+
+/* ── Fiscal context card ─────────────────────────────── */
+.fiscal-card {
+  background: var(--color-primary-light); border: 1px solid var(--color-primary-border);
+  border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── Citations ───────────────────────────────────────── */
+.citation-sup { font-size: 0.65em; color: var(--color-text-tertiary); padding: 0 0.1em; vertical-align: super; }
+.citation-sup a { color: var(--color-primary); text-decoration: none; }
+.citation-sup a:hover { text-decoration: underline; }
+.citation-list {
+  list-style: decimal; padding-left: 1.5rem; font-size: 0.78rem;
+  color: var(--color-text-secondary); line-height: 1.6;
+  margin: 0.5rem 0 0;
+}
+.citation-item { margin-bottom: 0.4rem; }
+.citation-item code { font-size: 0.85em; background: var(--color-bg); padding: 0.05em 0.3em; border-radius: 3px; }
+.citation-link { margin-left: 0.25rem; color: var(--color-primary); }
+
+/* ── Export row ──────────────────────────────────────── */
+.program-export-row {
+  display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;
+  padding-top: 1rem; margin-top: 1rem; border-top: 1px solid var(--color-border);
+}
+
+/* ── Choropleth (Phase 4 placeholder) ────────────────── */
+.choropleth { width: 100%; max-width: 600px; }
+.choropleth-region {
+  fill: var(--choropleth-fill, var(--color-primary-light));
+  stroke: var(--color-border); stroke-width: 0.5;
+  transition: fill 0.15s;
+}
+.choropleth-region:hover { fill: color-mix(in srgb, var(--choropleth-fill, var(--color-primary-light)) 70%, var(--color-primary) 30%); cursor: pointer; }

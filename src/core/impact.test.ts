@@ -411,4 +411,53 @@ describe('calculateImpactAnalysis', () => {
     expect(result.fiscalMultiplier.estimatedGdpStimulusPppUsd)
       .toBeGreaterThan(result.program.annualCostPppUsd);
   });
+
+  // ── Citations ────────────────────────────────────────────────────────────────
+
+  it('policy brief citations array is non-empty', () => {
+    const sim = makeSimulation(kenya, 0.2);
+    const result = calculateImpactAnalysis(kenya, sim, params, 'test');
+    expect(result.policyBrief.citations.length).toBeGreaterThan(0);
+  });
+
+  it('all citation ids are stable unique strings like "c1", "c2", ...', () => {
+    const sim = makeSimulation(kenya, 0.2);
+    const result = calculateImpactAnalysis(kenya, sim, params, 'test');
+    const ids = result.policyBrief.citations.map(c => c.id);
+    // All ids must be non-empty strings
+    expect(ids.every(id => typeof id === 'string' && id.length > 0)).toBe(true);
+    // ids must be unique
+    expect(new Set(ids).size).toBe(ids.length);
+    // All must follow the "c{n}" pattern
+    expect(ids.every(id => /^c\d+$/.test(id))).toBe(true);
+  });
+
+  it('citations include the core World Bank indicators', () => {
+    const sim = makeSimulation(kenya, 0.2);
+    const result = calculateImpactAnalysis(kenya, sim, params, 'test');
+    const codes = result.policyBrief.citations
+      .map(c => c.indicatorCode)
+      .filter(Boolean);
+    expect(codes).toContain('NY.GNP.PCAP.PP.CD');
+    expect(codes).toContain('SI.POV.GINI');
+    expect(codes).toContain('SI.POV.DDAY');
+  });
+
+  it('citations are deterministic across two identical calls', () => {
+    const sim = makeSimulation(kenya, 0.2);
+    const r1 = calculateImpactAnalysis(kenya, sim, params, 'test');
+    const r2 = calculateImpactAnalysis(kenya, sim, params, 'test');
+    expect(r1.policyBrief.citations.map(c => c.id)).toEqual(
+      r2.policyBrief.citations.map(c => c.id),
+    );
+  });
+
+  it('each citation has at least an id and source', () => {
+    const sim = makeSimulation(kenya, 0.2);
+    const result = calculateImpactAnalysis(kenya, sim, params, 'test');
+    for (const c of result.policyBrief.citations) {
+      expect(c.id).toBeTruthy();
+      expect(c.source).toBeTruthy();
+    }
+  });
 });

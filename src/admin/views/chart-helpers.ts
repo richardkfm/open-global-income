@@ -176,3 +176,136 @@ export function doughnutChart(
   const config = buildConfig('doughnut', labels, datasets, mergedOpts);
   return renderChart(id, config, mergedOpts);
 }
+
+// ---------------------------------------------------------------------------
+// Scatter chart types
+// ---------------------------------------------------------------------------
+
+export interface ScatterPoint {
+  x: number;
+  y: number;
+  r?: number;
+  label?: string;
+}
+
+export interface ScatterDataset {
+  label: string;
+  points: ScatterPoint[];
+  colour?: string;
+}
+
+export interface ScatterChartOptions {
+  id?: string;
+  datasets: ScatterDataset[];
+  xLabel?: string;
+  yLabel?: string;
+  title?: string;
+  height?: number;
+  downloadFilename?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Overlay line chart types
+// ---------------------------------------------------------------------------
+
+export interface OverlaySeries {
+  label: string;
+  values: Array<number | null>;
+}
+
+export interface OverlayLineChartOptions {
+  id?: string;
+  labels: string[];
+  recipientSeries: OverlaySeries[];
+  controlSeries?: OverlaySeries[];
+  yLabel?: string;
+  title?: string;
+  height?: number;
+  downloadFilename?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Internal helper for new chart types
+// ---------------------------------------------------------------------------
+
+function renderNewChart(
+  id: string,
+  chartType: string,
+  configJson: string,
+  height: number,
+  filename: string,
+): string {
+  return `
+    <div class="chart-container" style="height:${height}px">
+      <canvas id="${escapeHtml(id)}" data-ogi-chart="${escapeHtml(chartType)}" data-ogi-config='${configJson}'></canvas>
+    </div>
+    <div class="chart-actions">
+      <button type="button" class="btn btn-sm btn-secondary" onclick="OGI.downloadChartPng('${escapeHtml(id)}', '${escapeHtml(filename)}.png')">
+        Download PNG
+      </button>
+    </div>`;
+}
+
+// ---------------------------------------------------------------------------
+// Public API — new chart helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Scatter chart — good for country comparisons (cost vs recipients, etc.).
+ * Each dataset maps to a set of {x, y, r?, label?} points.
+ * Client-side initialiser reads `data-ogi-chart="scatter"` and `data-ogi-config`.
+ */
+export function scatterChart(options: ScatterChartOptions): string {
+  const id = options.id ?? nextId();
+  const height = options.height ?? 300;
+  const filename = options.downloadFilename ?? 'scatter-chart';
+
+  const config: Record<string, unknown> = {
+    datasets: options.datasets.map((ds) => ({
+      label: ds.label,
+      points: ds.points,
+      colour: ds.colour ?? null,
+    })),
+    xLabel: options.xLabel ?? null,
+    yLabel: options.yLabel ?? null,
+    title: options.title ?? null,
+  };
+
+  const configJson = JSON.stringify(config)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e');
+
+  return renderNewChart(id, 'scatter', configJson, height, filename);
+}
+
+/**
+ * Overlay line chart — good for recipient-vs-control cohort comparison.
+ * Recipient series are rendered solid; control series are rendered dashed.
+ * Supports null values (gaps — line breaks at null).
+ * Client-side initialiser reads `data-ogi-chart="overlay-line"` and `data-ogi-config`.
+ */
+export function overlayLineChart(options: OverlayLineChartOptions): string {
+  const id = options.id ?? nextId();
+  const height = options.height ?? 300;
+  const filename = options.downloadFilename ?? 'overlay-line-chart';
+
+  const config: Record<string, unknown> = {
+    labels: options.labels,
+    recipientSeries: options.recipientSeries.map((s) => ({
+      label: s.label,
+      values: s.values,
+    })),
+    controlSeries: (options.controlSeries ?? []).map((s) => ({
+      label: s.label,
+      values: s.values,
+    })),
+    yLabel: options.yLabel ?? null,
+    title: options.title ?? null,
+  };
+
+  const configJson = JSON.stringify(config)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e');
+
+  return renderNewChart(id, 'overlay-line', configJson, height, filename);
+}

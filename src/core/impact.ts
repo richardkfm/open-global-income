@@ -23,6 +23,7 @@ import type {
   FiscalMultiplierEstimate,
   CostSavingsEstimate,
   PolicyBrief,
+  Citation,
   SimulationResult,
   TargetGroup,
 } from './types.js';
@@ -587,6 +588,89 @@ function buildPolicyBrief(
     'Data vintage: World Bank 2023 snapshot. More recent data may differ.',
   ];
 
+  // ── Build typed Citation list ──────────────────────────────────────────────
+  // Core indicators referenced by the impact model, always included when the
+  // data is used. Ids are stable strings; additional citations follow the same
+  // "c{n}" pattern so callers can reference them as footnotes.
+  const citations: Citation[] = [
+    {
+      id: 'c1',
+      indicatorCode: 'NY.GNP.PCAP.PP.CD',
+      source: 'World Bank',
+      year: 2023,
+      url: 'https://data.worldbank.org/indicator/NY.GNP.PCAP.PP.CD',
+      note: 'GNI per capita, PPP (current international $) — used as income base for purchasing-power estimate',
+    },
+    {
+      id: 'c2',
+      indicatorCode: 'SI.POV.GINI',
+      source: 'World Bank',
+      year: 2023,
+      url: 'https://data.worldbank.org/indicator/SI.POV.GINI',
+      note: 'Gini index (World Bank estimate) — drives Lorenz-curve income-share and social-coverage concentration factor',
+    },
+    {
+      id: 'c3',
+      indicatorCode: 'SI.POV.DDAY',
+      source: 'World Bank',
+      year: 2023,
+      url: 'https://data.worldbank.org/indicator/SI.POV.DDAY',
+      note: 'Poverty headcount ratio at $2.15/day (2017 PPP, % of population) — global extreme poverty baseline',
+    },
+    {
+      id: 'c4',
+      indicatorCode: 'SI.POV.LMIC',
+      source: 'World Bank',
+      year: 2023,
+      url: 'https://data.worldbank.org/indicator/SI.POV.LMIC',
+      note: 'Poverty headcount ratio at $3.65/day (2017 PPP) — used for LMC country-appropriate poverty line',
+    },
+    {
+      id: 'c5',
+      indicatorCode: 'SI.POV.UMIC',
+      source: 'World Bank',
+      year: 2023,
+      url: 'https://data.worldbank.org/indicator/SI.POV.UMIC',
+      note: 'Poverty headcount ratio at $6.85/day (2017 PPP) — used for UMC country-appropriate poverty line',
+    },
+    {
+      id: 'c6',
+      indicatorCode: 'per_allsp.cov_pop_tot',
+      source: 'ILO',
+      year: 2023,
+      url: 'https://www.social-protection.org/gimi/WSPDB.action',
+      note: 'ILO World Social Protection Report — social protection coverage (% of population with at least one benefit)',
+    },
+    {
+      id: 'c7',
+      source: 'IMF Fiscal Monitor',
+      year: 2014,
+      url: 'https://www.imf.org/en/Publications/FM',
+      note: 'Fiscal multiplier calibration for direct cash transfers by income group (LIC 2.3, LMC 1.9, UMC 1.5, HIC 1.1)',
+    },
+    {
+      id: 'c8',
+      source: 'Open Global Income',
+      note: 'OGI Ruleset v1 entitlement formula — sets the universal income floor and PPP adjustment methodology',
+    },
+  ];
+
+  // Include savings-specific sources if any savings were modeled
+  if (savings.sources.length > 0) {
+    citations.push({
+      id: 'c9',
+      source: 'Mincome / Forget (2011)',
+      year: 2011,
+      note: 'Healthcare savings: 8.5% reduction in hospitalization rates among Mincome recipients (Manitoba, Canada)',
+    });
+    citations.push({
+      id: 'c10',
+      source: 'EBT / Wright et al. (2014)',
+      year: 2014,
+      note: 'Crime-reduction savings: 9.2% reduction in crime rates following cash transfer expansion',
+    });
+  }
+
   return {
     title,
     subtitle,
@@ -597,6 +681,7 @@ function buildPolicyBrief(
     assumptions,
     dataSources,
     caveats,
+    citations,
   };
 }
 

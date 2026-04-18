@@ -72,7 +72,7 @@ The funding and impact layers (Phases 14–16) are not a departure from the API 
 
 The sub-national data layer (Phase 17) brings precision where it matters most. A basic income floor in Nairobi (COL 1.35×) should not be the same local-currency amount as in rural Turkana (COL 0.68×). Regional cost-of-living indices adjust the national PPP conversion factor, and existing formulas work transparently via the "adjusted Country" pattern — zero formula changes needed.
 
-Secure admin UI with login, approval workflows, and audit trails. **534 tests** across 29 suites.
+Secure admin UI with login, approval workflows, and audit trails. **584 tests** across 31 suites.
 
 ### Phase 23: Evidence Layer ✅
 
@@ -467,7 +467,7 @@ See [GOVERNANCE.md](./GOVERNANCE.md) for the decision-making process, API stabil
 
 ## 📋 Current Status
 
-**Version 0.1.25** — Phase 23 complete. 534 tests across 29 suites. The platform now covers the full workflow from "how much per person?" through "where does the money come from?" to "did it work?" — with the Evidence Layer closing the loop between projected impact and observed outcomes. Includes outcome recording, pre/post comparison with projected-vs-actual, anonymized cross-program benchmarks, and research-grade CSV/JSON exports. Also includes regional precision, SEPA bank wire support, recipient enrollment with cross-program duplicate detection, inbound webhooks, and a pluggable-base FX layer so monetary figures render in the country's local currency (Germany → EUR, Japan → JPY, …) with an auditable `rateAsOf` — the protocol is not locked to USD as the reserve unit.
+**Version 0.1.27** — Phase 1 of the admin-UX overhaul complete. 584 tests across 31 suites. Adds **Program Brief** — a stakeholder-ready document (`/admin/programs`) that stitches simulation + funding + impact + pilot into one multi-section page, print-to-PDF ready, with typed citations on every headline number, a methodology drawer, and breadcrumbs across admin pages. New `scatterChart` and `overlayLineChart` helpers pave the way for cross-country comparison and recipient-vs-control evidence overlays in later phases. The platform still covers the full workflow from "how much per person?" through "where does the money come from?" to "did it work?" — with the Evidence Layer closing the loop between projected impact and observed outcomes.
 
 See [CHANGELOG.md](./CHANGELOG.md) for full version history.
 

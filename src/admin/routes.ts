@@ -26,7 +26,17 @@ import { GLOBAL_INCOME_FLOOR_PPP } from '../core/constants.js';
 import { calculateFundingScenario } from '../core/funding.js';
 import { listFundingScenarios, saveFundingScenario, deleteFundingScenario } from '../db/funding-db.js';
 import { calculateImpactAnalysis } from '../core/impact.js';
-import { listImpactAnalyses, saveImpactAnalysis, deleteImpactAnalysis } from '../db/impact-db.js';
+import { listImpactAnalyses, saveImpactAnalysis, deleteImpactAnalysis, getImpactAnalysisById } from '../db/impact-db.js';
+import { calculateFiscalContext } from '../core/funding.js';
+import { getFundingScenarioById } from '../db/funding-db.js';
+import { createProgram, getProgram, listPrograms, deleteProgram } from '../db/programs-db.js';
+import {
+  renderProgramsList,
+  renderProgramNew,
+  renderProgramDetail,
+  renderProgramPrint,
+  type ProgramListItem,
+} from './views/programs.js';
 import { renderDataSourcesPage, renderDataSourceDetail } from './views/data-sources.js';
 import { renderEvidencePage } from './views/evidence.js';
 import { recordOutcome, getPilotOutcomes, getOutcomeComparison } from '../db/outcomes-db.js';
@@ -1038,6 +1048,133 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     } catch {
       return reply.status(400).send({ ok: false, error: { message: 'Invalid data' } });
     }
+  });
+
+  // ── Programs (Program Briefs — Phase 1 UX overhaul) ───────────────────────
+
+  app.get('/programs', async (request, reply) => {
+    const { items } = listPrograms({ limit: 100, offset: 0 });
+    const url = new URL(request.url, 'http://localhost');
+    const flash = url.searchParams.get('flash') ?? undefined;
+
+    const listItems: ProgramListItem[] = items.map((program) => {
+      const country = getCountryByCode(program.countryCode);
+      return {
+        program,
+        countryName: country?.name ?? program.countryCode,
+        hasSimulation: program.simulationId != null,
+        hasFunding: program.fundingScenarioId != null,
+        hasImpact: program.impactAnalysisId != null,
+        hasPilot: program.pilotId != null,
+      };
+    });
+
+    return reply.type('text/html').send(renderProgramsList(listItems, flash));
+  });
+
+  app.get('/programs/new', async (request, reply) => {
+    const countries = getAllCountries();
+    const { simulations } = listSimulations(100, 0);
+    const { scenarios } = listFundingScenarios(100, 0);
+    const { analyses } = listImpactAnalyses(100, 0);
+    const { pilots } = listPilots({ limit: 100, offset: 0 });
+    const regions = getAllRegions();
+    const url = new URL(request.url, 'http://localhost');
+    const preselect = {
+      countryCode: url.searchParams.get('country') ?? undefined,
+      simulationId: url.searchParams.get('simulationId') ?? undefined,
+      fundingScenarioId: url.searchParams.get('fundingScenarioId') ?? undefined,
+      impactAnalysisId: url.searchParams.get('impactAnalysisId') ?? undefined,
+      pilotId: url.searchParams.get('pilotId') ?? undefined,
+    };
+    return reply.type('text/html').send(renderProgramNew({
+      countries,
+      simulations,
+      fundingScenarios: scenarios,
+      impactAnalyses: analyses,
+      pilots,
+      regions,
+      preselect,
+    }));
+  });
+
+  app.post<{ Body: Record<string, unknown> }>(
+    '/programs',
+    async (request, reply) => {
+      const body = (request.body ?? {}) as Record<string, unknown>;
+      const name = typeof body.name === 'string' ? body.name.trim() : '';
+      const countryCode = typeof body.country === 'string' ? (body.country as string).toUpperCase() : '';
+
+      if (!name || !countryCode) {
+        return reply.redirect('/admin/programs/new?flash=Name+and+country+required');
+      }
+
+      const str = (k: string) => (typeof body[k] === 'string' && (body[k] as string).length > 0 ? (body[k] as string) : undefined);
+
+      const program = createProgram({
+        name,
+        countryCode,
+        simulationId: str('simulationId'),
+        fundingScenarioId: str('fundingScenarioId'),
+        impactAnalysisId: str('impactAnalysisId'),
+        pilotId: str('pilotId'),
+        regionId: str('regionId'),
+        notes: str('notes'),
+      });
+
+      return reply.redirect(`/admin/programs/${program.id}`);
+    },
+  );
+
+  function loadProgramContext(id: string) {
+    const program = getProgram(id);
+    if (!program) return null;
+    const country = getCountryByCode(program.countryCode);
+    if (!country) return null;
+
+    const region = program.regionId ? (getRegionById(program.regionId) ?? null) : null;
+    const simulation = program.simulationId ? getSimulationById(program.simulationId) : null;
+    const fundingScenario = program.fundingScenarioId ? getFundingScenarioById(program.fundingScenarioId) : null;
+    const impactAnalysis = program.impactAnalysisId ? getImpactAnalysisById(program.impactAnalysisId) : null;
+    const pilot = program.pilotId ? getPilotById(program.pilotId) : null;
+
+    // Derive fiscal context from whichever cost source is available.
+    const annualCost = simulation?.results.simulation.cost.annualPppUsd
+      ?? impactAnalysis?.results.program.annualCostPppUsd
+      ?? 0;
+    const fiscalContext = annualCost > 0 ? calculateFiscalContext(country, annualCost) : null;
+
+    return {
+      program,
+      country,
+      region,
+      simulation,
+      fundingScenario,
+      impactAnalysis,
+      pilot,
+      fiscalContext,
+    };
+  }
+
+  app.get<{ Params: { id: string } }>('/programs/:id', async (request, reply) => {
+    const ctx = loadProgramContext(request.params.id);
+    if (!ctx) {
+      return reply.status(404).type('text/html').send('<p>Program brief not found.</p>');
+    }
+    return reply.type('text/html').send(renderProgramDetail(ctx));
+  });
+
+  app.get<{ Params: { id: string } }>('/programs/:id/print', async (request, reply) => {
+    const ctx = loadProgramContext(request.params.id);
+    if (!ctx) {
+      return reply.status(404).type('text/html').send('<p>Program brief not found.</p>');
+    }
+    return reply.type('text/html').send(renderProgramPrint(ctx));
+  });
+
+  app.post<{ Params: { id: string } }>('/programs/:id/delete', async (request, reply) => {
+    deleteProgram(request.params.id);
+    return reply.redirect('/admin/programs?flash=Brief+deleted');
   });
 
   // ── Countries ──────────────────────────────────────────────────────────────

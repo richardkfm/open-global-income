@@ -313,6 +313,28 @@ export function getDb(dbPath?: string): Database.Database {
     // Table already exists — OK
   }
 
+  // Migrate: create programs table if it doesn't exist yet (Phase 1 UX overhaul)
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS programs (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        country_code TEXT NOT NULL,
+        pilot_id TEXT,
+        simulation_id TEXT,
+        funding_scenario_id TEXT,
+        impact_analysis_id TEXT,
+        region_id TEXT,
+        notes TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_programs_country ON programs(country_code);
+    `);
+  } catch {
+    // Table already exists — OK
+  }
+
   return db;
 }
 
@@ -353,6 +375,28 @@ export function getTestDb(): Database.Database {
       );
       CREATE INDEX IF NOT EXISTS idx_pilot_outcomes_pilot ON pilot_outcomes(pilot_id);
       CREATE INDEX IF NOT EXISTS idx_pilot_outcomes_date ON pilot_outcomes(measurement_date);
+    `);
+  } catch {
+    // Table already exists — OK
+  }
+
+  // Migrate: create programs table if it doesn't exist yet (Phase 1 UX overhaul)
+  try {
+    testDb.exec(`
+      CREATE TABLE IF NOT EXISTS programs (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        country_code TEXT NOT NULL,
+        pilot_id TEXT,
+        simulation_id TEXT,
+        funding_scenario_id TEXT,
+        impact_analysis_id TEXT,
+        region_id TEXT,
+        notes TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_programs_country ON programs(country_code);
     `);
   } catch {
     // Table already exists — OK

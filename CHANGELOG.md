@@ -6,6 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.27] - 2026-04-18
+
+### Added
+- **Program Brief** (`/admin/programs`) — a stakeholder-ready document that stitches together a saved simulation, funding scenario, impact analysis, and pilot for a country into one multi-section page. Target audience: NGO, government, and science users who need to present UBI pilot plans to ministers, boards, or donors. Sections: hero with headline numbers, fiscal context, funding breakdown with stacked chart, four impact tiles, regional summary, methodology & assumptions with typed citations. Print-to-PDF ready via the browser's native print dialog.
+- `GET /admin/programs/:id/print` — print-optimised variant (sidebar hidden, A4 `@page` rules, header/footer with ruleset version).
+- `src/db/programs-db.ts` and `programs` table — persistence for saved briefs (links to country, optional simulation/funding/impact/pilot/region, notes).
+- `src/admin/views/programs.ts` — list, new-form, detail, and print views.
+- **Citations** (`Citation` interface) on `PolicyBrief` — typed `{ id, indicatorCode?, source, year?, url?, note? }` list so the admin layer can render inline superscripts and a numbered footnote block without parsing free-form strings. `src/core/impact.ts` populates up to 10 citations per brief (c1–c8 core, c9–c10 savings).
+- **Breadcrumbs** on admin pages — `layout(title, content, { breadcrumbs: [...] })` renders `<nav class="breadcrumbs">` above the content. Backward-compatible with the existing string-username overload.
+- **Sidebar regrouping** via a new `NAV_SECTIONS` data array in `layout.ts` (Overview / Plan / Fund / Model Impact / Run / System).
+- **New chart helpers** in `src/admin/views/chart-helpers.ts`: `scatterChart()` (cost-vs-recipients for country comparison) and `overlayLineChart()` (recipient-vs-control cohort overlay for evidence). Client-side initialisers in `public/js/charts.js`.
+- **UI helpers** in `src/admin/views/helpers.ts`: `renderBreadcrumbs()`, `renderDrawer()` (CSS-only `<details>` pattern for "How this is calculated"), `renderToast()`, `renderCitations()`, `renderCitationSup()`.
+- **Print CSS foundation** in `public/css/ogi.css`: `@media print` + `@page A4` rules, `.page-break-before`, `.print-only`, `.no-print` utility classes, plus new component tokens (`.program-hero`, `.program-section`, `.impact-tile`, `.fiscal-card`, `.citation-*`, `.drawer`, `.toast`, `.breadcrumbs`, `.choropleth`).
+- **i18n keys** in `src/i18n/locales/en.ts`: `programs.*`, `nav.sectionPlan/Fund/Model/Run/Prove/System`, `nav.briefs`, `common.back/saved/calculations/citations/dataQuality/methodology/print/download`.
+- 50 new tests: 5 citation tests in `src/core/impact.test.ts`, 26 helper tests in `src/admin/views/helpers.test.ts`, 19 chart tests in `src/admin/views/chart-helpers.test.ts`.
+
+### Changed
+- Test count: **584 tests** across 31 suites (was 534).
+- `layout(title, content, opts)` now accepts `opts.breadcrumbs` (optional). The legacy `string` username overload continues to work.
+
 ## [0.1.26] - 2026-04-17
 
 ### Fixed

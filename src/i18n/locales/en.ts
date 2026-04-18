@@ -6,6 +6,13 @@ const en = {
     sectionTools: 'TOOLS',
     sectionData: 'DATA',
     sectionAdmin: 'ADMIN',
+    // New section labels for regrouped nav
+    sectionPlan: 'PLAN',
+    sectionFund: 'FUND',
+    sectionModel: 'MODEL IMPACT',
+    sectionRun: 'RUN',
+    sectionProve: 'PROVE',
+    sectionSystem: 'SYSTEM',
     dashboard: 'Dashboard',
     apiKeys: 'API Keys',
     audit: 'Audit Log',
@@ -13,6 +20,7 @@ const en = {
     pilots: 'Pilots',
     funding: 'Funding Scenarios',
     impact: 'Impact Analysis',
+    briefs: 'Program Briefs',
     countries: 'Countries',
     regions: 'Regions',
     dataSources: 'Data Sources',
@@ -509,6 +517,28 @@ const en = {
     backToRegions: '← Back to Regions',
   },
 
+  // Program Briefs (programs.ts — Track B owns the route/view)
+  programs: {
+    title: 'Program Briefs',
+    new: 'New Brief',
+    empty: 'No briefs yet',
+    emptyCta: 'Create your first brief',
+    section: {
+      hero: 'Summary',
+      fiscal: 'Fiscal Context',
+      funding: 'Funding Breakdown',
+      impact: 'Impact',
+      regional: 'Regional View',
+      evidence: 'Evidence Snapshot',
+      methodology: 'Methodology & Assumptions',
+    },
+    export: {
+      print: 'Print / Save as PDF',
+      brief: 'Download brief (text)',
+      copy: 'Copy link',
+    },
+  },
+
   // Common strings used across views
   common: {
     save: 'Save',
@@ -532,6 +562,14 @@ const en = {
     data: 'Data:',
     value: 'Value:',
     na: 'N/A',
+    back: 'Back',
+    saved: 'Saved',
+    calculations: 'How this is calculated',
+    citations: 'Citations',
+    dataQuality: 'Data quality',
+    methodology: 'Methodology',
+    print: 'Print',
+    download: 'Download',
   },
 
   // Data Sources page (data-sources.ts)

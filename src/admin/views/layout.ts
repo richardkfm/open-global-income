@@ -9,12 +9,78 @@ export interface LayoutOptions {
   activePage?: string;
   username?: string;
   role?: string;
+  /** Optional breadcrumb trail rendered above the main content area. */
+  breadcrumbs?: Array<{ label: string; href?: string }>;
 }
+
+// ---------------------------------------------------------------------------
+// Navigation structure
+// Each item maps directly to the keys used in en.ts so labels go through t().
+// ---------------------------------------------------------------------------
+
+interface NavItem {
+  /** activePage key used to highlight the current page */
+  key: string;
+  href: string;
+  /** i18n key for the link label */
+  labelKey: string;
+}
+
+interface NavSection {
+  /** i18n key for the section heading */
+  labelKey: string;
+  items: NavItem[];
+}
+
+export const NAV_SECTIONS: NavSection[] = [
+  {
+    labelKey: 'nav.sectionOverview',
+    items: [
+      { key: 'dashboard', href: '/admin', labelKey: 'nav.dashboard' },
+    ],
+  },
+  {
+    labelKey: 'nav.sectionPlan',
+    items: [
+      { key: 'countries', href: '/admin/countries', labelKey: 'nav.countries' },
+      { key: 'regions',   href: '/admin/regions',   labelKey: 'nav.regions'   },
+      { key: 'simulate',  href: '/admin/simulate',  labelKey: 'nav.simulate'  },
+    ],
+  },
+  {
+    labelKey: 'nav.sectionFund',
+    items: [
+      { key: 'funding', href: '/admin/funding', labelKey: 'nav.funding' },
+    ],
+  },
+  {
+    labelKey: 'nav.sectionModel',
+    items: [
+      { key: 'impact',   href: '/admin/impact',    labelKey: 'nav.impact'   },
+      { key: 'programs', href: '/admin/programs',  labelKey: 'nav.briefs'   },
+    ],
+  },
+  {
+    labelKey: 'nav.sectionRun',
+    items: [
+      { key: 'pilots', href: '/admin/pilots', labelKey: 'nav.pilots' },
+    ],
+  },
+  {
+    labelKey: 'nav.sectionSystem',
+    items: [
+      { key: 'data-sources', href: '/admin/data-sources', labelKey: 'nav.dataSources' },
+      { key: 'api-keys',     href: '/admin/api-keys',     labelKey: 'nav.apiKeys'     },
+      { key: 'audit',        href: '/admin/audit',        labelKey: 'nav.audit'       },
+    ],
+  },
+];
 
 export function layout(title: string, content: string, usernameOrOptions?: string | LayoutOptions): string {
   let activePage = '';
   let username = '';
   let role = '';
+  let breadcrumbs: Array<{ label: string; href?: string }> | undefined;
 
   if (typeof usernameOrOptions === 'string') {
     username = usernameOrOptions;
@@ -22,12 +88,24 @@ export function layout(title: string, content: string, usernameOrOptions?: strin
     activePage = usernameOrOptions.activePage ?? '';
     username = usernameOrOptions.username ?? '';
     role = usernameOrOptions.role ?? '';
+    breadcrumbs = usernameOrOptions.breadcrumbs;
   }
 
   function navLink(href: string, label: string, page: string): string {
     const active = activePage === page ? ' active' : '';
     return `<a href="${href}" class="sidebar-link${active}">${escapeHtml(label)}</a>`;
   }
+
+  // Build sidebar nav from NAV_SECTIONS data
+  const navHtml = NAV_SECTIONS.map(section => {
+    const itemsHtml = section.items
+      .map(item => navLink(item.href, t(item.labelKey as Parameters<typeof t>[0]), item.key))
+      .join('\n      ');
+    return `<div class="sidebar-section">
+        <div class="sidebar-section-label">${t(section.labelKey as Parameters<typeof t>[0])}</div>
+        ${itemsHtml}
+      </div>`;
+  }).join('\n      ');
 
   const avatarInitial = username ? escapeHtml(username.charAt(0).toUpperCase()) : 'A';
   const userSection = username
@@ -39,6 +117,20 @@ export function layout(title: string, content: string, usernameOrOptions?: strin
         <div class="sidebar-user-role">${escapeHtml(role || 'admin')}</div>
       </div>
     </div>`
+    : '';
+
+  // Breadcrumbs block (rendered if provided)
+  const breadcrumbHtml = breadcrumbs && breadcrumbs.length > 0
+    ? `<nav class="breadcrumbs" aria-label="Breadcrumb">
+      ${breadcrumbs.map((crumb, i) => {
+        const isLast = i === breadcrumbs!.length - 1;
+        const sep = i > 0 ? '<span class="breadcrumb-sep" aria-hidden="true">›</span>' : '';
+        const item = isLast || !crumb.href
+          ? `<span class="breadcrumb-item breadcrumb-current">${escapeHtml(crumb.label)}</span>`
+          : `<a class="breadcrumb-item" href="${crumb.href}">${escapeHtml(crumb.label)}</a>`;
+        return sep + item;
+      }).join('\n      ')}
+    </nav>`
     : '';
 
   return `<!DOCTYPE html>
@@ -61,28 +153,7 @@ export function layout(title: string, content: string, usernameOrOptions?: strin
       <div class="sidebar-brand-subtitle">Open Global Income</div>
     </div>
     <nav class="sidebar-nav">
-      <div class="sidebar-section">
-        <div class="sidebar-section-label">${t('nav.sectionOverview')}</div>
-        ${navLink('/admin', t('nav.dashboard'), 'dashboard')}
-      </div>
-      <div class="sidebar-section">
-        <div class="sidebar-section-label">${t('nav.sectionTools')}</div>
-        ${navLink('/admin/simulate', t('nav.simulate'), 'simulate')}
-        ${navLink('/admin/pilots', t('nav.pilots'), 'pilots')}
-        ${navLink('/admin/funding', t('nav.funding'), 'funding')}
-        ${navLink('/admin/impact', t('nav.impact'), 'impact')}
-      </div>
-      <div class="sidebar-section">
-        <div class="sidebar-section-label">${t('nav.sectionData')}</div>
-        ${navLink('/admin/countries', t('nav.countries'), 'countries')}
-        ${navLink('/admin/regions', t('nav.regions'), 'regions')}
-        ${navLink('/admin/data-sources', t('nav.dataSources'), 'data-sources')}
-      </div>
-      <div class="sidebar-section">
-        <div class="sidebar-section-label">${t('nav.sectionAdmin')}</div>
-        ${navLink('/admin/api-keys', t('nav.apiKeys'), 'api-keys')}
-        ${navLink('/admin/audit', t('nav.audit'), 'audit')}
-      </div>
+      ${navHtml}
       <div class="sidebar-divider"></div>
       <a href="/admin/logout" class="sidebar-link">${t('nav.logout')}</a>
     </nav>
@@ -96,6 +167,7 @@ export function layout(title: string, content: string, usernameOrOptions?: strin
     <span>${t('nav.brand')}</span>
   </div>
   <main class="main-content">
+    ${breadcrumbHtml}
     <div class="main-content-inner">
       ${content}
     </div>
