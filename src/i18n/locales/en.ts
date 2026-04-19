@@ -86,7 +86,12 @@ const en = {
   // Audit log (audit.ts)
   audit: {
     title: 'Audit Log',
+    subtitle: 'Incoming HTTP requests to the admin panel and API. Auto-refreshes every 10 seconds.',
     recentRequests: 'Recent Requests',
+    totalRequests: 'Total requests',
+    last24h: 'Last 24 hours',
+    avgResponse: 'Avg response time',
+    errorRate: 'Error rate',
     colTimestamp: 'Timestamp',
     colMethod: 'Method',
     colPath: 'Path',

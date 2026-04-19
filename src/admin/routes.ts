@@ -329,7 +329,13 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
 
   app.get('/audit', async (_request, reply) => {
     const entries = getRecentAuditEntries(100);
-    return reply.type('text/html').send(renderAuditLog(entries));
+    const stats = getAuditStats();
+    return reply.type('text/html').send(
+      renderAuditLog(entries, {
+        totalRequests: stats.totalRequests,
+        last24hRequests: stats.last24hRequests,
+      }),
+    );
   });
 
   app.get('/audit/table', async (_request, reply) => {
