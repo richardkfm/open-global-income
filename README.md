@@ -284,7 +284,7 @@ All responses follow a consistent shape:
 | `GET` | `/v1/funding-scenarios/:id` | Retrieve a saved scenario |
 | `DELETE` | `/v1/funding-scenarios/:id` | Delete a saved scenario |
 
-**Supported funding mechanisms:** income tax surcharge, VAT increase, carbon tax, wealth tax, financial transaction tax, redirect social spending. Each returns explicit assumptions and revenue estimates.
+**Supported funding mechanisms:** income tax surcharge, VAT increase, carbon tax, wealth tax, financial transaction tax, automation tax, redirect social spending. Each returns explicit assumptions and revenue estimates.
 
 ### Economic Impact
 
