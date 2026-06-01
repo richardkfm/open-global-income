@@ -51,7 +51,7 @@ Open Global Income is a stack. Each layer builds on the one below it. The lower 
 └─────────────────────────────────────────────────┘
 ```
 
-### ✅ Built (v0.1.25)
+### ✅ Built (v0.1.31)
 
 **The API is the product.** Everything below is exposed through a REST API with OpenAPI docs, a generated TypeScript SDK, and webhook events — not locked behind a UI.
 
@@ -61,7 +61,8 @@ Open Global Income is a stack. Each layer builds on the one below it. The lower 
 | **Calculation** | Entitlement formulas (v1 active, v2 preview), scoring, country comparison, regional COL adjustments | 1–10, 17 |
 | **Simulation** | Budget modeling with targeting presets and programmable rules, multi-country comparison, regional simulation, saved scenarios | 11, 17, 22 |
 | **Disbursement** | Non-custodial payment rails — Solana USDC, EVM USDC, M-Pesa B2C (Daraja instruction batch), SEPA Credit Transfer (ISO 20022 pain.001 + Wise skeleton) — with approval workflow and audit trail | 12 |
-| **Recipients** | Enrollment, identity verification interface, cross-program duplicate detection — no raw identity data stored | 19 |
+| **Recipients** | Enrollment, identity verification, cross-program duplicate detection — no raw identity data stored | 19 |
+| **Identity** | Four pluggable, non-custodial verification connectors (national ID / MOSIP-Verhoeff, mobile-money MSISDN, wallet EVM/Solana, NGO community attestation); `POST /v1/recipients/:id/verify` runs a claim through a provider and stores only the derived hash + routing ref | 24 |
 | **Pilots** | Lifecycle management (planning → active → completed), programmable targeting rules, variance analysis, structured donor reports | 13, 22 |
 | **Audit Exports** | Compliance-grade signed export per pilot — methodology, recipient aggregate stats, full disbursement log, SHA-256 integrity hash | 21 |
 | **Targeting** | Programmable `TargetingRules` object: age range, urban/rural, income ceiling, identity provider filter, recency exclusion, region filter; `applyRulesToRecipients` for disbursement batch generation with per-rule filtering stats | 22 |
@@ -72,7 +73,7 @@ The funding and impact layers (Phases 14–16) are not a departure from the API 
 
 The sub-national data layer (Phase 17) brings precision where it matters most. A basic income floor in Nairobi (COL 1.35×) should not be the same local-currency amount as in rural Turkana (COL 0.68×). Regional cost-of-living indices adjust the national PPP conversion factor, and existing formulas work transparently via the "adjusted Country" pattern — zero formula changes needed.
 
-Secure admin UI with login, approval workflows, and audit trails. **608 tests** across 32 suites.
+Secure admin UI with login, approval workflows, and audit trails. **638 tests** across 34 suites.
 
 ### Phase 23: Evidence Layer ✅
 
@@ -88,7 +89,7 @@ Secure admin UI with login, approval workflows, and audit trails. **608 tests** 
 
 ### 🌐 Future
 
-- **Identity & enrollment** — pluggable verification (`IdentityProvider` interface), deduplication across programs
+- **More identity connectors** — the `IdentityProvider` interface now ships with four concrete connectors (national ID, mobile-money, wallet, community attestation); future work adds live-API binding (MOSIP IDA auth, World ID proofs, Daraja KYC) behind the same non-custodial contract
 - **Fully-automated submission** (optional) — the M-Pesa and SEPA connectors currently prepare operator-executable instructions (non-custodial). A future opt-in mode could submit them server-side to Safaricom Daraja / Wise directly, given credentials and compliance approvals
 - **Multi-currency settlement** — cross-rail reconciliation with live exchange rates
 - **Federation** — multi-program interop, cross-border portability, open evidence base
@@ -466,6 +467,8 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup, code style, test
 See [GOVERNANCE.md](./GOVERNANCE.md) for the decision-making process, API stability declaration, and versioning policy.
 
 ## 📋 Current Status
+
+**Version 0.1.31** — Identity provider connections, the first item on the gov-ready list. The `IdentityProvider` interface now ships with four concrete, non-custodial connectors in a registry (`src/identity/`), one per deployment context: **national-id** (MOSIP-compatible, Verhoeff check digit), **mobile-kyc** (E.164 MSISDN), **wallet** (EVM / Solana), and **community-attestation** (NGO witness quorum). A new `POST /v1/recipients/:id/verify` runs a recipient's claim through a provider, marks the recipient `verified`, runs cross-program duplicate detection on the derived hash, and discards the raw claim — only the non-reversible `accountHash` + `routingRef` are stored. `GET /v1/identity/providers` exposes the catalog, and a new **Identity Providers** admin page (`/admin/identity`) lists the connectors and offers a verify form. Each connector does deterministic offline format/checksum validation and delegates the authoritative KYC/personhood assertion to the external provider. 638 tests across 34 suites.
 
 **Version 0.1.30** — M-Pesa and SEPA promoted from stubs to real non-custodial connectors. The M-Pesa provider now emits a Safaricom Daraja **B2C PaymentRequest** instruction batch (env-correct endpoints + a populated request template, secrets never echoed); the SEPA provider emits a standards-compliant **ISO 20022 pain.001** document plus a Wise Payouts bulk skeleton, converting PPP-USD→EUR via the maintained FX snapshot (replacing the old hardcoded rate) and surfacing the applied rate + provenance. Both follow the crypto adapters' non-custodial pattern — OGI prepares operator-executable instructions, stores no recipient PII, and delegates identity/KYC to the executing provider. The `DisbursementProvider.submit`/`checkStatus` interface now receives the channel config so connectors can populate originator fields. 608 tests across 32 suites.
 

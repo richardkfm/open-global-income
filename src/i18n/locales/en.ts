@@ -18,6 +18,7 @@ const en = {
     audit: 'Audit Log',
     simulate: 'Simulations',
     pilots: 'Pilots',
+    identity: 'Identity Providers',
     funding: 'Funding Scenarios',
     impact: 'Impact Analysis',
     briefs: 'Program Briefs',

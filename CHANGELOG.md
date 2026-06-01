@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.31] - 2026-06-01
+
+### Added
+- **Identity provider connections** (`src/identity/`) — concrete, pluggable verifiers that satisfy the core `IdentityProvider` contract, closing the first item on the gov-ready list. Four non-custodial connectors ship in a registry (`src/identity/providers/registry.ts`), one per deployment context:
+  - **`national-id`** (government / civil registry, MOSIP-compatible) — validates a 10–16 digit UIN/VID with a **Verhoeff** check digit.
+  - **`mobile-kyc`** (mobile money) — validates an **E.164 MSISDN**; normalises `00` prefixes.
+  - **`wallet`** (DAO / ReFi) — validates an **EVM (0x…)** or **Solana base58** address; uniqueness/personhood delegated to an on-chain credential.
+  - **`community-attestation`** (NGO) — validates an `orgId:witnessA:witnessB` attestation with a ≥2-witness quorum.
+- **`POST /v1/recipients/:id/verify`** — runs a recipient's claim through a registered provider. On success the provider returns a non-reversible `accountHash` + `routingRef`, the recipient transitions to `verified`, cross-program duplicate detection runs on the derived hash, and the raw claim is discarded — never persisted or echoed back.
+- **`GET /v1/identity/providers`** — catalog of registered connectors (id, name, context, supported claim types, description); never exposes secrets or the `verify` implementation.
+- **Admin UI — Identity Providers** (`/admin/identity`, under the RUN nav section) — lists the connector catalog with context/claim-type badges and offers a "Verify a recipient" form (recipient picker, provider, claim type, claim reference) plus a recent-recipients table showing status, provider, and routing ref. Nav key `nav.identity`.
+
+### Changed
+- Each connector performs the deterministic offline checks it can (format/checksum), derives the hash + display suffix, and **delegates the authoritative KYC/personhood assertion to the external provider** — mirroring the non-custodial disbursement connectors. OGI stores verified claims (hash + provider + timestamp), never raw identity data.
+- Test count: **638 tests** across 34 suites (was 608).
+
 ## [0.1.30] - 2026-06-01
 
 ### Added

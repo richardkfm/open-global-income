@@ -76,7 +76,8 @@ export const NAV_SECTIONS: NavSection[] = [
     labelKey: 'nav.sectionRun',
     icon: iconRocket,
     items: [
-      { key: 'pilots', href: '/admin/pilots', labelKey: 'nav.pilots' },
+      { key: 'pilots',   href: '/admin/pilots',   labelKey: 'nav.pilots'   },
+      { key: 'identity', href: '/admin/identity', labelKey: 'nav.identity' },
     ],
   },
   {

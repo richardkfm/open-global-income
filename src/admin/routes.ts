@@ -20,7 +20,10 @@ import { calculateSimulation } from '../core/simulations.js';
 import { listSimulations, saveSimulation, deleteSimulation, getSimulationById } from '../db/simulations-db.js';
 import { createPilot, getPilotById, listPilots, updatePilot, linkDisbursement, getPilotDisbursementIds } from '../db/pilots-db.js';
 import { getDisbursementById, getLogEntries } from '../db/disbursements-db.js';
-import { listRecipients } from '../db/recipients-db.js';
+import { listRecipients, getRecipientById, updateRecipient, findByAccountHash } from '../db/recipients-db.js';
+import { renderIdentityPage } from './views/identity.js';
+import { getIdentityProvider, listIdentityProviders } from '../identity/providers/registry.js';
+import type { IdentityClaim } from '../core/types.js';
 import { RULESETS } from '../core/rulesets.js';
 import { GLOBAL_INCOME_FLOOR_PPP } from '../core/constants.js';
 import { calculateFundingScenario } from '../core/funding.js';
@@ -1389,6 +1392,80 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
         getRegionsDataVersion(),
       ));
   });
+
+  // ── Identity Providers ────────────────────────────────────────────────────
+
+  app.get<{ Querystring: { flash?: string; variant?: string } }>(
+    '/identity',
+    async (request, reply) => {
+      const providers = listIdentityProviders();
+      const { items } = listRecipients({ page: 1, limit: 10 });
+      const variant = ['success', 'error', 'warning', 'info'].includes(request.query.variant ?? '')
+        ? (request.query.variant as 'success' | 'error' | 'warning' | 'info')
+        : undefined;
+      return reply
+        .type('text/html')
+        .send(renderIdentityPage(providers, items, { flash: request.query.flash, flashVariant: variant }));
+    },
+  );
+
+  app.post<{ Body: { recipientId?: string; provider?: string; claimType?: string; claimReference?: string } }>(
+    '/identity/verify',
+    async (request, reply) => {
+      const { recipientId, provider, claimType, claimReference } = request.body ?? {};
+
+      const fail = (msg: string) =>
+        reply.redirect(`/admin/identity?variant=error&flash=${encodeURIComponent(msg)}`);
+
+      if (!recipientId || !provider || !claimType || !claimReference) {
+        return fail('Recipient, provider, claim type and claim reference are all required');
+      }
+
+      const recipient = getRecipientById(recipientId);
+      if (!recipient) return fail('Recipient not found');
+
+      const connector = getIdentityProvider(provider);
+      if (!connector) return fail(`Unknown provider '${provider}'`);
+
+      if (!connector.supportedClaimTypes.includes(claimType as IdentityClaim['claimType'])) {
+        return fail(`Provider '${connector.providerName}' does not support claim type '${claimType}'`);
+      }
+
+      if (recipient.status === 'suspended') {
+        return fail("Cannot verify a suspended recipient; move it back to 'pending' first");
+      }
+
+      const result = await connector.verify({
+        recipientId: recipient.id,
+        countryCode: recipient.countryCode,
+        claimType: claimType as IdentityClaim['claimType'],
+        claimReference: claimReference.trim(),
+      });
+
+      if (!result.verified || !result.accountHash) {
+        return fail(`Verification failed: ${result.error ?? 'invalid claim'}`);
+      }
+
+      const existing = findByAccountHash(recipient.countryCode, result.accountHash);
+      if (existing && existing.id !== recipient.id) {
+        return fail(`This identity is already enrolled in ${recipient.countryCode}`);
+      }
+
+      updateRecipient(recipient.id, {
+        status: 'verified',
+        accountHash: result.accountHash,
+        identityProvider: connector.providerId,
+        routingRef: result.routingRef,
+        verifiedAt: new Date().toISOString(),
+      });
+
+      return reply.redirect(
+        `/admin/identity?variant=success&flash=${encodeURIComponent(
+          `Recipient verified via ${connector.providerName} (${result.routingRef ?? 'ok'})`,
+        )}`,
+      );
+    },
+  );
 
   // ── Data Sources ──────────────────────────────────────────────────────────
 
