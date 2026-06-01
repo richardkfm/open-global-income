@@ -57,7 +57,7 @@ Open Global Income is a stack. Each layer builds on the one below it. The lower 
 | **Data** | What are the economic facts? | Done — 49 countries, World Bank 2023 + ILO + IMF; sub-national data for Kenya (47 counties) |
 | **Calculation** | How much per person? How urgent is the need? | Done — Ruleset v1 active, v2 preview; regional COL adjustments |
 | **Simulation** | What will it cost to cover X% of the population? | Done — Phase 11; national + regional simulation |
-| **Distribution** | How does money reach people? | Done — Phase 12–13; Solana & EVM generate real unsigned txns; M-Pesa & SEPA are stubs (no live API calls yet) |
+| **Distribution** | How does money reach people? | Done — Phase 12–13; Solana & EVM generate real unsigned txns; M-Pesa prepares a Daraja B2C instruction batch and SEPA an ISO 20022 pain.001 + Wise skeleton (non-custodial — operator executes; OGI stores no PII) |
 | **Evidence** | Is it working? Can we prove it? | Done — Phase 23; outcome recording, recipient/control cohorts, cross-program aggregates, CSV/JSON export. No randomization / significance testing / survey delivery yet |
 | **Federation** | Can programs share infrastructure across borders? | Future |
 
@@ -67,7 +67,7 @@ Each layer is independently useful. A government can use just Data + Calculation
 
 ## What's Built (v0.1.29)
 
-The platform covers the full workflow from "how much per person?" through "where does the money come from?" to "what happens to poverty?" — with regional precision. Calculation, simulation, funding, and impact are production-ready. The distribution layer generates real unsigned crypto transactions but the mobile-money (M-Pesa) and bank (SEPA) providers are documented stubs that do not yet make live API calls. The recipient registry and evidence layer are built; a concrete `IdentityProvider` and experimental-design tooling are not.
+The platform covers the full workflow from "how much per person?" through "where does the money come from?" to "what happens to poverty?" — with regional precision. Calculation, simulation, funding, and impact are production-ready. The distribution layer is non-custodial across all rails: crypto providers emit unsigned transactions, while the M-Pesa and SEPA connectors emit operator-executable instructions in the rails' native formats (Daraja B2C / ISO 20022 pain.001 + Wise) — OGI never moves funds, stores no recipient PII, and delegates identity/KYC to the executing provider. The recipient registry and evidence layer are built; a concrete `IdentityProvider` and experimental-design tooling are not.
 
 **Phase 11 — Budget Simulation Engine** ✅
 - `POST /v1/simulate` — model cost for a country with coverage %, targeting presets, duration
@@ -78,7 +78,7 @@ The platform covers the full workflow from "how much per person?" through "where
 **Phase 12 — Disbursement Integration** ✅
 - Provider interface — pluggable payment rails (crypto, mobile money, bank)
 - Solana USDC & EVM providers — non-custodial, generates unsigned transactions
-- M-Pesa stub — documented interface ready for real integration
+- M-Pesa B2C & SEPA connectors — non-custodial; prepare a Daraja B2C instruction batch / ISO 20022 pain.001 + Wise skeleton for the operator to execute
 - Approval workflow — draft → approved → submitted → completed
 - Full audit trail on every disbursement
 
@@ -165,9 +165,9 @@ The platform defines **integration points**, not implementations. Different cont
 
 OGI provides the `IdentityProvider` interface. Implementers plug in their own verification. The platform never stores biometric data — it stores verified claims (e.g., "this person was verified by provider X at time T").
 
-### Live M-Pesa Integration
+### Fully-automated server-side submission (optional)
 
-The stub provider (`src/disbursements/providers/mpesa.ts`) documents the full Safaricom B2C interface. Real integration requires API credentials and compliance approvals.
+The M-Pesa (`src/disbursements/providers/mpesa.ts`) and SEPA (`src/disbursements/providers/sepa.ts`) connectors are non-custodial: they prepare Daraja B2C / ISO 20022 instructions that the operator submits. A future opt-in mode could submit these to Safaricom Daraja / Wise server-side directly — that requires API credentials, secure secret handling, and compliance approvals, and is deliberately out of the default non-custodial flow.
 
 ### Multi-currency Settlement
 
@@ -290,7 +290,7 @@ src/
 ├── db/          SQLite + PostgreSQL persistence
 ├── admin/       Server-rendered admin UI (htmx)
 ├── adapters/    Chain/currency adapters (Solana, EVM)
-├── disbursements/ Payment providers (Solana USDC, EVM USDC, M-Pesa stub)
+├── disbursements/ Payment providers (Solana USDC, EVM USDC, M-Pesa B2C, SEPA)
 └── webhooks/    Event dispatch, HMAC signatures
 ```
 
