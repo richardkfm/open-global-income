@@ -60,7 +60,7 @@ Open Global Income is a stack. Each layer builds on the one below it. The lower 
 | **Data** | 49 countries with all 17 macro-economic indicators fully populated (World Bank, ILO, IMF); sub-national data for Kenya (47 counties), Germany (16 Bundesländer), France (13 regions), Netherlands (12 provinces) — 88 regions total | 14, 17 |
 | **Calculation** | Entitlement formulas (v1 active, v2 preview), scoring, country comparison, regional COL adjustments | 1–10, 17 |
 | **Simulation** | Budget modeling with targeting presets and programmable rules, multi-country comparison, regional simulation, saved scenarios | 11, 17, 22 |
-| **Disbursement** | Non-custodial payment rails — Solana USDC, EVM USDC, M-Pesa (stub), SEPA Credit Transfer (stub) — with approval workflow and audit trail | 12 |
+| **Disbursement** | Non-custodial payment rails — Solana USDC, EVM USDC, M-Pesa B2C (Daraja instruction batch), SEPA Credit Transfer (ISO 20022 pain.001 + Wise skeleton) — with approval workflow and audit trail | 12 |
 | **Recipients** | Enrollment, identity verification interface, cross-program duplicate detection — no raw identity data stored | 19 |
 | **Pilots** | Lifecycle management (planning → active → completed), programmable targeting rules, variance analysis, structured donor reports | 13, 22 |
 | **Audit Exports** | Compliance-grade signed export per pilot — methodology, recipient aggregate stats, full disbursement log, SHA-256 integrity hash | 21 |
@@ -72,7 +72,7 @@ The funding and impact layers (Phases 14–16) are not a departure from the API 
 
 The sub-national data layer (Phase 17) brings precision where it matters most. A basic income floor in Nairobi (COL 1.35×) should not be the same local-currency amount as in rural Turkana (COL 0.68×). Regional cost-of-living indices adjust the national PPP conversion factor, and existing formulas work transparently via the "adjusted Country" pattern — zero formula changes needed.
 
-Secure admin UI with login, approval workflows, and audit trails. **603 tests** across 32 suites.
+Secure admin UI with login, approval workflows, and audit trails. **608 tests** across 32 suites.
 
 ### Phase 23: Evidence Layer ✅
 
@@ -89,8 +89,7 @@ Secure admin UI with login, approval workflows, and audit trails. **603 tests** 
 ### 🌐 Future
 
 - **Identity & enrollment** — pluggable verification (`IdentityProvider` interface), deduplication across programs
-- **Live M-Pesa** — real Safaricom B2C integration (the stub provider documents the full interface)
-- **Live SEPA** — real Wise Payouts API integration (the stub provider documents the full integration path; requires API credentials)
+- **Fully-automated submission** (optional) — the M-Pesa and SEPA connectors currently prepare operator-executable instructions (non-custodial). A future opt-in mode could submit them server-side to Safaricom Daraja / Wise directly, given credentials and compliance approvals
 - **Multi-currency settlement** — cross-rail reconciliation with live exchange rates
 - **Federation** — multi-program interop, cross-border portability, open evidence base
 
@@ -396,13 +395,14 @@ See `src/adapters/types.ts` for the `ChainAdapter<TConfig>` interface.
 
 ## 💸 Disbursement Providers
 
-Non-custodial — calculates and prepares payment instructions, never holds or moves funds.
+Non-custodial — calculates and prepares payment instructions, never holds or moves funds. The mobile-money and bank connectors follow the same pattern as the crypto adapters: they emit a format-correct, ready-to-execute instruction in the exact shape the existing rail consumes (Safaricom Daraja, ISO 20022 / Wise), which the program operator submits from their own authenticated environment. OGI builds no payment service and stores no recipient PII; identity/KYC is delegated entirely to the executing provider.
 
 | Provider | ID | Currency | Notes |
 |----------|-----|----------|-------|
 | Solana USDC | `solana` | USDC | Returns unsigned tx payload for multisig signing |
 | EVM USDC | `evm` | USDC | Unsigned ERC-20 calldata for Ethereum/Polygon/Arbitrum/Optimism/Base |
-| M-Pesa (stub) | `safaricom` | KES | Validates config, logs intent — no live connection |
+| M-Pesa B2C | `safaricom` | KES | Prepares a Daraja **B2C PaymentRequest** instruction batch (endpoints, request template) for the operator to submit — no funds moved, no MSISDNs stored |
+| SEPA Credit Transfer | `sepa` | EUR | Prepares an **ISO 20022 pain.001** document + a Wise Payouts bulk skeleton; PPP-USD→EUR via the maintained FX snapshot. Accepts Wise webhooks at `/v1/webhooks/inbound/sepa` |
 
 ---
 
@@ -467,7 +467,7 @@ See [GOVERNANCE.md](./GOVERNANCE.md) for the decision-making process, API stabil
 
 ## 📋 Current Status
 
-**Version 0.1.29** — Phase 3+4 of the admin-UX overhaul complete. 603 tests across 32 suites. Every computed number in the Simulate and Funding views now carries an inline superscript citation linking to a numbered footnote block, and a collapsible "How this is calculated" drawer shows the formula, inputs, and ruleset version. A hand-rolled SVG icon set (13 icons) decorates the sidebar nav sections. The Kenya region view gains a **choropleth map** (`/admin/regions?view=map`) showing all 47 counties coloured by cost-of-living index or poverty rate, with a Table/Map toggle and colour legend. Client-side fill patching via a lightweight `initChoropleths()` initialiser — no mapping library required. Flash toasts are now wired through the layout options.
+**Version 0.1.30** — M-Pesa and SEPA promoted from stubs to real non-custodial connectors. The M-Pesa provider now emits a Safaricom Daraja **B2C PaymentRequest** instruction batch (env-correct endpoints + a populated request template, secrets never echoed); the SEPA provider emits a standards-compliant **ISO 20022 pain.001** document plus a Wise Payouts bulk skeleton, converting PPP-USD→EUR via the maintained FX snapshot (replacing the old hardcoded rate) and surfacing the applied rate + provenance. Both follow the crypto adapters' non-custodial pattern — OGI prepares operator-executable instructions, stores no recipient PII, and delegates identity/KYC to the executing provider. The `DisbursementProvider.submit`/`checkStatus` interface now receives the channel config so connectors can populate originator fields. 608 tests across 32 suites.
 
 See [CHANGELOG.md](./CHANGELOG.md) for full version history.
 

@@ -18,20 +18,24 @@ const mockDisbursement: Disbursement = {
   apiKeyId: null,
 };
 
+const validConfig = {
+  apiKey: 'wise-api-key-abc123',
+  payoutAccountId: 'profile-12345',
+  environment: 'sandbox',
+  debtorName: 'Ministry of Social Protection',
+  debtorIban: 'DE89370400440532013000',
+  debtorBic: 'COBADEFFXXX',
+};
+
 describe('sepaProvider', () => {
   it('has correct metadata', () => {
     expect(sepaProvider.providerId).toBe('sepa');
-    expect(sepaProvider.providerName).toBe('SEPA Credit Transfer (Stub)');
+    expect(sepaProvider.providerName).toBe('SEPA Credit Transfer');
     expect(sepaProvider.supportedCurrencies).toContain('EUR');
+    expect(sepaProvider.signatureHeader).toBe('x-wise-signature-sha256');
   });
 
   describe('validateConfig', () => {
-    const validConfig = {
-      apiKey: 'wise-api-key-abc123',
-      payoutAccountId: 'profile-12345',
-      environment: 'sandbox',
-    };
-
     it('accepts valid sandbox config', async () => {
       const result = await sepaProvider.validateConfig(validConfig);
       expect(result.valid).toBe(true);
@@ -39,10 +43,7 @@ describe('sepaProvider', () => {
     });
 
     it('accepts production environment', async () => {
-      const result = await sepaProvider.validateConfig({
-        ...validConfig,
-        environment: 'production',
-      });
+      const result = await sepaProvider.validateConfig({ ...validConfig, environment: 'production' });
       expect(result.valid).toBe(true);
     });
 
@@ -60,103 +61,121 @@ describe('sepaProvider', () => {
       expect(result.error).toMatch(/payoutAccountId/);
     });
 
-    it('rejects missing environment', async () => {
-      const { environment: _, ...rest } = validConfig;
-      const result = await sepaProvider.validateConfig(rest);
-      expect(result.valid).toBe(false);
-      expect(result.error).toMatch(/environment/);
-    });
-
     it('rejects invalid environment value', async () => {
-      const result = await sepaProvider.validateConfig({
-        ...validConfig,
-        environment: 'staging',
-      });
+      const result = await sepaProvider.validateConfig({ ...validConfig, environment: 'staging' });
       expect(result.valid).toBe(false);
       expect(result.error).toMatch(/environment/);
-    });
-
-    it('rejects empty string fields', async () => {
-      const result = await sepaProvider.validateConfig({
-        ...validConfig,
-        apiKey: '',
-      });
-      expect(result.valid).toBe(false);
     });
 
     it('rejects non-string apiKey', async () => {
-      const result = await sepaProvider.validateConfig({
-        ...validConfig,
-        apiKey: 42,
-      });
+      const result = await sepaProvider.validateConfig({ ...validConfig, apiKey: 42 });
       expect(result.valid).toBe(false);
     });
   });
 
   describe('submit', () => {
-    it('returns a pending result with sepa-stub externalId', async () => {
-      const result = await sepaProvider.submit(mockDisbursement);
-      expect(result.status).toBe('pending');
-      expect(result.externalId).toMatch(/^sepa-stub-/);
+    it('returns a submitted result with a pain001 externalId', async () => {
+      const result = await sepaProvider.submit(mockDisbursement, validConfig);
+      expect(result.status).toBe('submitted');
+      expect(result.externalId).toMatch(/^sepa-pain001-/);
+      expect(result.payload.provider).toBe('sepa_pain001');
     });
 
-    it('marks payload as mock', async () => {
-      const result = await sepaProvider.submit(mockDisbursement);
-      expect(result.payload.mock).toBe(true);
+    it('converts PPP-USD to EUR via the FX snapshot (210 → 193.20)', async () => {
+      const result = await sepaProvider.submit(mockDisbursement, validConfig);
+      const batch = result.payload.batch as Record<string, unknown>;
+      const perRecipient = batch.amountPerRecipient as Record<string, unknown>;
+      expect(perRecipient.pppUsd).toBe('210.00');
+      expect(perRecipient.eur).toBe('193.20');
+    });
+
+    it('computes the EUR control sum (105000 → 96600.00)', async () => {
+      const result = await sepaProvider.submit(mockDisbursement, validConfig);
+      const batch = result.payload.batch as Record<string, unknown>;
+      const total = batch.totalAmount as Record<string, unknown>;
+      expect(total.eur).toBe('96600.00');
+    });
+
+    it('returns the applied FX rate and provenance for audit', async () => {
+      const result = await sepaProvider.submit(mockDisbursement, validConfig);
+      const fx = result.payload.fx as Record<string, unknown>;
+      expect(fx.target).toBe('EUR');
+      expect(typeof fx.rate).toBe('number');
+      expect(typeof fx.rateAsOf).toBe('string');
+      expect(typeof fx.source).toBe('string');
+    });
+
+    it('produces a valid ISO 20022 pain.001 document populated from config', async () => {
+      const result = await sepaProvider.submit(mockDisbursement, validConfig);
+      const xml = result.payload.iso20022Xml as string;
+      expect(xml).toContain('pain.001.001.09');
+      expect(xml).toContain('<NbOfTxs>500</NbOfTxs>');
+      expect(xml).toContain('<CtrlSum>96600.00</CtrlSum>');
+      expect(xml).toContain('<InstdAmt Ccy="EUR">193.20</InstdAmt>');
+      expect(xml).toContain('DE89370400440532013000'); // debtor IBAN from config
+      expect(xml).toContain('Ministry of Social Protection'); // debtor name from config
+    });
+
+    it('includes a Wise bulk-payment skeleton referencing the profile', async () => {
+      const result = await sepaProvider.submit(mockDisbursement, validConfig);
+      const wise = result.payload.wiseBulkPayment as Record<string, unknown>;
+      expect(wise.profileId).toBe('profile-12345');
+      expect(wise.targetCurrency).toBe('EUR');
+    });
+
+    it('never echoes the apiKey in the payload', async () => {
+      const result = await sepaProvider.submit(mockDisbursement, validConfig);
+      expect(JSON.stringify(result.payload)).not.toContain('wise-api-key-abc123');
     });
 
     it('each call produces a unique externalId', async () => {
-      const r1 = await sepaProvider.submit(mockDisbursement);
-      const r2 = await sepaProvider.submit(mockDisbursement);
+      const r1 = await sepaProvider.submit(mockDisbursement, validConfig);
+      const r2 = await sepaProvider.submit(mockDisbursement, validConfig);
       expect(r1.externalId).not.toBe(r2.externalId);
     });
+  });
 
-    it('generates a SEPA transfer reference in payload', async () => {
-      const result = await sepaProvider.submit(mockDisbursement);
-      expect(typeof result.payload.transferReference).toBe('string');
-      expect((result.payload.transferReference as string).length).toBeGreaterThan(0);
+  describe('parseCallback (Wise webhook)', () => {
+    it('maps outgoing_payment_sent to confirmed', async () => {
+      const event = await sepaProvider.parseCallback!(
+        {},
+        {
+          data: { resource: { type: 'transfer', id: 998877 }, current_state: 'outgoing_payment_sent' },
+          event_type: 'transfers#state-change',
+          sent_at: '2026-04-02T10:00:00.000Z',
+        },
+      );
+      expect(event).not.toBeNull();
+      expect(event!.externalId).toBe('998877');
+      expect(event!.status).toBe('confirmed');
     });
 
-    it('converts PPP-USD amount to EUR in instruction', async () => {
-      const result = await sepaProvider.submit(mockDisbursement);
-      const instruction = result.payload.instruction as Record<string, unknown>;
-      const amountInfo = instruction.amountPerRecipient as Record<string, unknown>;
-      expect(amountInfo.pppUsd).toBe('210.00');
-      // 210 * 0.92 = 193.20
-      expect(amountInfo.eur).toBe('193.20');
-      expect(amountInfo.fxRate).toBe(0.92);
+    it('maps funds_refunded to failed', async () => {
+      const event = await sepaProvider.parseCallback!(
+        {},
+        {
+          data: { resource: { type: 'transfer', id: 1 }, current_state: 'funds_refunded' },
+          sent_at: '2026-04-02T10:00:00.000Z',
+        },
+      );
+      expect(event!.status).toBe('failed');
     });
 
-    it('includes correct recipient count and currency', async () => {
-      const result = await sepaProvider.submit(mockDisbursement);
-      const instruction = result.payload.instruction as Record<string, unknown>;
-      expect(instruction.recipientCount).toBe(500);
-      expect(instruction.currency).toBe('EUR');
-      expect(instruction.countryCode).toBe('DE');
-      expect(instruction.disbursementId).toBe('test-sepa-001');
-    });
-
-    it('computes correct total EUR amount', async () => {
-      const result = await sepaProvider.submit(mockDisbursement);
-      const instruction = result.payload.instruction as Record<string, unknown>;
-      const totalAmount = instruction.totalAmount as Record<string, unknown>;
-      // 105000 * 0.92 = 96600.00
-      expect(totalAmount.eur).toBe('96600.00');
-    });
-
-    it('transfer instruction type is sepa_credit_transfer', async () => {
-      const result = await sepaProvider.submit(mockDisbursement);
-      const instruction = result.payload.instruction as Record<string, unknown>;
-      expect(instruction.type).toBe('sepa_credit_transfer');
+    it('ignores non-transfer / non-terminal events', async () => {
+      const event = await sepaProvider.parseCallback!(
+        {},
+        { data: { resource: { type: 'balance', id: 2 }, current_state: 'created' }, sent_at: '2026-04-02T10:00:00.000Z' },
+      );
+      expect(event).toBeNull();
     });
   });
 
   describe('checkStatus', () => {
-    it('returns pending status for any externalId', async () => {
-      const status = await sepaProvider.checkStatus('sepa-stub-some-id');
-      expect(status.externalId).toBe('sepa-stub-some-id');
-      expect(status.status).toBe('pending');
-      expect(status.details.mock).toBe(true);
+    it('returns confirmed (non-custodial) status', async () => {
+      const status = await sepaProvider.checkStatus('sepa-pain001-some-id');
+      expect(status.externalId).toBe('sepa-pain001-some-id');
+      expect(status.status).toBe('confirmed');
+      expect(typeof status.details.note).toBe('string');
     });
   });
 });

@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.30] - 2026-06-01
+
+### Added
+- **M-Pesa B2C connector** (`src/disbursements/providers/mpesa.ts`) — replaces the stub. On submit it builds a Safaricom **Daraja B2C PaymentRequest** instruction batch: environment-correct OAuth / B2C / transaction-status endpoints, and a request template populated from channel config (`InitiatorName`, `CommandID`, `Amount`, `PartyA` shortcode, remarks). `PartyB` (recipient MSISDN) and the cert-derived `SecurityCredential` are left as operator-filled placeholders — OGI stores no phone numbers and never echoes `appKey`/`appSecret`.
+- **SEPA Credit Transfer connector** (`src/disbursements/providers/sepa.ts`) — replaces the stub. On submit it emits a standards-compliant **ISO 20022 pain.001.001.09** Customer Credit Transfer Initiation document plus a **Wise Payouts** bulk-payment skeleton (referencing the configured profile). Creditor lines are operator-filled placeholders (no IBANs stored). Retains the Wise `parseCallback` + `x-wise-signature-sha256` header for inbound settlement webhooks at `POST /v1/webhooks/inbound/sepa`.
+
+### Changed
+- **FX for SEPA is now sourced from the maintained snapshot** (`src/data/fx-rates.json`) via `convert()` instead of a hardcoded `0.92` constant; the applied rate, `asOf` date, and source are returned in the payload for audit.
+- **`DisbursementProvider.submit` / `checkStatus` now receive the channel `config`** (optional second arg) so connectors can populate originator fields; the submit route passes `channel.config`. Crypto providers are unaffected.
+- Both new connectors follow the existing non-custodial pattern: `submit` returns `submitted` (an operator-executable instruction), `checkStatus` returns `confirmed`. OGI builds no payment service, moves no funds, stores no recipient PII, and delegates identity/KYC to the executing provider — there is deliberately no OGI identity provider.
+- Test count: **608 tests** across 32 suites (was 603).
+
 ## [0.1.29] - 2026-04-18
 
 ### Added

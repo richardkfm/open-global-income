@@ -56,11 +56,25 @@ export interface DisbursementProvider {
   /** Validate that the channel config is correct before registering */
   validateConfig(config: Record<string, unknown>): Promise<{ valid: boolean; error?: string }>;
 
-  /** Submit a disbursement for processing */
-  submit(disbursement: Disbursement): Promise<DisbursementResult>;
+  /**
+   * Submit a disbursement for processing.
+   *
+   * `config` is the channel's stored configuration (credentials, shortcodes,
+   * debtor account, etc.). It is supplied by the platform from the channel
+   * record so providers that build provider-specific instructions (e.g. a
+   * Daraja B2C request or an ISO 20022 pain.001 document) can populate the
+   * originator fields. Providers must never echo secrets back in the payload.
+   */
+  submit(
+    disbursement: Disbursement,
+    config?: Record<string, unknown>,
+  ): Promise<DisbursementResult>;
 
   /** Check the status of a previously submitted disbursement */
-  checkStatus(externalId: string): Promise<DisbursementProviderStatus>;
+  checkStatus(
+    externalId: string,
+    config?: Record<string, unknown>,
+  ): Promise<DisbursementProviderStatus>;
 
   /**
    * Parse and validate an inbound callback payload from this provider.

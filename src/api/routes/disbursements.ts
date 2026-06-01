@@ -279,7 +279,7 @@ export const disbursementsRoute: FastifyPluginAsync = async (app) => {
 
       let result;
       try {
-        result = await provider.submit(disbursement);
+        result = await provider.submit(disbursement, channel.config);
       } catch (err) {
         updateDisbursementStatus(disbursement.id, 'failed');
         addLogEntry(disbursement.id, 'failed', {
