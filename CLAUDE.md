@@ -57,17 +57,17 @@ Open Global Income is a stack. Each layer builds on the one below it. The lower 
 | **Data** | What are the economic facts? | Done — 49 countries, World Bank 2023 + ILO + IMF; sub-national data for Kenya (47 counties) |
 | **Calculation** | How much per person? How urgent is the need? | Done — Ruleset v1 active, v2 preview; regional COL adjustments |
 | **Simulation** | What will it cost to cover X% of the population? | Done — Phase 11; national + regional simulation |
-| **Distribution** | How does money reach people? | Done — Phase 12–13; Solana, EVM, M-Pesa (stub) |
-| **Evidence** | Is it working? Can we prove it? | Next |
+| **Distribution** | How does money reach people? | Done — Phase 12–13; Solana & EVM generate real unsigned txns; M-Pesa & SEPA are stubs (no live API calls yet) |
+| **Evidence** | Is it working? Can we prove it? | Done — Phase 23; outcome recording, recipient/control cohorts, cross-program aggregates, CSV/JSON export. No randomization / significance testing / survey delivery yet |
 | **Federation** | Can programs share infrastructure across borders? | Future |
 
 Each layer is independently useful. A government can use just Data + Calculation to inform policy. An NGO can add Simulation to write grant proposals. A DAO can plug in Distribution to move funds. The full stack, once complete, supports end-to-end basic income delivery with built-in accountability.
 
 ---
 
-## What's Built (v0.1.7)
+## What's Built (v0.1.29)
 
-All seven phases are complete. The platform covers the full workflow from "how much per person?" through "where does the money come from?" to "what happens to poverty?" — with regional precision.
+The platform covers the full workflow from "how much per person?" through "where does the money come from?" to "what happens to poverty?" — with regional precision. Calculation, simulation, funding, and impact are production-ready. The distribution layer generates real unsigned crypto transactions but the mobile-money (M-Pesa) and bank (SEPA) providers are documented stubs that do not yet make live API calls. The recipient registry and evidence layer are built; a concrete `IdentityProvider` and experimental-design tooling are not.
 
 **Phase 11 — Budget Simulation Engine** ✅
 - `POST /v1/simulate` — model cost for a country with coverage %, targeting presets, duration
@@ -94,7 +94,7 @@ All seven phases are complete. The platform covers the full workflow from "how m
 - Admin country dashboards with data completeness indicators
 
 **Phase 15 — Funding & Fiscal Simulation** ✅
-- 6 funding mechanism calculators (income tax, VAT, carbon tax, wealth tax, FTT, redirect)
+- 7 funding mechanism calculators (income tax, VAT, carbon tax, wealth tax, FTT, automation tax, redirect)
 - Fiscal context analysis and coverage gap assessment
 - Interactive admin scenario builder with live preview
 
@@ -109,7 +109,24 @@ All seven phases are complete. The platform covers the full workflow from "how m
 - 4 new API endpoints: `GET /regions`, `GET /regions/:id`, `GET /calc/regional`, `POST /simulate/regional`
 - Admin region list and detail pages with national vs. regional entitlement comparison
 
-**387 tests** across 23 suites. Typecheck clean. CI green.
+**Phase 19 — Recipients & Enrollment** ✅
+- Recipient registry with cross-program duplicate detection via SHA-256 account hash
+- pending → verified → suspended lifecycle; no raw identity data stored (verified claims + non-reversible routing ref only)
+- `IdentityProvider` interface defined — concrete verifiers (national ID / CRVS / biometric) are left to implementers
+
+**Phase 21 — Audit Exports** ✅
+- Compliance-grade per-pilot export: methodology, recipient aggregate stats, full disbursement log, SHA-256 integrity hash
+
+**Phase 22 — Targeting** ✅
+- Programmable `TargetingRules` (age range, urban/rural, income ceiling, identity-provider filter, recency exclusion, region filter)
+- `applyRulesToRecipients` for disbursement-batch generation with per-rule filtering stats
+
+**Phase 23 — Evidence Layer** ✅
+- Record recipient/control cohort outcome measurements; pre/post comparison and projected-vs-actual
+- Cross-program anonymized aggregates (median, p25, p75) and CSV/JSON research export
+- Not yet: randomized treatment assignment, statistical significance testing, confidence intervals, survey delivery
+
+**603 tests** across 32 suites. Typecheck clean. CI green.
 
 ---
 
@@ -123,15 +140,14 @@ The region data format and loader are country-agnostic. Each country needs a cur
 - Ghana, Nigeria (West Africa scale)
 - India (largest potential beneficiary population)
 
-### Evidence Layer
+### Evidence Layer — built (Phase 23), with rigor gaps remaining
 
-Programs live or die on evidence. This is the layer that closes the loop between "we projected X impact" and "here's what actually happened."
+The recording/comparison/aggregation/export framework shipped in Phase 23. What is **done**: pre/post metrics, recipient/control cohort comparison, cross-program anonymized aggregates, and CSV/JSON research export. What is **still missing** for a research-grade RCT:
 
-- **Pre/post metrics** — track economic indicators for recipient populations over time
-- **Control group support** — structured comparison between recipient and non-recipient cohorts
-- **Outcome surveys** — configurable survey instruments delivered through the same channels as payments
-- **Research-grade exports** — anonymized, aggregated datasets in formats academic partners can use directly (CSV, Parquet, SPSS)
-- **Impact dashboards** — visual summaries for non-technical stakeholders
+- **Outcome surveys** — configurable survey instruments delivered through the same channels as payments (no delivery mechanism yet; data is fed in via API)
+- **Experimental design** — randomized treatment assignment, control-group power analysis, statistical significance testing, confidence intervals
+- **Wider export formats** — currently CSV/JSON; Parquet/SPSS not yet supported
+- **Impact dashboards** — richer visual summaries for non-technical stakeholders
 
 ---
 
@@ -243,7 +259,7 @@ Track where money goes. Verify it reaches recipients. Compare program efficiency
 - **API:** Fastify with OpenAPI/Swagger at `/docs`
 - **Database:** SQLite (default) / PostgreSQL (production)
 - **Admin UI:** Server-rendered HTML + htmx (no SPA)
-- **Testing:** Vitest — 387 tests across 23 suites
+- **Testing:** Vitest — 603 tests across 32 suites
 - **Metrics:** Prometheus via prom-client at `/metrics`
 - **CI:** GitHub Actions (typecheck + test on every push)
 
@@ -286,7 +302,7 @@ src/
 | `src/core/rulesets.ts` | Registry of all formula versions (v1 active, v2 preview) |
 | `src/core/constants.ts` | Named constants: income floor ($210), weights |
 | `src/core/simulations.ts` | Budget simulation math — pure function |
-| `src/core/funding.ts` | 6 funding mechanism calculators — pure functions |
+| `src/core/funding.ts` | 7 funding mechanism calculators — pure functions |
 | `src/core/impact.ts` | 4-dimension economic impact analysis — pure functions |
 | `src/core/regions.ts` | Regional COL adjustment via "adjusted Country" pattern |
 | `src/data/countries.json` | World Bank snapshot — 49 countries |
