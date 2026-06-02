@@ -156,6 +156,30 @@ export function updateRecipient(
 }
 
 /**
+ * Aggregate recipient counts by status, for admin dashboard cards.
+ * Counts the whole registry (no filtering).
+ */
+export function recipientStats(): {
+  total: number;
+  pending: number;
+  verified: number;
+  suspended: number;
+} {
+  const db = getDb();
+  const rows = db
+    .prepare('SELECT status, COUNT(*) as count FROM recipients GROUP BY status')
+    .all() as { status: string; count: number }[];
+  const stats = { total: 0, pending: 0, verified: 0, suspended: 0 };
+  for (const row of rows) {
+    if (row.status in stats) {
+      (stats as Record<string, number>)[row.status] = row.count;
+    }
+    stats.total += row.count;
+  }
+  return stats;
+}
+
+/**
  * Check whether an accountHash is already enrolled for a given country.
  * Used for de-duplication across programs without exposing identity.
  */

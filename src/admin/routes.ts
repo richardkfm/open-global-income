@@ -20,10 +20,11 @@ import { calculateSimulation } from '../core/simulations.js';
 import { listSimulations, saveSimulation, deleteSimulation, getSimulationById } from '../db/simulations-db.js';
 import { createPilot, getPilotById, listPilots, updatePilot, linkDisbursement, getPilotDisbursementIds } from '../db/pilots-db.js';
 import { getDisbursementById, getLogEntries } from '../db/disbursements-db.js';
-import { listRecipients, getRecipientById, updateRecipient, findByAccountHash } from '../db/recipients-db.js';
-import { renderIdentityPage } from './views/identity.js';
+import { listRecipients, getRecipientById, createRecipient, updateRecipient, findByAccountHash, recipientStats } from '../db/recipients-db.js';
+import { renderIdentityPage, renderRecipientDetailPage, type RecipientImportResult } from './views/identity.js';
+import { parseRecipientImportCsv } from '../core/recipient-import.js';
 import { getIdentityProvider, listIdentityProviders } from '../identity/providers/registry.js';
-import type { IdentityClaim } from '../core/types.js';
+import type { IdentityClaim, PaymentMethod, RecipientStatus } from '../core/types.js';
 import { RULESETS } from '../core/rulesets.js';
 import { GLOBAL_INCOME_FLOOR_PPP } from '../core/constants.js';
 import { calculateFundingScenario } from '../core/funding.js';
@@ -1395,17 +1396,199 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
 
   // ── Identity Providers ────────────────────────────────────────────────────
 
-  app.get<{ Querystring: { flash?: string; variant?: string } }>(
+  const RECIPIENT_PAGE_LIMIT = 25;
+  const RECIPIENT_TRANSITIONS: Record<RecipientStatus, RecipientStatus[]> = {
+    pending: ['verified', 'suspended'],
+    verified: ['suspended'],
+    suspended: ['pending'],
+  };
+  const VALID_PAYMENT_METHODS: PaymentMethod[] = ['sepa', 'mobile_money', 'crypto'];
+
+  /** Shared loader so the GET handler and the import POST can render the same page. */
+  function buildIdentityPageData(
+    query: { country?: string; status?: string; pilot?: string; page?: string },
+    extras: {
+      importResult?: RecipientImportResult;
+      flash?: string;
+      flashVariant?: 'success' | 'error' | 'warning' | 'info';
+    } = {},
+  ) {
+    const page = Math.max(1, Number.parseInt(query.page ?? '1', 10) || 1);
+    const filters = {
+      countryCode: query.country?.trim() || undefined,
+      status: ['pending', 'verified', 'suspended'].includes(query.status ?? '')
+        ? query.status
+        : undefined,
+      pilotId: query.pilot?.trim() || undefined,
+    };
+    const { items, total } = listRecipients({
+      countryCode: filters.countryCode,
+      status: filters.status as RecipientStatus | undefined,
+      pilotId: filters.pilotId,
+      page,
+      limit: RECIPIENT_PAGE_LIMIT,
+    });
+    const countries = getAllCountries().map((c) => ({ code: c.code, name: c.name }));
+    const { pilots } = listPilots({ limit: 500, offset: 0 });
+    return {
+      providers: listIdentityProviders(),
+      recipients: items,
+      stats: recipientStats(),
+      total,
+      page,
+      limit: RECIPIENT_PAGE_LIMIT,
+      countries,
+      pilots: pilots.map((p) => ({ id: p.id, name: p.name })),
+      filters,
+      importResult: extras.importResult,
+      flash: extras.flash,
+      flashVariant: extras.flashVariant,
+    };
+  }
+
+  app.get<{ Querystring: { flash?: string; variant?: string; country?: string; status?: string; pilot?: string; page?: string } }>(
     '/identity',
     async (request, reply) => {
-      const providers = listIdentityProviders();
-      const { items } = listRecipients({ page: 1, limit: 10 });
       const variant = ['success', 'error', 'warning', 'info'].includes(request.query.variant ?? '')
         ? (request.query.variant as 'success' | 'error' | 'warning' | 'info')
         : undefined;
-      return reply
-        .type('text/html')
-        .send(renderIdentityPage(providers, items, { flash: request.query.flash, flashVariant: variant }));
+      const data = buildIdentityPageData(request.query, {
+        flash: request.query.flash,
+        flashVariant: variant,
+      });
+      return reply.type('text/html').send(renderIdentityPage(data));
+    },
+  );
+
+  // ── Enrol a single recipient ──────────────────────────────────────────────
+  app.post<{ Body: { countryCode?: string; paymentMethod?: string; pilotId?: string } }>(
+    '/identity/recipients',
+    async (request, reply) => {
+      const { countryCode, paymentMethod, pilotId } = request.body ?? {};
+      const fail = (msg: string) =>
+        reply.redirect(`/admin/identity?variant=error&flash=${encodeURIComponent(msg)}`);
+
+      if (!countryCode?.trim()) return fail('Country is required to enrol a recipient');
+      if (paymentMethod && !VALID_PAYMENT_METHODS.includes(paymentMethod as PaymentMethod)) {
+        return fail(`Invalid payment method '${paymentMethod}'`);
+      }
+
+      const recipient = createRecipient({
+        countryCode: countryCode.trim().toUpperCase(),
+        paymentMethod: (paymentMethod as PaymentMethod) || null,
+        pilotId: pilotId?.trim() || null,
+      });
+      return reply.redirect(
+        `/admin/identity/recipients/${recipient.id}?variant=success&flash=${encodeURIComponent('Recipient enrolled (pending)')}`,
+      );
+    },
+  );
+
+  // ── Bulk import recipients from pasted CSV ─────────────────────────────────
+  app.post<{ Body: { csv?: string } }>('/identity/recipients/import', async (request, reply) => {
+    const csv = request.body?.csv ?? '';
+    if (!csv.trim()) {
+      return reply.redirect(
+        `/admin/identity?variant=error&flash=${encodeURIComponent('Paste at least a header row to import')}`,
+      );
+    }
+
+    const knownCountryCodes = getAllCountries().map((c) => c.code);
+    const { rows, errors } = parseRecipientImportCsv(csv, {
+      validPaymentMethods: VALID_PAYMENT_METHODS,
+      knownCountryCodes,
+    });
+
+    const result: RecipientImportResult = {
+      parsedRows: rows.length,
+      created: 0,
+      skipped: [],
+      errors: [...errors],
+    };
+
+    for (const row of rows) {
+      // Cross-program duplicate detection on a supplied account hash.
+      if (row.accountHash) {
+        const existing = findByAccountHash(row.countryCode, row.accountHash);
+        if (existing) {
+          result.skipped.push({
+            line: row.line,
+            countryCode: row.countryCode,
+            reason: `Already enrolled (${existing.id.slice(0, 8)}…)`,
+          });
+          continue;
+        }
+      }
+      const verifiedAt = row.accountHash ? new Date().toISOString() : null;
+      createRecipient({
+        countryCode: row.countryCode,
+        paymentMethod: row.paymentMethod,
+        accountHash: row.accountHash,
+        routingRef: row.routingRef,
+        identityProvider: row.identityProvider,
+        verifiedAt,
+      });
+      result.created += 1;
+    }
+
+    const data = buildIdentityPageData(
+      {},
+      {
+        importResult: result,
+        flash: `Imported ${result.created} recipient(s) — ${result.skipped.length} skipped, ${result.errors.length} error(s)`,
+        flashVariant: result.errors.length || result.skipped.length ? 'warning' : 'success',
+      },
+    );
+    return reply.type('text/html').send(renderIdentityPage(data));
+  });
+
+  // ── Recipient detail ──────────────────────────────────────────────────────
+  app.get<{ Params: { id: string }; Querystring: { flash?: string; variant?: string } }>(
+    '/identity/recipients/:id',
+    async (request, reply) => {
+      const recipient = getRecipientById(request.params.id);
+      if (!recipient) {
+        return reply.redirect(`/admin/identity?variant=error&flash=${encodeURIComponent('Recipient not found')}`);
+      }
+      const variant = ['success', 'error', 'warning', 'info'].includes(request.query.variant ?? '')
+        ? (request.query.variant as 'success' | 'error' | 'warning' | 'info')
+        : undefined;
+      const pilot = recipient.pilotId ? getPilotById(recipient.pilotId) : null;
+      return reply.type('text/html').send(
+        renderRecipientDetailPage({
+          recipient,
+          pilotName: pilot?.name ?? null,
+          flash: request.query.flash,
+          flashVariant: variant,
+        }),
+      );
+    },
+  );
+
+  // ── Recipient status transition ───────────────────────────────────────────
+  app.post<{ Params: { id: string }; Body: { status?: string } }>(
+    '/identity/recipients/:id/status',
+    async (request, reply) => {
+      const recipient = getRecipientById(request.params.id);
+      const detailUrl = `/admin/identity/recipients/${request.params.id}`;
+      if (!recipient) {
+        return reply.redirect(`/admin/identity?variant=error&flash=${encodeURIComponent('Recipient not found')}`);
+      }
+      const next = request.body?.status as RecipientStatus | undefined;
+      const fail = (msg: string) =>
+        reply.redirect(`${detailUrl}?variant=error&flash=${encodeURIComponent(msg)}`);
+
+      if (!next || !['pending', 'verified', 'suspended'].includes(next)) {
+        return fail('Invalid status');
+      }
+      if (!RECIPIENT_TRANSITIONS[recipient.status].includes(next)) {
+        return fail(`Cannot transition from '${recipient.status}' to '${next}'`);
+      }
+
+      updateRecipient(recipient.id, { status: next });
+      return reply.redirect(
+        `${detailUrl}?variant=success&flash=${encodeURIComponent(`Status updated to ${next}`)}`,
+      );
     },
   );
 

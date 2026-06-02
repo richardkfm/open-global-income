@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.32] - 2026-06-02
+
+### Added
+- **Admin UI — recipient management** (`/admin/identity`) — the Identity Providers page is extended into a full recipient registry console. Operators can now:
+  - **Enrol a recipient** directly from the UI (country + optional payment method + optional pilot), created in `pending` status.
+  - **Filter and paginate** the recipient registry by country, status, and pilot (25 per page).
+  - Drill into a **recipient detail page** (`/admin/identity/recipients/:id`) showing country, payment method, identity provider, routing ref, account-hash presence, pilot, and timestamps, with **status-transition buttons** that enforce the same `pending → verified → suspended` rules as the API.
+  - View **registry stat cards** (total / verified / pending / suspended).
+- **Bulk recipient import** — paste CSV (header `countryCode,paymentMethod,accountHash,routingRef,identityProvider`; only `countryCode` required) to enrol many recipients at once. Rows whose `accountHash` is already enrolled in the same country are skipped (cross-program de-duplication), and a per-line result summary reports created / skipped / errored rows.
+- **`parseRecipientImportCsv`** (`src/core/recipient-import.ts`) — pure, I/O-free CSV parser + validator (quoted-field support, in-file duplicate-hash detection, payment-method and known-country validation) backing the bulk import. Keeps parsing logic in the core layer; the admin route handles de-duplication and persistence.
+- **`recipientStats()`** (`src/db/recipients-db.ts`) — aggregate recipient counts by status for the dashboard cards.
+
+### Changed
+- `renderIdentityPage` now takes a single structured data object (providers, recipients, stats, filters, pagination, import result) instead of positional arguments.
+- Test count: **660 tests** across 36 suites (was 638).
+
 ## [0.1.31] - 2026-06-01
 
 ### Added
