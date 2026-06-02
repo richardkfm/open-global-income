@@ -138,6 +138,33 @@ describe('Admin recipient UI', () => {
     expect(res.body).toContain('value="verified" selected');
   });
 
+  it('exposes a Download CSV link that carries the active filters', async () => {
+    const cookie = await login();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/admin/identity?country=KE',
+      headers: { cookie },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toContain('/admin/identity/recipients/export?country=KE');
+  });
+
+  it('downloads the registry as a CSV attachment', async () => {
+    const cookie = await login();
+    await form(cookie, '/admin/identity/recipients', 'countryCode=KE');
+    const res = await app.inject({
+      method: 'GET',
+      url: '/admin/identity/recipients/export?country=KE',
+      headers: { cookie },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['content-type']).toContain('text/csv');
+    expect(res.headers['content-disposition']).toContain('attachment');
+    const [header, ...rows] = res.body.trimEnd().split('\r\n');
+    expect(header).toContain('countryCode');
+    expect(rows.every((r) => r.startsWith('KE,'))).toBe(true);
+  });
+
   it('redirects to the identity page for an unknown recipient', async () => {
     const cookie = await login();
     const res = await app.inject({

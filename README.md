@@ -73,7 +73,7 @@ The funding and impact layers (Phases 14–16) are not a departure from the API 
 
 The sub-national data layer (Phase 17) brings precision where it matters most. A basic income floor in Nairobi (COL 1.35×) should not be the same local-currency amount as in rural Turkana (COL 0.68×). Regional cost-of-living indices adjust the national PPP conversion factor, and existing formulas work transparently via the "adjusted Country" pattern — zero formula changes needed.
 
-Secure admin UI with login, approval workflows, and audit trails. **660 tests** across 36 suites.
+Secure admin UI with login, approval workflows, and audit trails. **671 tests** across 37 suites.
 
 ### Phase 23: Evidence Layer ✅
 
@@ -467,6 +467,8 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup, code style, test
 See [GOVERNANCE.md](./GOVERNANCE.md) for the decision-making process, API stability declaration, and versioning policy.
 
 ## 📋 Current Status
+
+**Version 0.1.33** — Recipient registry export, the round-trip counterpart to bulk import. `GET /v1/recipients/export` returns the (optionally filtered) registry as CSV or JSON (`?format=json`) as a download, and a **Download CSV** button on the admin recipients card (`/admin/identity`) streams the same, honouring the active filters. The first five CSV columns are import-compatible, so an export reads straight back through the importer; serialisation lives in a pure core module (`src/core/recipient-export.ts`). 671 tests across 37 suites.
 
 **Version 0.1.32** — Recipient admin UI & bulk import. The Identity Providers page (`/admin/identity`) becomes a full recipient registry console: enrol a recipient from the UI, filter/paginate the registry by country, status, and pilot, and open a per-recipient detail page with status-transition controls that enforce the same `pending → verified → suspended` rules as the API. A **bulk import** form ingests pasted CSV (`countryCode` required; `paymentMethod,accountHash,routingRef,identityProvider` optional), skipping rows whose account hash is already enrolled in the same country (cross-program de-duplication) and reporting a per-line created/skipped/errored summary. CSV parsing lives in a pure, I/O-free core module (`src/core/recipient-import.ts`). 660 tests across 36 suites.
 

@@ -278,3 +278,61 @@ describe('PATCH /v1/recipients/:id', () => {
     expect(res.statusCode).toBe(404);
   });
 });
+
+// ── GET /v1/recipients/export ───────────────────────────────────────────────
+
+describe('GET /v1/recipients/export', () => {
+  it('exports CSV with a header row and an attachment filename', async () => {
+    await enroll({ countryCode: 'FR' });
+    const res = await app.inject({ method: 'GET', url: '/v1/recipients/export' });
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['content-type']).toContain('text/csv');
+    expect(res.headers['content-disposition']).toMatch(/attachment; filename="recipients-\d{4}-\d{2}-\d{2}\.csv"/);
+    const [header] = res.body.split('\r\n');
+    expect(header).toBe(
+      'countryCode,paymentMethod,accountHash,routingRef,identityProvider,id,status,pilotId,verifiedAt,createdAt',
+    );
+    // At least the FR recipient we just enrolled appears.
+    expect(res.body).toContain('FR,');
+  });
+
+  it('filters the export by country', async () => {
+    await enroll({ countryCode: 'IT' });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/recipients/export?countryCode=IT',
+    });
+    expect(res.statusCode).toBe(200);
+    const dataRows = res.body.trimEnd().split('\r\n').slice(1);
+    expect(dataRows.length).toBeGreaterThan(0);
+    expect(dataRows.every((r) => r.startsWith('IT,'))).toBe(true);
+  });
+
+  it('supports JSON format', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/recipients/export?format=json',
+    });
+    expect(res.statusCode).toBe(200);
+    const { ok, data } = res.json();
+    expect(ok).toBe(true);
+    expect(Array.isArray(data.items)).toBe(true);
+    expect(typeof data.total).toBe('number');
+  });
+
+  it('rejects an invalid format', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/recipients/export?format=xml',
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('rejects an invalid status filter', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/recipients/export?status=bogus',
+    });
+    expect(res.statusCode).toBe(400);
+  });
+});
