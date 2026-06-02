@@ -7,10 +7,18 @@ import {
   findByAccountHash,
 } from '../../db/recipients-db.js';
 import { parsePagination, buildPaginationMeta } from '../pagination.js';
-import type { RecipientStatus, PaymentMethod } from '../../core/types.js';
+import { getIdentityProvider, listIdentityProviders } from '../../identity/providers/registry.js';
+import type { RecipientStatus, PaymentMethod, IdentityClaim } from '../../core/types.js';
 
 const VALID_STATUSES: RecipientStatus[] = ['pending', 'verified', 'suspended'];
 const VALID_PAYMENT_METHODS: PaymentMethod[] = ['sepa', 'mobile_money', 'crypto'];
+const VALID_CLAIM_TYPES: IdentityClaim['claimType'][] = [
+  'national_id',
+  'bank_account',
+  'phone',
+  'wallet',
+  'community',
+];
 
 /** Legal status transitions: which states can a recipient move into from a given state */
 const VALID_TRANSITIONS: Record<RecipientStatus, RecipientStatus[]> = {
@@ -235,6 +243,138 @@ export const recipientsRoute: FastifyPluginAsync = async (app) => {
       });
 
       return reply.send({ ok: true, data: updated });
+    },
+  );
+
+  // ── POST /v1/recipients/:id/verify ─────────────────────────────────────────
+  // Verify a recipient against a registered identity provider. On success the
+  // provider returns a non-reversible accountHash + routingRef which are stored,
+  // the recipient is marked 'verified', and the raw claim is discarded — it is
+  // never persisted or echoed back.
+
+  app.post<{ Params: { id: string }; Body: Record<string, unknown> }>(
+    '/recipients/:id/verify',
+    async (request, reply) => {
+      const recipient = getRecipientById(request.params.id);
+      if (!recipient) {
+        return reply.status(404).send({
+          ok: false,
+          error: { code: 'NOT_FOUND', message: `Recipient '${request.params.id}' not found` },
+        });
+      }
+
+      const { provider, claimType, claimReference } = request.body ?? {};
+
+      if (typeof provider !== 'string' || !provider.trim()) {
+        return reply.status(400).send({
+          ok: false,
+          error: { code: 'MISSING_PARAMETER', message: "'provider' is required" },
+        });
+      }
+
+      const connector = getIdentityProvider(provider.trim());
+      if (!connector) {
+        return reply.status(404).send({
+          ok: false,
+          error: {
+            code: 'UNKNOWN_PROVIDER',
+            message: `Unknown identity provider '${provider}'. Available: ${listIdentityProviders()
+              .map((p) => p.providerId)
+              .join(', ')}`,
+          },
+        });
+      }
+
+      if (typeof claimType !== 'string' || !VALID_CLAIM_TYPES.includes(claimType as IdentityClaim['claimType'])) {
+        return reply.status(400).send({
+          ok: false,
+          error: {
+            code: 'INVALID_PARAMETER',
+            message: `'claimType' must be one of: ${VALID_CLAIM_TYPES.join(', ')}`,
+          },
+        });
+      }
+
+      if (!connector.supportedClaimTypes.includes(claimType as IdentityClaim['claimType'])) {
+        return reply.status(400).send({
+          ok: false,
+          error: {
+            code: 'UNSUPPORTED_CLAIM_TYPE',
+            message: `Provider '${connector.providerId}' supports claim types: ${connector.supportedClaimTypes.join(', ')}`,
+          },
+        });
+      }
+
+      if (typeof claimReference !== 'string' || !claimReference.trim()) {
+        return reply.status(400).send({
+          ok: false,
+          error: { code: 'MISSING_PARAMETER', message: "'claimReference' is required" },
+        });
+      }
+
+      // A suspended recipient cannot be (re-)verified without first re-enrolling.
+      if (recipient.status === 'suspended') {
+        return reply.status(422).send({
+          ok: false,
+          error: {
+            code: 'INVALID_TRANSITION',
+            message: "Cannot verify a 'suspended' recipient; move it back to 'pending' first",
+          },
+        });
+      }
+
+      const claim: IdentityClaim = {
+        recipientId: recipient.id,
+        countryCode: recipient.countryCode,
+        claimType: claimType as IdentityClaim['claimType'],
+        claimReference: claimReference.trim(),
+      };
+
+      const result = await connector.verify(claim);
+
+      if (!result.verified || !result.accountHash) {
+        return reply.status(422).send({
+          ok: false,
+          error: {
+            code: 'VERIFICATION_FAILED',
+            message: result.error ?? 'Identity verification failed',
+          },
+        });
+      }
+
+      // Cross-program duplicate detection on the provider-derived hash.
+      const existing = findByAccountHash(recipient.countryCode, result.accountHash);
+      if (existing && existing.id !== recipient.id) {
+        return reply.status(409).send({
+          ok: false,
+          error: {
+            code: 'DUPLICATE_RECIPIENT',
+            message: `This identity is already enrolled in ${recipient.countryCode}`,
+            existingId: existing.id,
+          },
+        });
+      }
+
+      const updated = updateRecipient(recipient.id, {
+        status: 'verified',
+        accountHash: result.accountHash,
+        identityProvider: connector.providerId,
+        routingRef: result.routingRef,
+        verifiedAt: new Date().toISOString(),
+      });
+
+      return reply.send({
+        ok: true,
+        data: {
+          recipient: updated,
+          verification: {
+            provider: connector.providerId,
+            providerName: connector.providerName,
+            verified: true,
+            routingRef: result.routingRef,
+          },
+        },
+      });
     },
   );
 };

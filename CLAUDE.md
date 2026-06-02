@@ -67,7 +67,7 @@ Each layer is independently useful. A government can use just Data + Calculation
 
 ## What's Built (v0.1.29)
 
-The platform covers the full workflow from "how much per person?" through "where does the money come from?" to "what happens to poverty?" — with regional precision. Calculation, simulation, funding, and impact are production-ready. The distribution layer is non-custodial across all rails: crypto providers emit unsigned transactions, while the M-Pesa and SEPA connectors emit operator-executable instructions in the rails' native formats (Daraja B2C / ISO 20022 pain.001 + Wise) — OGI never moves funds, stores no recipient PII, and delegates identity/KYC to the executing provider. The recipient registry and evidence layer are built; a concrete `IdentityProvider` and experimental-design tooling are not.
+The platform covers the full workflow from "how much per person?" through "where does the money come from?" to "what happens to poverty?" — with regional precision. Calculation, simulation, funding, and impact are production-ready. The distribution layer is non-custodial across all rails: crypto providers emit unsigned transactions, while the M-Pesa and SEPA connectors emit operator-executable instructions in the rails' native formats (Daraja B2C / ISO 20022 pain.001 + Wise) — OGI never moves funds, stores no recipient PII, and delegates identity/KYC to the executing provider. The recipient registry, evidence layer, and four concrete `IdentityProvider` connectors are built; experimental-design tooling is not.
 
 **Phase 11 — Budget Simulation Engine** ✅
 - `POST /v1/simulate` — model cost for a country with coverage %, targeting presets, duration
@@ -112,7 +112,7 @@ The platform covers the full workflow from "how much per person?" through "where
 **Phase 19 — Recipients & Enrollment** ✅
 - Recipient registry with cross-program duplicate detection via SHA-256 account hash
 - pending → verified → suspended lifecycle; no raw identity data stored (verified claims + non-reversible routing ref only)
-- `IdentityProvider` interface defined — concrete verifiers (national ID / CRVS / biometric) are left to implementers
+- `IdentityProvider` interface defined, with four concrete non-custodial connectors (Phase 24): national ID (MOSIP/Verhoeff), mobile-money MSISDN, wallet (EVM/Solana), NGO community attestation — `src/identity/`. `POST /v1/recipients/:id/verify` runs a claim through a provider and stores only the derived hash + routing ref
 
 **Phase 21 — Audit Exports** ✅
 - Compliance-grade per-pilot export: methodology, recipient aggregate stats, full disbursement log, SHA-256 integrity hash
@@ -291,6 +291,7 @@ src/
 ├── admin/       Server-rendered admin UI (htmx)
 ├── adapters/    Chain/currency adapters (Solana, EVM)
 ├── disbursements/ Payment providers (Solana USDC, EVM USDC, M-Pesa B2C, SEPA)
+├── identity/    Identity verification connectors (national ID, mobile-money, wallet, community)
 └── webhooks/    Event dispatch, HMAC signatures
 ```
 
