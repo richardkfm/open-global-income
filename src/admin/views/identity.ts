@@ -390,8 +390,10 @@ TZ,sepa,abc123hash,••••1234,national-id"></textarea>
     </div>
 
     <div class="card">
-      <div class="card-header">
-        <h2 class="card-title">Recipients (${data.total})</h2>
+      <div class="card-header" style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap">
+        <h2 class="card-title" style="margin:0">Recipients (${data.total})</h2>
+        <a href="/admin/identity/recipients/export${filterQuery(filters)}"
+           class="btn btn-secondary btn-sm" style="margin-left:auto">Download CSV</a>
       </div>
       <form method="get" action="/admin/identity" class="form-row mb-1" style="gap:0.75rem;flex-wrap:wrap;align-items:flex-end">
         <div class="form-group" style="flex:1;min-width:160px">

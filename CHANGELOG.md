@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.33] - 2026-06-02
+
+### Added
+- **Recipient registry export** — the round-trip counterpart to bulk import.
+  - **`GET /v1/recipients/export`** — export the (optionally filtered by `countryCode`, `status`, `pilotId`) registry as CSV (default) or JSON (`?format=json`), served as a download attachment. The export is not paginated — every matching row is returned.
+  - **Admin "Download CSV"** button on the recipients card (`/admin/identity`) — streams the registry honouring the active country/status/pilot filters.
+- **`recipientsToCsv`** (`src/core/recipient-export.ts`) — pure, I/O-free RFC 4180 CSV serialiser. The first five columns (`countryCode,paymentMethod,accountHash,routingRef,identityProvider`) are import-compatible, so an export reads straight back through `parseRecipientImportCsv`; audit-only columns (`id`, `status`, `pilotId`, `verifiedAt`, `createdAt`) follow.
+
+### Changed
+- Test count: **671 tests** across 37 suites (was 660).
+
 ## [0.1.32] - 2026-06-02
 
 ### Added

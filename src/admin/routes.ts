@@ -23,6 +23,7 @@ import { getDisbursementById, getLogEntries } from '../db/disbursements-db.js';
 import { listRecipients, getRecipientById, createRecipient, updateRecipient, findByAccountHash, recipientStats } from '../db/recipients-db.js';
 import { renderIdentityPage, renderRecipientDetailPage, type RecipientImportResult } from './views/identity.js';
 import { parseRecipientImportCsv } from '../core/recipient-import.js';
+import { recipientsToCsv } from '../core/recipient-export.js';
 import { getIdentityProvider, listIdentityProviders } from '../identity/providers/registry.js';
 import type { IdentityClaim, PaymentMethod, RecipientStatus } from '../core/types.js';
 import { RULESETS } from '../core/rulesets.js';
@@ -1457,6 +1458,27 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
         flashVariant: variant,
       });
       return reply.type('text/html').send(renderIdentityPage(data));
+    },
+  );
+
+  // ── Export the (filtered) recipient registry as CSV ───────────────────────
+  app.get<{ Querystring: { country?: string; status?: string; pilot?: string } }>(
+    '/identity/recipients/export',
+    async (request, reply) => {
+      const filters = {
+        countryCode: request.query.country?.trim() || undefined,
+        status: ['pending', 'verified', 'suspended'].includes(request.query.status ?? '')
+          ? (request.query.status as RecipientStatus)
+          : undefined,
+        pilotId: request.query.pilot?.trim() || undefined,
+      };
+      const { total } = listRecipients({ ...filters, page: 1, limit: 1 });
+      const { items } = listRecipients({ ...filters, page: 1, limit: Math.max(total, 1) });
+      const stamp = new Date().toISOString().slice(0, 10);
+      return reply
+        .type('text/csv; charset=utf-8')
+        .header('content-disposition', `attachment; filename="recipients-${stamp}.csv"`)
+        .send(recipientsToCsv(items));
     },
   );
 

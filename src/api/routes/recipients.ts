@@ -7,6 +7,7 @@ import {
   findByAccountHash,
 } from '../../db/recipients-db.js';
 import { parsePagination, buildPaginationMeta } from '../pagination.js';
+import { recipientsToCsv } from '../../core/recipient-export.js';
 import { getIdentityProvider, listIdentityProviders } from '../../identity/providers/registry.js';
 import type { RecipientStatus, PaymentMethod, IdentityClaim } from '../../core/types.js';
 
@@ -113,6 +114,54 @@ export const recipientsRoute: FastifyPluginAsync = async (app) => {
       ok: true,
       data: { items, pagination: buildPaginationMeta(pagination, total) },
     });
+  });
+
+  // ── GET /v1/recipients/export ──────────────────────────────────────────────
+  // Export the (optionally filtered) registry as CSV (default) or JSON.
+  // Must be registered BEFORE /:id to avoid route conflict.
+
+  app.get<{
+    Querystring: { countryCode?: string; status?: string; pilotId?: string; format?: string };
+  }>('/recipients/export', async (request, reply) => {
+    const { countryCode, status, pilotId, format } = request.query;
+
+    if (status && !VALID_STATUSES.includes(status as RecipientStatus)) {
+      return reply.status(400).send({
+        ok: false,
+        error: {
+          code: 'INVALID_PARAMETER',
+          message: `'status' must be one of: ${VALID_STATUSES.join(', ')}`,
+        },
+      });
+    }
+    if (format && format !== 'csv' && format !== 'json') {
+      return reply.status(400).send({
+        ok: false,
+        error: { code: 'INVALID_PARAMETER', message: "'format' must be 'csv' or 'json'" },
+      });
+    }
+
+    const filters = {
+      countryCode,
+      status: status as RecipientStatus | undefined,
+      pilotId,
+    };
+    // Determine the full count, then fetch every matching row (export is not paginated).
+    const { total } = listRecipients({ ...filters, page: 1, limit: 1 });
+    const { items } = listRecipients({ ...filters, page: 1, limit: Math.max(total, 1) });
+
+    const stamp = new Date().toISOString().slice(0, 10);
+
+    if (format === 'json') {
+      return reply
+        .header('content-disposition', `attachment; filename="recipients-${stamp}.json"`)
+        .send({ ok: true, data: { items, total } });
+    }
+
+    return reply
+      .type('text/csv; charset=utf-8')
+      .header('content-disposition', `attachment; filename="recipients-${stamp}.csv"`)
+      .send(recipientsToCsv(items));
   });
 
   // ── POST /v1/recipients/check-duplicate ────────────────────────────────────
