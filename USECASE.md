@@ -264,7 +264,7 @@ curl -X PATCH http://localhost:3333/v1/pilots/<pilot-id> \
 | Event notifications | Yes | Webhooks with HMAC-SHA256 signatures |
 | Total budget estimate | Yes | `POST /v1/simulate` returns full cost breakdown |
 | Coverage/targeting simulation | Yes | `all` and `bottom_quintile` targeting presets supported |
-| Disbursement mechanism | Yes | Solana USDC, EVM USDC, M-Pesa (stub) with approval workflow |
+| Disbursement mechanism | Yes | Solana USDC, EVM USDC, M-Pesa (Daraja B2C), SEPA (ISO 20022 pain.001) — non-custodial instruction preparation with approval workflow |
 | Pilot lifecycle tracking | Yes | `planning → active → paused → completed` with donor reports |
 | Variance analysis | Yes | Actual spend vs. simulation projection in pilot reports |
 | Identity / deduplication | No | User model has no KYC or national ID integration |
@@ -518,7 +518,7 @@ Register webhooks for `disbursement.created`, `disbursement.approved`, `disburse
 - **API key authentication** with tiered rate limits
 - **Audit logging** of all API requests
 - **Webhooks** for event-driven integration (HMAC-SHA256 signed), including `simulation.created`, `disbursement.*`, and `pilot.*` events
-- **Disbursement system** — non-custodial payment preparation for Solana USDC, EVM USDC, and M-Pesa (stub) with approval workflow, full audit log, and status tracking
+- **Disbursement system** — non-custodial payment preparation for Solana USDC, EVM USDC, M-Pesa (Daraja B2C instruction batch), and SEPA (ISO 20022 pain.001 + Wise skeleton) with approval workflow, full audit log, and status tracking
 - **Pilot dashboard** — create pilot programs linked to simulations, track status lifecycle (`planning → active → paused → completed`), link disbursements, generate structured donor reports with variance analysis
 - **Chain adapters** for Solana and EVM (Ethereum, Polygon, Arbitrum, Optimism, Base)
 - **TypeScript SDK** generated from OpenAPI spec
@@ -541,7 +541,7 @@ Listed roughly by priority (unblocks the most scenarios first):
 7. **Wallet-based identity** — link users to wallet addresses for on-chain disbursement
 8. **Oracle integration** — live exchange rates for adapter calculations
 9. **KYC / identity verification** — integration with national ID or biometric systems
-10. **Live M-Pesa integration** — replace the stub with real Safaricom B2C API calls
+10. **Server-side auto-submission** — optional opt-in mode that submits the existing non-custodial Daraja B2C / Wise instruction batches to Safaricom / Wise directly (outside the default non-custodial flow)
 
 ---
 
