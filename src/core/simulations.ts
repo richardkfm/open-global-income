@@ -12,7 +12,10 @@ import { populationFactorFromRules, expandPresetToRules } from './targeting.js';
  * monthlyTotal   = recipientCount × monthlyLocal
  * annualTotal    = monthlyTotal × durationMonths
  * annualPppUsd   = recipientCount × floorPpp × durationMonths
- * asPercentOfGdp = annualPppUsd / (gdpPerCapitaUsd × population) × 100
+ * asPercentOfGdp = annualPppUsd / (gdpPerCapitaPppUsd × population) × 100
+ *
+ * The cost is in PPP-USD (the floor is PPP-denominated), so it is divided by
+ * PPP GDP — not nominal GDP — to keep the ratio's units consistent.
  *
  * If `params.targetingRules` is present its `preset` field is used as the
  * population fraction — this takes precedence over `params.targetGroup`.
@@ -39,9 +42,9 @@ export function calculateSimulation(
   const annualLocalCurrency = Math.round(monthlyLocalCurrency * params.durationMonths * 100) / 100;
   const annualPppUsd = Math.round(recipientCount * floorPpp * params.durationMonths * 100) / 100;
 
-  const gdpTotal = country.stats.gdpPerCapitaUsd * country.stats.population;
+  const gdpTotalPpp = country.stats.gdpPerCapitaPppUsd * country.stats.population;
   const asPercentOfGdp =
-    gdpTotal > 0 ? Math.round((annualPppUsd / gdpTotal) * 10000) / 100 : 0;
+    gdpTotalPpp > 0 ? Math.round((annualPppUsd / gdpTotalPpp) * 10000) / 100 : 0;
 
   return {
     country: {

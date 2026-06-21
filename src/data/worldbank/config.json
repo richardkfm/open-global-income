@@ -13,6 +13,7 @@
   "indicators": {
     "_comment": "Map from our internal field name to the data provider's indicator code. Change codes to use different indicators or a different provider.",
     "gdpPerCapitaUsd": "NY.GDP.PCAP.CD",
+    "gdpPerCapitaPppUsd": "NY.GDP.PCAP.PP.CD",
     "gniPerCapitaUsd": "NY.GNP.PCAP.CD",
     "pppConversionFactor": "PA.NUS.PPP",
     "giniIndex": "SI.POV.GINI",
@@ -78,6 +79,7 @@
     "dataVersionPrefix": "worldbank",
     "roundDecimals": {
       "gdpPerCapitaUsd": 0,
+      "gdpPerCapitaPppUsd": 0,
       "gniPerCapitaUsd": 0,
       "pppConversionFactor": 2,
       "giniIndex": 1,

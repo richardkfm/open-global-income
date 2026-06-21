@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 
 export type IndicatorField =
   | 'gdpPerCapitaUsd'
+  | 'gdpPerCapitaPppUsd'
   | 'gniPerCapitaUsd'
   | 'pppConversionFactor'
   | 'giniIndex'
@@ -59,6 +60,7 @@ export interface ImporterConfig {
 
 const REQUIRED_INDICATORS: IndicatorField[] = [
   'gdpPerCapitaUsd',
+  'gdpPerCapitaPppUsd',
   'gniPerCapitaUsd',
   'pppConversionFactor',
   'giniIndex',

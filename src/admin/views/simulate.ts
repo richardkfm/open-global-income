@@ -433,8 +433,9 @@ export function renderSimulationPreview(result: SimulationResult, saveName?: str
         const labels = yearLabels(projYears);
         const costGrowth = (inflRate + 1.5) / 100;
         const costProj = projectYearly(cost.annualPppUsd, costGrowth, projYears);
-        // GDP total grows at aggregate GDP growth (includes population growth)
-        const gdpTotal = _fullCountry.stats.gdpPerCapitaUsd * _fullCountry.stats.population;
+        // GDP total grows at aggregate GDP growth (includes population growth).
+        // Use PPP GDP so the cost (PPP-USD) / GDP ratio matches the headline.
+        const gdpTotal = _fullCountry.stats.gdpPerCapitaPppUsd * _fullCountry.stats.population;
         const gdpProj = projectYearly(gdpTotal, gdpGrowth / 100, projYears);
         const pctGdpProj = costProj.map((c, i) => Math.round((c / gdpProj[i]) * 10000) / 100);
 

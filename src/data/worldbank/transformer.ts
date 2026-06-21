@@ -35,6 +35,7 @@ export function classifyIncomeGroup(
 /** Fields that must be non-null for a country to be included */
 const REQUIRED_FIELDS: IndicatorField[] = [
   'gdpPerCapitaUsd',
+  'gdpPerCapitaPppUsd',
   'gniPerCapitaUsd',
   'pppConversionFactor',
   'population',
@@ -89,6 +90,10 @@ export function transformCountries(
       raw.values.gdpPerCapitaUsd!.value!,
       config.output.roundDecimals.gdpPerCapitaUsd ?? 0,
     );
+    const gdpPerCapitaPppUsd = roundValue(
+      raw.values.gdpPerCapitaPppUsd!.value!,
+      config.output.roundDecimals.gdpPerCapitaPppUsd ?? 0,
+    );
     const gniPerCapitaUsd = roundValue(
       raw.values.gniPerCapitaUsd!.value!,
       config.output.roundDecimals.gniPerCapitaUsd ?? 0,
@@ -137,6 +142,7 @@ export function transformCountries(
       name: raw.countryName || iso2,
       stats: {
         gdpPerCapitaUsd,
+        gdpPerCapitaPppUsd,
         gniPerCapitaUsd,
         pppConversionFactor,
         giniIndex,

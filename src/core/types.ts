@@ -17,8 +17,19 @@ export interface TaxBreakdown {
 }
 
 export interface CountryStats {
-  /** GDP per capita in current USD */
+  /** GDP per capita in current USD (market exchange rate) */
   gdpPerCapitaUsd: number;
+  /**
+   * GDP per capita in current international dollars (PPP).
+   *
+   * Used as the GDP base wherever a PPP-USD cost or revenue is expressed as a
+   * share of GDP, so that numerator and denominator share the same unit. The
+   * platform's entitlement floor is denominated in PPP-USD, so comparing a
+   * PPP-USD cost against a *nominal*-USD GDP would inflate every "% of GDP"
+   * figure for lower-income countries by roughly the PPP gap.
+   * World Bank indicator NY.GDP.PCAP.PP.CD.
+   */
+  gdpPerCapitaPppUsd: number;
   /** GNI per capita, Atlas method, current USD */
   gniPerCapitaUsd: number;
   /** PPP conversion factor (LCU per international $) */

@@ -9,6 +9,7 @@ const kenya: Country = {
   name: 'Kenya',
   stats: {
     gdpPerCapitaUsd: 2099,
+    gdpPerCapitaPppUsd: 6540,
     gniPerCapitaUsd: 2010,
     pppConversionFactor: 49.37,
     giniIndex: 38.7,
@@ -22,6 +23,7 @@ const germany: Country = {
   name: 'Germany',
   stats: {
     gdpPerCapitaUsd: 51384,
+    gdpPerCapitaPppUsd: 67364,
     gniPerCapitaUsd: 51640,
     pppConversionFactor: 0.78,
     giniIndex: 31.7,
@@ -106,8 +108,8 @@ describe('calculateSimulation', () => {
 
   it('calculates GDP percentage', () => {
     const result = calculateSimulation(kenya, defaultParams, DATA_VERSION);
-    // annualPppUsd / (gdpPerCapitaUsd × population) × 100
-    const gdpTotal = kenya.stats.gdpPerCapitaUsd * kenya.stats.population;
+    // annualPppUsd (PPP) / (gdpPerCapitaPppUsd × population) × 100 — both PPP
+    const gdpTotal = kenya.stats.gdpPerCapitaPppUsd * kenya.stats.population;
     const expected = (result.simulation.cost.annualPppUsd / gdpTotal) * 100;
     expect(result.simulation.cost.asPercentOfGdp).toBeCloseTo(expected, 1);
   });

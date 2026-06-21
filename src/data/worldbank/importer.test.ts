@@ -11,6 +11,7 @@ const testConfig: ImporterConfig = {
   source: { baseUrl: 'https://api.worldbank.org/v2', format: 'json', perPage: 300, retries: 0, retryDelayMs: 0 },
   indicators: {
     gdpPerCapitaUsd: 'NY.GDP.PCAP.CD',
+    gdpPerCapitaPppUsd: 'NY.GDP.PCAP.PP.CD',
     gniPerCapitaUsd: 'NY.GNP.PCAP.CD',
     pppConversionFactor: 'PA.NUS.PPP',
     giniIndex: 'SI.POV.GINI',
@@ -39,17 +40,18 @@ const testConfig: ImporterConfig = {
   output: {
     path: '../countries.json',
     dataVersionPrefix: 'worldbank',
-    roundDecimals: { gdpPerCapitaUsd: 0, gniPerCapitaUsd: 0, pppConversionFactor: 2, giniIndex: 1, population: 0 },
+    roundDecimals: { gdpPerCapitaUsd: 0, gdpPerCapitaPppUsd: 0, gniPerCapitaUsd: 0, pppConversionFactor: 2, giniIndex: 1, population: 0 },
   },
   validation: { minCountries: 1, requiredIncomeGroups: ['HIC', 'LMC'], giniRange: [0, 100] },
 };
 
-function makeRaw(iso2: string, name: string, gdp: number, gni: number, ppp: number, gini: number | null, pop: number): RawCountryData {
+function makeRaw(iso2: string, name: string, gdp: number, gni: number, ppp: number, gini: number | null, pop: number, gdpPpp?: number): RawCountryData {
   return {
     iso2Code: iso2,
     countryName: name,
     values: {
       gdpPerCapitaUsd: { value: gdp, year: '2023' },
+      gdpPerCapitaPppUsd: { value: gdpPpp ?? gdp, year: '2023' },
       gniPerCapitaUsd: { value: gni, year: '2023' },
       pppConversionFactor: { value: ppp, year: '2023' },
       giniIndex: gini !== null ? { value: gini, year: '2020' } : undefined,
@@ -189,12 +191,12 @@ describe('validateOutput', () => {
     {
       code: 'DE',
       name: 'Germany',
-      stats: { gdpPerCapitaUsd: 51384, gniPerCapitaUsd: 51640, pppConversionFactor: 0.78, giniIndex: 31.7, population: 83800000, incomeGroup: 'HIC' },
+      stats: { gdpPerCapitaUsd: 51384, gdpPerCapitaPppUsd: 67364, gniPerCapitaUsd: 51640, pppConversionFactor: 0.78, giniIndex: 31.7, population: 83800000, incomeGroup: 'HIC' },
     },
     {
       code: 'NG',
       name: 'Nigeria',
-      stats: { gdpPerCapitaUsd: 2184, gniPerCapitaUsd: 2140, pppConversionFactor: 168.5, giniIndex: 35.1, population: 218500000, incomeGroup: 'LMC' },
+      stats: { gdpPerCapitaUsd: 2184, gdpPerCapitaPppUsd: 18305, gniPerCapitaUsd: 2140, pppConversionFactor: 168.5, giniIndex: 35.1, population: 218500000, incomeGroup: 'LMC' },
     },
   ];
 
@@ -297,6 +299,7 @@ describe('transformCountries — optional fields', () => {
         countryName: 'Kenya',
         values: {
           gdpPerCapitaUsd: { value: 2099, year: '2023' },
+          gdpPerCapitaPppUsd: { value: 6540, year: '2023' },
           gniPerCapitaUsd: { value: 2010, year: '2023' },
           pppConversionFactor: { value: 49.37, year: '2023' },
           giniIndex: { value: 38.7, year: '2020' },
@@ -323,6 +326,7 @@ describe('transformCountries — optional fields', () => {
         countryName: 'Kenya',
         values: {
           gdpPerCapitaUsd: { value: 2099, year: '2023' },
+          gdpPerCapitaPppUsd: { value: 6540, year: '2023' },
           gniPerCapitaUsd: { value: 2010, year: '2023' },
           pppConversionFactor: { value: 49.37, year: '2023' },
           giniIndex: { value: 38.7, year: '2020' },

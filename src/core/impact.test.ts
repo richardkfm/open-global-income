@@ -15,6 +15,7 @@ const kenya: Country = {
   name: 'Kenya',
   stats: {
     gdpPerCapitaUsd: 2099,
+    gdpPerCapitaPppUsd: 6540,
     gniPerCapitaUsd: 2010,
     pppConversionFactor: 49.37,
     giniIndex: 38.7,
@@ -31,6 +32,7 @@ const germany: Country = {
   name: 'Germany',
   stats: {
     gdpPerCapitaUsd: 51384,
+    gdpPerCapitaPppUsd: 67364,
     gniPerCapitaUsd: 51640,
     pppConversionFactor: 0.78,
     giniIndex: 31.7,
@@ -46,6 +48,7 @@ const southAfrica: Country = {
   name: 'South Africa',
   stats: {
     gdpPerCapitaUsd: 6001,
+    gdpPerCapitaPppUsd: 15266,
     gniPerCapitaUsd: 6440,
     pppConversionFactor: 7.56,
     giniIndex: 63.0,
@@ -61,6 +64,7 @@ const minimal: Country = {
   name: 'Test',
   stats: {
     gdpPerCapitaUsd: 1000,
+    gdpPerCapitaPppUsd: 3000,
     gniPerCapitaUsd: 950,
     pppConversionFactor: 40,
     giniIndex: null,
@@ -74,7 +78,7 @@ function makeSimulation(country: Country, coverage: number, durationMonths = 12)
   const recipientCount = Math.round(country.stats.population * coverage);
   const localPerMonth = Math.round(floor * country.stats.pppConversionFactor * 100) / 100;
   const annualPppUsd = recipientCount * floor * durationMonths;
-  const gdpTotal = country.stats.gdpPerCapitaUsd * country.stats.population;
+  const gdpTotal = country.stats.gdpPerCapitaPppUsd * country.stats.population;
   return {
     country: { code: country.code, name: country.name, population: country.stats.population },
     simulation: {

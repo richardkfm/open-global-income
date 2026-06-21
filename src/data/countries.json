@@ -12,6 +12,7 @@
       "name": "United States",
       "stats": {
         "gdpPerCapitaUsd": 76330,
+        "gdpPerCapitaPppUsd": 77482,
         "gniPerCapitaUsd": 76370,
         "pppConversionFactor": 1.0,
         "giniIndex": 39.8,
@@ -41,6 +42,7 @@
       "name": "Germany",
       "stats": {
         "gdpPerCapitaUsd": 51384,
+        "gdpPerCapitaPppUsd": 67364,
         "gniPerCapitaUsd": 51640,
         "pppConversionFactor": 0.78,
         "giniIndex": 31.7,
@@ -70,6 +72,7 @@
       "name": "United Kingdom",
       "stats": {
         "gdpPerCapitaUsd": 46125,
+        "gdpPerCapitaPppUsd": 53716,
         "gniPerCapitaUsd": 46370,
         "pppConversionFactor": 0.69,
         "giniIndex": 35.1,
@@ -99,6 +102,7 @@
       "name": "France",
       "stats": {
         "gdpPerCapitaUsd": 42330,
+        "gdpPerCapitaPppUsd": 57437,
         "gniPerCapitaUsd": 42860,
         "pppConversionFactor": 0.73,
         "giniIndex": 32.4,
@@ -128,6 +132,7 @@
       "name": "Japan",
       "stats": {
         "gdpPerCapitaUsd": 33815,
+        "gdpPerCapitaPppUsd": 54166,
         "gniPerCapitaUsd": 42440,
         "pppConversionFactor": 104.2,
         "giniIndex": 32.9,
@@ -157,6 +162,7 @@
       "name": "Canada",
       "stats": {
         "gdpPerCapitaUsd": 52722,
+        "gdpPerCapitaPppUsd": 62686,
         "gniPerCapitaUsd": 52960,
         "pppConversionFactor": 1.26,
         "giniIndex": 33.3,
@@ -186,6 +192,7 @@
       "name": "Australia",
       "stats": {
         "gdpPerCapitaUsd": 63487,
+        "gdpPerCapitaPppUsd": 70864,
         "gniPerCapitaUsd": 59700,
         "pppConversionFactor": 1.51,
         "giniIndex": 34.3,
@@ -215,6 +222,7 @@
       "name": "South Korea",
       "stats": {
         "gdpPerCapitaUsd": 32423,
+        "gdpPerCapitaPppUsd": 54623,
         "gniPerCapitaUsd": 35990,
         "pppConversionFactor": 876.6,
         "giniIndex": 31.4,
@@ -244,6 +252,7 @@
       "name": "Italy",
       "stats": {
         "gdpPerCapitaUsd": 34085,
+        "gdpPerCapitaPppUsd": 52340,
         "gniPerCapitaUsd": 36560,
         "pppConversionFactor": 0.66,
         "giniIndex": 35.2,
@@ -273,6 +282,7 @@
       "name": "Spain",
       "stats": {
         "gdpPerCapitaUsd": 29674,
+        "gdpPerCapitaPppUsd": 48690,
         "gniPerCapitaUsd": 30030,
         "pppConversionFactor": 0.65,
         "giniIndex": 33.0,
@@ -302,6 +312,7 @@
       "name": "Netherlands",
       "stats": {
         "gdpPerCapitaUsd": 57025,
+        "gdpPerCapitaPppUsd": 72779,
         "gniPerCapitaUsd": 56570,
         "pppConversionFactor": 0.79,
         "giniIndex": 28.5,
@@ -331,6 +342,7 @@
       "name": "Switzerland",
       "stats": {
         "gdpPerCapitaUsd": 92434,
+        "gdpPerCapitaPppUsd": 85768,
         "gniPerCapitaUsd": 90600,
         "pppConversionFactor": 1.21,
         "giniIndex": 33.1,
@@ -360,6 +372,7 @@
       "name": "Sweden",
       "stats": {
         "gdpPerCapitaUsd": 55543,
+        "gdpPerCapitaPppUsd": 69864,
         "gniPerCapitaUsd": 59440,
         "pppConversionFactor": 9.46,
         "giniIndex": 30.0,
@@ -389,6 +402,7 @@
       "name": "Norway",
       "stats": {
         "gdpPerCapitaUsd": 87925,
+        "gdpPerCapitaPppUsd": 103377,
         "gniPerCapitaUsd": 87210,
         "pppConversionFactor": 10.73,
         "giniIndex": 27.7,
@@ -418,6 +432,7 @@
       "name": "Singapore",
       "stats": {
         "gdpPerCapitaUsd": 65233,
+        "gdpPerCapitaPppUsd": 108409,
         "gniPerCapitaUsd": 64010,
         "pppConversionFactor": 0.84,
         "giniIndex": null,
@@ -447,6 +462,7 @@
       "name": "Israel",
       "stats": {
         "gdpPerCapitaUsd": 52170,
+        "gdpPerCapitaPppUsd": 55116,
         "gniPerCapitaUsd": 49840,
         "pppConversionFactor": 3.73,
         "giniIndex": 39.0,
@@ -476,6 +492,7 @@
       "name": "China",
       "stats": {
         "gdpPerCapitaUsd": 12720,
+        "gdpPerCapitaPppUsd": 25917,
         "gniPerCapitaUsd": 12850,
         "pppConversionFactor": 3.99,
         "giniIndex": 38.2,
@@ -505,6 +522,7 @@
       "name": "Brazil",
       "stats": {
         "gdpPerCapitaUsd": 8920,
+        "gdpPerCapitaPppUsd": 19326,
         "gniPerCapitaUsd": 9140,
         "pppConversionFactor": 2.55,
         "giniIndex": 48.9,
@@ -534,6 +552,7 @@
       "name": "Mexico",
       "stats": {
         "gdpPerCapitaUsd": 10820,
+        "gdpPerCapitaPppUsd": 19973,
         "gniPerCapitaUsd": 10820,
         "pppConversionFactor": 9.35,
         "giniIndex": 45.4,
@@ -563,6 +582,7 @@
       "name": "Turkey",
       "stats": {
         "gdpPerCapitaUsd": 10674,
+        "gdpPerCapitaPppUsd": 30652,
         "gniPerCapitaUsd": 10940,
         "pppConversionFactor": 5.14,
         "giniIndex": 43.5,
@@ -592,6 +612,7 @@
       "name": "Thailand",
       "stats": {
         "gdpPerCapitaUsd": 7233,
+        "gdpPerCapitaPppUsd": 24330,
         "gniPerCapitaUsd": 7060,
         "pppConversionFactor": 12.05,
         "giniIndex": 34.9,
@@ -621,6 +642,7 @@
       "name": "Malaysia",
       "stats": {
         "gdpPerCapitaUsd": 11993,
+        "gdpPerCapitaPppUsd": 39167,
         "gniPerCapitaUsd": 11780,
         "pppConversionFactor": 1.58,
         "giniIndex": 41.2,
@@ -650,6 +672,7 @@
       "name": "South Africa",
       "stats": {
         "gdpPerCapitaUsd": 6190,
+        "gdpPerCapitaPppUsd": 15266,
         "gniPerCapitaUsd": 6010,
         "pppConversionFactor": 6.76,
         "giniIndex": 63.0,
@@ -679,6 +702,7 @@
       "name": "Colombia",
       "stats": {
         "gdpPerCapitaUsd": 6630,
+        "gdpPerCapitaPppUsd": 18711,
         "gniPerCapitaUsd": 6350,
         "pppConversionFactor": 1714.0,
         "giniIndex": 51.5,
@@ -708,6 +732,7 @@
       "name": "Argentina",
       "stats": {
         "gdpPerCapitaUsd": 13650,
+        "gdpPerCapitaPppUsd": 29735,
         "gniPerCapitaUsd": 12500,
         "pppConversionFactor": 94.5,
         "giniIndex": 42.3,
@@ -737,6 +762,7 @@
       "name": "Peru",
       "stats": {
         "gdpPerCapitaUsd": 7126,
+        "gdpPerCapitaPppUsd": 15009,
         "gniPerCapitaUsd": 6960,
         "pppConversionFactor": 1.73,
         "giniIndex": 40.2,
@@ -766,6 +792,7 @@
       "name": "India",
       "stats": {
         "gdpPerCapitaUsd": 2485,
+        "gdpPerCapitaPppUsd": 10291,
         "gniPerCapitaUsd": 2390,
         "pppConversionFactor": 22.88,
         "giniIndex": 35.7,
@@ -795,6 +822,7 @@
       "name": "Indonesia",
       "stats": {
         "gdpPerCapitaUsd": 4788,
+        "gdpPerCapitaPppUsd": 15989,
         "gniPerCapitaUsd": 4580,
         "pppConversionFactor": 5145.0,
         "giniIndex": 37.9,
@@ -824,6 +852,7 @@
       "name": "Philippines",
       "stats": {
         "gdpPerCapitaUsd": 3498,
+        "gdpPerCapitaPppUsd": 10353,
         "gniPerCapitaUsd": 3950,
         "pppConversionFactor": 19.07,
         "giniIndex": 42.3,
@@ -853,6 +882,7 @@
       "name": "Vietnam",
       "stats": {
         "gdpPerCapitaUsd": 4164,
+        "gdpPerCapitaPppUsd": 14464,
         "gniPerCapitaUsd": 4010,
         "pppConversionFactor": 8157.0,
         "giniIndex": 36.8,
@@ -882,6 +912,7 @@
       "name": "Egypt",
       "stats": {
         "gdpPerCapitaUsd": 3699,
+        "gdpPerCapitaPppUsd": 21156,
         "gniPerCapitaUsd": 3780,
         "pppConversionFactor": 4.87,
         "giniIndex": 31.5,
@@ -911,6 +942,7 @@
       "name": "Bangladesh",
       "stats": {
         "gdpPerCapitaUsd": 2688,
+        "gdpPerCapitaPppUsd": 9999,
         "gniPerCapitaUsd": 2830,
         "pppConversionFactor": 34.41,
         "giniIndex": 32.4,
@@ -940,6 +972,7 @@
       "name": "Pakistan",
       "stats": {
         "gdpPerCapitaUsd": 1505,
+        "gdpPerCapitaPppUsd": 6363,
         "gniPerCapitaUsd": 1560,
         "pppConversionFactor": 67.04,
         "giniIndex": 29.6,
@@ -969,6 +1002,7 @@
       "name": "Kenya",
       "stats": {
         "gdpPerCapitaUsd": 2099,
+        "gdpPerCapitaPppUsd": 6540,
         "gniPerCapitaUsd": 2010,
         "pppConversionFactor": 49.37,
         "giniIndex": 38.7,
@@ -998,6 +1032,7 @@
       "name": "Ghana",
       "stats": {
         "gdpPerCapitaUsd": 2363,
+        "gdpPerCapitaPppUsd": 7927,
         "gniPerCapitaUsd": 2350,
         "pppConversionFactor": 3.38,
         "giniIndex": 43.5,
@@ -1027,6 +1062,7 @@
       "name": "Ukraine",
       "stats": {
         "gdpPerCapitaUsd": 4534,
+        "gdpPerCapitaPppUsd": 15606,
         "gniPerCapitaUsd": 4270,
         "pppConversionFactor": 10.22,
         "giniIndex": 25.6,
@@ -1056,6 +1092,7 @@
       "name": "Morocco",
       "stats": {
         "gdpPerCapitaUsd": 3527,
+        "gdpPerCapitaPppUsd": 8845,
         "gniPerCapitaUsd": 3250,
         "pppConversionFactor": 3.67,
         "giniIndex": 39.5,
@@ -1085,6 +1122,7 @@
       "name": "Myanmar",
       "stats": {
         "gdpPerCapitaUsd": 1093,
+        "gdpPerCapitaPppUsd": 4823,
         "gniPerCapitaUsd": 1050,
         "pppConversionFactor": 465.0,
         "giniIndex": 30.7,
@@ -1114,6 +1152,7 @@
       "name": "Nigeria",
       "stats": {
         "gdpPerCapitaUsd": 2184,
+        "gdpPerCapitaPppUsd": 18305,
         "gniPerCapitaUsd": 2140,
         "pppConversionFactor": 168.5,
         "giniIndex": 35.1,
@@ -1143,6 +1182,7 @@
       "name": "Ethiopia",
       "stats": {
         "gdpPerCapitaUsd": 1027,
+        "gdpPerCapitaPppUsd": 2978,
         "gniPerCapitaUsd": 1020,
         "pppConversionFactor": 17.29,
         "giniIndex": 35.0,
@@ -1172,6 +1212,7 @@
       "name": "DR Congo",
       "stats": {
         "gdpPerCapitaUsd": 654,
+        "gdpPerCapitaPppUsd": 1834,
         "gniPerCapitaUsd": 590,
         "pppConversionFactor": 984.0,
         "giniIndex": 42.1,
@@ -1201,6 +1242,7 @@
       "name": "Mozambique",
       "stats": {
         "gdpPerCapitaUsd": 539,
+        "gdpPerCapitaPppUsd": 1400,
         "gniPerCapitaUsd": 480,
         "pppConversionFactor": 26.5,
         "giniIndex": 54.0,
@@ -1230,6 +1272,7 @@
       "name": "Uganda",
       "stats": {
         "gdpPerCapitaUsd": 964,
+        "gdpPerCapitaPppUsd": 2927,
         "gniPerCapitaUsd": 930,
         "pppConversionFactor": 1258.0,
         "giniIndex": 42.7,
@@ -1259,6 +1302,7 @@
       "name": "Afghanistan",
       "stats": {
         "gdpPerCapitaUsd": 355,
+        "gdpPerCapitaPppUsd": 1889,
         "gniPerCapitaUsd": 380,
         "pppConversionFactor": 25.07,
         "giniIndex": null,
@@ -1288,6 +1332,7 @@
       "name": "Malawi",
       "stats": {
         "gdpPerCapitaUsd": 645,
+        "gdpPerCapitaPppUsd": 2293,
         "gniPerCapitaUsd": 630,
         "pppConversionFactor": 372.0,
         "giniIndex": 44.7,
@@ -1317,6 +1362,7 @@
       "name": "Niger",
       "stats": {
         "gdpPerCapitaUsd": 533,
+        "gdpPerCapitaPppUsd": 1486,
         "gniPerCapitaUsd": 570,
         "pppConversionFactor": 237.0,
         "giniIndex": 37.3,
@@ -1346,6 +1392,7 @@
       "name": "Chad",
       "stats": {
         "gdpPerCapitaUsd": 694,
+        "gdpPerCapitaPppUsd": 1979,
         "gniPerCapitaUsd": 700,
         "pppConversionFactor": 232.0,
         "giniIndex": 43.3,
@@ -1375,6 +1422,7 @@
       "name": "Burundi",
       "stats": {
         "gdpPerCapitaUsd": 259,
+        "gdpPerCapitaPppUsd": 1410,
         "gniPerCapitaUsd": 240,
         "pppConversionFactor": 741.0,
         "giniIndex": 38.6,
@@ -1404,6 +1452,7 @@
       "name": "Sierra Leone",
       "stats": {
         "gdpPerCapitaUsd": 527,
+        "gdpPerCapitaPppUsd": 2301,
         "gniPerCapitaUsd": 490,
         "pppConversionFactor": 4578.0,
         "giniIndex": 35.7,

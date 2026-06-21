@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.34] - 2026-06-21
+
+### Fixed
+- **PPP-vs-nominal distortion in every "% of GDP" figure.** The simulation, funding, impact, and savings layers expressed a PPP-denominated cost (or revenue) as a share of *nominal*-USD GDP (`gdpTotal = gdpPerCapitaUsd × population`), inflating the cost-as-%-of-GDP headline for low-income countries by roughly the PPP gap (~3× for Kenya, ~8× for Nigeria). Numerator and denominator now share the PPP unit. Kenya's 20%-coverage headline drops from a distorted 24.0% to a consistent 7.7% of GDP; Nigeria from 23.1% to 2.8%; Germany barely moves (0.98% → 0.75%).
+  - `calculateSimulation` and `estimateFiscalMultiplier` now divide by PPP GDP.
+  - Cost-savings baselines (`src/core/savings.ts`) and the admin 10-year projection chart (`src/admin/views/simulate.ts`) use the PPP GDP base.
+  - Funding mechanisms now yield genuine PPP-USD revenue: GDP-share mechanisms (VAT, wealth, FTT, automation, redirect, fiscal context) use the PPP GDP base; the income-tax surcharge (nominal GNI) and carbon tax (physical emissions on nominal GDP) convert to PPP via the country's PPP/nominal ratio. Local-currency conversions (`× pppConversionFactor`) are therefore now unit-correct.
+
+### Added
+- **`gdpPerCapitaPppUsd`** on every country (`CountryStats`) — GDP per capita in current international dollars (PPP), World Bank indicator `NY.GDP.PCAP.PP.CD`. Seeded for all 49 countries by anchoring the World Bank PPP/nominal ratio (latest common year) to the existing snapshot's nominal GDP, so the US (PPP numeraire) stays ≈ nominal. Wired into the World Bank importer (config, transformer, required-field set) so future refreshes populate it.
+
 ## [0.1.33] - 2026-06-02
 
 ### Added

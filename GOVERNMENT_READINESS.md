@@ -26,7 +26,7 @@ authoritative KYC, and research-grade experimental measurement.
 | # | Stage (what a government actually does) | OGI support | Verdict |
 |---|------------------------------------------|-------------|---------|
 | 1 | **Feasibility** — where, and how much per person? | Data + Calculation: 49 countries, regional cost-of-living (`/v1/income/calc`, `/v1/income/calc/regional`) | ✅ Ready |
-| 2 | **Budget projection** — what will it cost? | Simulation: coverage %, targeting, duration; single, multi-country compare, regional | ✅ Ready *(see %-of-GDP caveat)* |
+| 2 | **Budget projection** — what will it cost? | Simulation: coverage %, targeting, duration; single, multi-country compare, regional | ✅ Ready |
 | 3 | **Funding** — how do we pay for it? | 7 mechanism calculators + fiscal-context analysis | ⚠️ Works; assumptions optimistic, no uncertainty ranges |
 | 4 | **Impact** — what will it achieve? | 4-dimension model + policy brief with citations | ⚠️ Transparent, but deterministic point estimates only |
 | 5 | **Buy-in** — convince treasury / ministers / donors | Print-ready Program Briefs stitching sim + funding + impact | ✅ Ready |
@@ -119,19 +119,16 @@ the 0.30–0.40 that European repeals suggest) and the speculative automation ta
 
 ## Bugs & limitations to be aware of (they affect the numbers you'd quote)
 
-1. **PPP-USD is treated as nominal USD throughout — this distorts every
-   "% of GDP" figure for poorer countries.** The simulation computes cost as a
-   share of GDP by dividing a PPP-dollar cost by a *nominal*-USD GDP
-   (`src/core/simulations.ts:42-44`), and the funding module uses the same
-   convention everywhere (`gdpTotal = gdpPerCapitaUsd × population`, revenue in
-   USD then `× pppConversionFactor`). Because the two layers share the
-   convention, they are *consistent with each other* — but both **inflate the
-   cost-as-%-of-GDP headline for low-income countries** by roughly the PPP gap
-   (often ~2–3× for a country like Kenya, where $210 PPP buys far more than $210
-   nominal). This is the single most important number a treasury would quote, so
-   it matters. **It is not a one-line bug** — a correct fix requires adding a
-   PPP-GDP (or market-FX) field to the data and applying it consistently across
-   funding, simulation, and impact. Tracked in the roadmap below.
+1. **~~PPP-USD is treated as nominal USD throughout~~ — FIXED.** Previously the
+   simulation, funding, impact, and savings layers divided a PPP-denominated cost
+   by a *nominal*-USD GDP (`gdpTotal = gdpPerCapitaUsd × population`), inflating
+   the cost-as-%-of-GDP headline for low-income countries by roughly the PPP gap
+   (~3× for Kenya, ~8× for Nigeria). A `gdpPerCapitaPppUsd` field (World Bank
+   NY.GDP.PCAP.PP.CD) was added to every country and is now used as the GDP base
+   wherever a PPP-USD cost or revenue is expressed as a share of GDP. Kenya's
+   20%-coverage headline, for example, dropped from a distorted 24.0% to a
+   consistent 7.7% of GDP. Funding mechanisms now yield genuine PPP-USD revenue
+   (the income-tax surcharge and carbon tax convert via the PPP/nominal ratio).
 
 2. **Targeting filters don't change the simulated cost.** Advanced filters (age,
    income ceiling, region) are applied only "at disbursement time" and do not
@@ -166,7 +163,6 @@ list have since shipped.
 |----------|-----|----------------|-----------|
 | 🔴 P0 | **RCT rigor in the Evidence layer** | A government experiment must withstand academic scrutiny | L: randomized assignment, significance tests, confidence intervals, power analysis, survey delivery |
 | 🟡 P1 | **An authoritative verifier integration** (national-ID registry / MNO KYC) behind the existing `IdentityProvider` connectors | The connectors do offline format/checksum validation only; real enrollment needs an authoritative KYC source | M: wire one external verifier (e.g. MOSIP IDA) into the national-ID connector |
-| 🟡 P1 | **PPP-vs-nominal correction for `% of GDP`** | The headline cost figure is currently distorted for low-income countries | M: add PPP-GDP/market-FX data field, apply across funding + simulation + impact, add regression tests |
 | 🟡 P1 | **Uncertainty ranges** on funding + impact (low/central/high) | Statisticians require sensitivity analysis, not point estimates | M: thread ranges through `funding.ts` / `impact.ts` and surface inline |
 | 🟡 P1 | **Live / automated data refresh** | Stale 2019–2023 data undermines credibility; `taxBreakdown` is empty | M: wire the World Bank importer (`npm run data:update`) into the refresh button with provenance/versioning |
 | 🟢 P2 | **RBAC enforcement + user-management UI** | Institutional deployment needs least-privilege access | S–M: enforce `role` in the route guard + add user CRUD screens |
@@ -193,5 +189,5 @@ Size key: S ≈ days · M ≈ 1–2 weeks · L ≈ multi-week · XL ≈ multi-mo
 - **Do not yet rely on OGI for:** producing research-grade experimental evidence
   (no randomization / significance testing / survey delivery) — this requires the
   P0 roadmap work above.
-- **Interpret the cost-as-%-of-GDP headline with care** for low-income
-  countries until the PPP/nominal correction lands.
+- **The cost-as-%-of-GDP headline is now PPP-consistent** for all countries
+  (PPP-denominated cost over PPP GDP), so it can be quoted directly.
