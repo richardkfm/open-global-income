@@ -114,7 +114,7 @@ function estimateHealthcareSavings(
 
   const baselineHealthSpend =
     (country.stats.healthExpenditurePercentGdp ?? 5.5) / 100 *
-    (country.stats.gdpPerCapitaUsd * country.stats.population);
+    (country.stats.gdpPerCapitaPppUsd * country.stats.population);
 
   if (!adequate) {
     return {
@@ -181,7 +181,7 @@ function estimateAdministrativeSavings(
     (country.stats.socialProtectionExpenditureIloPercentGdp ??
       country.stats.socialProtectionSpendingPercentGdp ??
       6) / 100 *
-    (country.stats.gdpPerCapitaUsd * country.stats.population);
+    (country.stats.gdpPerCapitaPppUsd * country.stats.population);
 
   if (!adequate) {
     return {
@@ -250,8 +250,8 @@ function estimateCrimeJusticeSavings(
   const adequate = isTransferAdequate(floorPppUsd, countryPovertyLine.monthlyPppUsd);
   const cf = coverageFactor(coverage);
 
-  const gdpTotal = country.stats.gdpPerCapitaUsd * country.stats.population;
-  const crimeJusticeBaselineUsd = CRIMINAL_JUSTICE_COST_PCT_GDP * gdpTotal;
+  const gdpTotalPpp = country.stats.gdpPerCapitaPppUsd * country.stats.population;
+  const crimeJusticeBaselineUsd = CRIMINAL_JUSTICE_COST_PCT_GDP * gdpTotalPpp;
 
   if (!adequate) {
     return {

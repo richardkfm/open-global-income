@@ -113,9 +113,15 @@ export function calcIncomeTaxSurcharge(
 ): FundingEstimate {
   const lfp = (country.stats.laborForceParticipation ?? 60) / 100;
   const formalityFactor = INCOME_TAX_FORMALITY_FACTOR[country.stats.incomeGroup] ?? 0.60;
-  const revenueUsd =
+  // GNI is nominal USD; scale to PPP-USD by the country's PPP/nominal GDP ratio
+  // so the surcharge compares like-for-like with the PPP-denominated UBI cost.
+  const pppRatio =
+    country.stats.gdpPerCapitaUsd > 0
+      ? country.stats.gdpPerCapitaPppUsd / country.stats.gdpPerCapitaUsd
+      : 1;
+  const revenueNominalUsd =
     rate * country.stats.gniPerCapitaUsd * country.stats.population * lfp * formalityFactor;
-  const revenuePpp = revenueUsd;
+  const revenuePpp = revenueNominalUsd * pppRatio;
   const revenueLocal = revenuePpp * country.stats.pppConversionFactor;
 
   const assumptions = [
@@ -158,7 +164,9 @@ export function calcVatIncrease(
   country: Country,
   points: number,
 ): FundingEstimate {
-  const gdpTotal = country.stats.gdpPerCapitaUsd * country.stats.population;
+  // PPP-USD GDP base: a share/multiple of GDP is unit-invariant, so expressing
+  // it in PPP-USD keeps the revenue comparable to the PPP-denominated UBI cost.
+  const gdpTotal = country.stats.gdpPerCapitaPppUsd * country.stats.population;
   const currentVatShare = country.stats.taxBreakdown?.vatPercentGdp;
   const taxRevPct = country.stats.taxRevenuePercentGdp;
 
@@ -222,18 +230,27 @@ export function calcCarbonTax(
   country: Country,
   dollarPerTon: number,
 ): FundingEstimate {
-  const gdpTotal = country.stats.gdpPerCapitaUsd * country.stats.population;
+  // Emissions are a physical quantity, so they are estimated from *nominal*
+  // GDP (the intensity constant is calibrated to market-rate GDP). The carbon
+  // price then yields revenue in nominal USD, which we convert to PPP-USD via
+  // the country's PPP/nominal ratio for like-for-like comparison with the cost.
+  const gdpTotalNominal = country.stats.gdpPerCapitaUsd * country.stats.population;
   const co2PerThousand = CO2_PER_1000_GDP[country.stats.incomeGroup] ?? 0.3;
   // co2PerThousand is tons of CO2 per $1,000 of GDP
-  // gdpTotal / 1000 = number of $1,000-of-GDP units → result is in tons
-  const totalEmissionsTons = (gdpTotal / 1000) * co2PerThousand;
-  const revenueUsd = dollarPerTon * totalEmissionsTons;
+  // gdpTotalNominal / 1000 = number of $1,000-of-GDP units → result is in tons
+  const totalEmissionsTons = (gdpTotalNominal / 1000) * co2PerThousand;
+  const revenueNominalUsd = dollarPerTon * totalEmissionsTons;
+  const pppRatio =
+    country.stats.gdpPerCapitaUsd > 0
+      ? country.stats.gdpPerCapitaPppUsd / country.stats.gdpPerCapitaUsd
+      : 1;
+  const revenuePppUsd = revenueNominalUsd * pppRatio;
 
   return {
     mechanism: 'carbon_tax',
     label: `$${dollarPerTon}/ton carbon tax`,
-    annualRevenueLocal: Math.round(revenueUsd * country.stats.pppConversionFactor),
-    annualRevenuePppUsd: Math.round(revenueUsd),
+    annualRevenueLocal: Math.round(revenuePppUsd * country.stats.pppConversionFactor),
+    annualRevenuePppUsd: Math.round(revenuePppUsd),
     coversPercentOfUbiCost: 0,
     assumptions: [
       `Carbon tax of $${dollarPerTon} per metric ton of CO2`,
@@ -252,7 +269,9 @@ export function calcWealthTax(
   country: Country,
   rate: number,
 ): FundingEstimate {
-  const gdpTotal = country.stats.gdpPerCapitaUsd * country.stats.population;
+  // PPP-USD GDP base: a share/multiple of GDP is unit-invariant, so expressing
+  // it in PPP-USD keeps the revenue comparable to the PPP-denominated UBI cost.
+  const gdpTotal = country.stats.gdpPerCapitaPppUsd * country.stats.population;
   const wealthRatio = WEALTH_TO_GDP_RATIO[country.stats.incomeGroup] ?? 2.0;
   const collectionFactor = WEALTH_TAX_COLLECTION_FACTOR[country.stats.incomeGroup] ?? 0.30;
   const totalWealth = gdpTotal * wealthRatio;
@@ -282,7 +301,9 @@ export function calcFinancialTransactionTax(
   country: Country,
   rate: number,
 ): FundingEstimate {
-  const gdpTotal = country.stats.gdpPerCapitaUsd * country.stats.population;
+  // PPP-USD GDP base: a share/multiple of GDP is unit-invariant, so expressing
+  // it in PPP-USD keeps the revenue comparable to the PPP-denominated UBI cost.
+  const gdpTotal = country.stats.gdpPerCapitaPppUsd * country.stats.population;
   const turnoverPct = STOCK_TURNOVER_PCT_GDP[country.stats.incomeGroup] ?? 10;
   const turnoverUsd = (turnoverPct / 100) * gdpTotal;
   const revenueUsd = rate * turnoverUsd;
@@ -321,7 +342,9 @@ export function calcAutomationTax(
   country: Country,
   rate: number,
 ): FundingEstimate {
-  const gdpTotal = country.stats.gdpPerCapitaUsd * country.stats.population;
+  // PPP-USD GDP base: a share/multiple of GDP is unit-invariant, so expressing
+  // it in PPP-USD keeps the revenue comparable to the PPP-denominated UBI cost.
+  const gdpTotal = country.stats.gdpPerCapitaPppUsd * country.stats.population;
   const automationShare = AUTOMATION_GDP_SHARE[country.stats.incomeGroup] ?? 0.25;
   const taxableBase = gdpTotal * automationShare;
   const revenueUsd = rate * taxableBase;
@@ -352,7 +375,9 @@ export function calcRedirectSocialSpending(
   country: Country,
   percent: number,
 ): FundingEstimate {
-  const gdpTotal = country.stats.gdpPerCapitaUsd * country.stats.population;
+  // PPP-USD GDP base: a share/multiple of GDP is unit-invariant, so expressing
+  // it in PPP-USD keeps the revenue comparable to the PPP-denominated UBI cost.
+  const gdpTotal = country.stats.gdpPerCapitaPppUsd * country.stats.population;
   const socialPct =
     country.stats.socialProtectionExpenditureIloPercentGdp ??
     country.stats.socialProtectionSpendingPercentGdp;
@@ -421,7 +446,9 @@ export function calculateFiscalContext(
   country: Country,
   annualUbiCostPppUsd: number,
 ): FiscalContext {
-  const gdpTotal = country.stats.gdpPerCapitaUsd * country.stats.population;
+  // PPP-USD GDP base: a share/multiple of GDP is unit-invariant, so expressing
+  // it in PPP-USD keeps the revenue comparable to the PPP-denominated UBI cost.
+  const gdpTotal = country.stats.gdpPerCapitaPppUsd * country.stats.population;
   const taxRev = country.stats.taxRevenuePercentGdp;
   const socialSpend =
     country.stats.socialProtectionExpenditureIloPercentGdp ??

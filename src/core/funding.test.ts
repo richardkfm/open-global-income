@@ -18,6 +18,7 @@ const kenya: Country = {
   name: 'Kenya',
   stats: {
     gdpPerCapitaUsd: 2099,
+    gdpPerCapitaPppUsd: 6540,
     gniPerCapitaUsd: 2010,
     pppConversionFactor: 49.37,
     giniIndex: 38.7,
@@ -42,6 +43,7 @@ const kenyaMinimal: Country = {
   name: 'Kenya',
   stats: {
     gdpPerCapitaUsd: 2099,
+    gdpPerCapitaPppUsd: 6540,
     gniPerCapitaUsd: 2010,
     pppConversionFactor: 49.37,
     giniIndex: 38.7,
@@ -55,6 +57,7 @@ const germany: Country = {
   name: 'Germany',
   stats: {
     gdpPerCapitaUsd: 51384,
+    gdpPerCapitaPppUsd: 67364,
     gniPerCapitaUsd: 51640,
     pppConversionFactor: 0.78,
     giniIndex: 31.7,
@@ -87,17 +90,20 @@ describe('calcIncomeTaxSurcharge', () => {
   it('calculates revenue from income tax surcharge', () => {
     const est = calcIncomeTaxSurcharge(kenya, 0.03);
     expect(est.mechanism).toBe('income_tax_surcharge');
-    // 0.03 × 2010 × 54030000 × 0.723 × 0.50 (LMC formality) ≈ 1,178,XXX,XXX
-    expect(est.annualRevenuePppUsd).toBeGreaterThan(1_000_000_000);
-    expect(est.annualRevenuePppUsd).toBeLessThan(2_000_000_000);
+    // 0.03 × 2010 × 54030000 × 0.723 × 0.50 (LMC formality) ≈ 1.18e9 nominal,
+    // then × PPP/nominal ratio (6540/2099 ≈ 3.12) ≈ 3.67e9 PPP-USD
+    expect(est.annualRevenuePppUsd).toBeGreaterThan(3_000_000_000);
+    expect(est.annualRevenuePppUsd).toBeLessThan(4_000_000_000);
     expect(est.annualRevenueLocal).toBeGreaterThan(0);
     expect(est.assumptions.some((a) => a.includes('formal'))).toBe(true);
   });
 
   it('falls back to 60% LFP when data missing', () => {
     const est = calcIncomeTaxSurcharge(kenyaMinimal, 0.03);
-    // 0.03 × 2010 × 54030000 × 0.60 × 0.50 (LMC formality)
-    const expected = 0.03 * 2010 * 54030000 * 0.6 * 0.50;
+    // 0.03 × 2010 × 54030000 × 0.60 × 0.50 (LMC formality), in nominal USD,
+    // scaled to PPP-USD by the country's PPP/nominal GDP ratio.
+    const ratio = kenyaMinimal.stats.gdpPerCapitaPppUsd / kenyaMinimal.stats.gdpPerCapitaUsd;
+    const expected = 0.03 * 2010 * 54030000 * 0.6 * 0.50 * ratio;
     expect(est.annualRevenuePppUsd).toBe(Math.round(expected));
     expect(est.assumptions.some((a) => a.includes('estimated'))).toBe(true);
   });
@@ -115,6 +121,7 @@ describe('calcIncomeTaxSurcharge', () => {
       name: 'Test LIC',
       stats: {
         gdpPerCapitaUsd: 600,
+        gdpPerCapitaPppUsd: 1800,
         gniPerCapitaUsd: 550,
         pppConversionFactor: 300,
         giniIndex: 40,
@@ -142,7 +149,7 @@ describe('calcVatIncrease', () => {
 
   it('applies behavioral discount — revenue is below naive linear amount', () => {
     const est = calcVatIncrease(kenya, 2);
-    const gdp = kenya.stats.gdpPerCapitaUsd * kenya.stats.population;
+    const gdp = kenya.stats.gdpPerCapitaPppUsd * kenya.stats.population;
     // Naive linear: (2/15) × 0.048 × gdp; with 20% discount should be 80% of that
     const naiveLinear = (2 / 15) * (4.8 / 100) * gdp;
     expect(est.annualRevenuePppUsd).toBeLessThan(naiveLinear);
@@ -173,7 +180,7 @@ describe('calcCarbonTax', () => {
 
   it('produces plausible revenue well below GDP', () => {
     const est = calcCarbonTax(kenya, 25);
-    const gdp = kenya.stats.gdpPerCapitaUsd * kenya.stats.population;
+    const gdp = kenya.stats.gdpPerCapitaPppUsd * kenya.stats.population;
     // $25/ton carbon tax should raise well under 5% of GDP
     expect(est.annualRevenuePppUsd).toBeLessThan(gdp * 0.05);
     // and more than a trivial amount (> $100M)
@@ -192,7 +199,7 @@ describe('calcWealthTax', () => {
   it('calculates wealth tax revenue with collection adjustment', () => {
     const est = calcWealthTax(kenya, 0.01);
     expect(est.mechanism).toBe('wealth_tax');
-    const gdp = kenya.stats.gdpPerCapitaUsd * kenya.stats.population;
+    const gdp = kenya.stats.gdpPerCapitaPppUsd * kenya.stats.population;
     // LMC: wealth ratio 1.8x, collection factor 0.25
     const expected = 0.01 * gdp * 1.8 * 0.25;
     expect(est.annualRevenuePppUsd).toBe(Math.round(expected));
@@ -203,8 +210,8 @@ describe('calcWealthTax', () => {
     const estKe = calcWealthTax(kenya, 0.01);
     const estDe = calcWealthTax(germany, 0.01);
     // Germany (HIC, ratio 4.5x, collection 0.55) should yield more per GDP than Kenya (LMC, 1.8x, 0.25)
-    const ratioKe = estKe.annualRevenuePppUsd / (kenya.stats.gdpPerCapitaUsd * kenya.stats.population);
-    const ratioDe = estDe.annualRevenuePppUsd / (germany.stats.gdpPerCapitaUsd * germany.stats.population);
+    const ratioKe = estKe.annualRevenuePppUsd / (kenya.stats.gdpPerCapitaPppUsd * kenya.stats.population);
+    const ratioDe = estDe.annualRevenuePppUsd / (germany.stats.gdpPerCapitaPppUsd * germany.stats.population);
     expect(ratioDe).toBeGreaterThan(ratioKe);
   });
 });
@@ -222,7 +229,7 @@ describe('calcAutomationTax', () => {
   it('calculates automation tax revenue for LMC', () => {
     const est = calcAutomationTax(kenya, 0.03);
     expect(est.mechanism).toBe('automation_tax');
-    const gdp = kenya.stats.gdpPerCapitaUsd * kenya.stats.population;
+    const gdp = kenya.stats.gdpPerCapitaPppUsd * kenya.stats.population;
     const expected = 0.03 * gdp * 0.25; // LMC automation share
     expect(est.annualRevenuePppUsd).toBe(Math.round(expected));
     expect(est.label).toContain('3.0%');
@@ -232,8 +239,8 @@ describe('calcAutomationTax', () => {
     const estKe = calcAutomationTax(kenya, 0.03);
     const estDe = calcAutomationTax(germany, 0.03);
     // Germany (HIC, 45% share) should raise relatively more per GDP than Kenya (LMC, 25%)
-    const ratioKe = estKe.annualRevenuePppUsd / (kenya.stats.gdpPerCapitaUsd * kenya.stats.population);
-    const ratioDe = estDe.annualRevenuePppUsd / (germany.stats.gdpPerCapitaUsd * germany.stats.population);
+    const ratioKe = estKe.annualRevenuePppUsd / (kenya.stats.gdpPerCapitaPppUsd * kenya.stats.population);
+    const ratioDe = estDe.annualRevenuePppUsd / (germany.stats.gdpPerCapitaPppUsd * germany.stats.population);
     expect(ratioDe).toBeGreaterThan(ratioKe);
   });
 
@@ -267,7 +274,7 @@ describe('calcRedirectSocialSpending', () => {
 
   it('redirecting 100% equals total social spending', () => {
     const est100 = calcRedirectSocialSpending(kenya, 1.0);
-    const gdp = kenya.stats.gdpPerCapitaUsd * kenya.stats.population;
+    const gdp = kenya.stats.gdpPerCapitaPppUsd * kenya.stats.population;
     const socialSpend = Math.round((2.3 / 100) * gdp);
     expect(est100.annualRevenuePppUsd).toBe(socialSpend);
   });
@@ -288,7 +295,10 @@ describe('calculateFiscalContext', () => {
     expect(ctx.totalTaxRevenue.percentGdp).toBe(16.1);
     expect(ctx.totalTaxRevenue.absolutePppUsd).toBeGreaterThan(0);
     expect(ctx.governmentDebt.percentGdp).toBe(68.2);
-    expect(ctx.ubiAsPercentOfTaxRevenue).toBeGreaterThan(100);
+    // Tax revenue is 16.1% of PPP GDP, so the UBI cost is ~48% of it — both PPP-USD.
+    expect(ctx.ubiAsPercentOfTaxRevenue).toBeGreaterThan(40);
+    expect(ctx.ubiAsPercentOfTaxRevenue).toBeLessThan(60);
+    // Social spending is only 2.3% of GDP, so the UBI cost still exceeds it.
     expect(ctx.ubiAsPercentOfSocialSpending).toBeGreaterThan(100);
   });
 

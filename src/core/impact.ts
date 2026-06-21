@@ -428,9 +428,10 @@ export function estimateFiscalMultiplier(
   const incomeGroup = country.stats.incomeGroup;
   const multiplier = FISCAL_MULTIPLIERS[incomeGroup];
   const estimatedGdpStimulusPppUsd = Math.round(annualTransferPppUsd * multiplier * 100) / 100;
-  const gdpTotal = country.stats.gdpPerCapitaUsd * country.stats.population;
+  // Stimulus is in PPP-USD, so divide by PPP GDP to keep the ratio consistent.
+  const gdpTotalPpp = country.stats.gdpPerCapitaPppUsd * country.stats.population;
   const stimulusAsPercentOfGdp =
-    gdpTotal > 0 ? Math.round((estimatedGdpStimulusPppUsd / gdpTotal) * 10000) / 100 : 0;
+    gdpTotalPpp > 0 ? Math.round((estimatedGdpStimulusPppUsd / gdpTotalPpp) * 10000) / 100 : 0;
 
   const multiplierSource: Record<IncomeGroup, string> = {
     HIC: 'IMF Fiscal Monitor (2014); OECD Economic Outlook estimates for high-income countries.',

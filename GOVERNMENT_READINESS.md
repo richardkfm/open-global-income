@@ -6,14 +6,18 @@ basic income experiment — and what can't it do yet?**
 This document is written from the perspective of a government program team
 tasked with designing, funding, launching, paying, and evaluating a
 large-scale basic income (UBI) pilot. It maps each stage of that real-world
-workflow to what OGI delivers today (v0.1.29, 603 tests / 32 suites), and
+workflow to what OGI delivers today (v0.1.33, 671 tests / 37 suites), and
 states plainly where the platform is **ready**, **partially ready**, or **not
 yet able to deliver**.
 
-The headline: **OGI is excellent at everything up to the moment you pay a real
-person.** The planning, funding, impact, and accountability layers are real and
-strong. The operational "last mile" — live payments, identity verification, and
-research-grade experimental measurement — is where the gaps are.
+The headline: **OGI takes you right up to execution on every rail, but it never
+moves the money itself.** The planning, funding, impact, and accountability
+layers are real and strong, and all four payment rails now emit real
+operator-executable instructions (unsigned crypto txns, a Daraja B2C batch, an
+ISO 20022 pain.001 file). By design OGI is **non-custodial** — the operator
+submits those instructions and runs the verifier. The remaining "last mile"
+gaps are operator-side execution (and optional server-side auto-submission),
+authoritative KYC, and research-grade experimental measurement.
 
 ---
 
@@ -22,13 +26,13 @@ research-grade experimental measurement — is where the gaps are.
 | # | Stage (what a government actually does) | OGI support | Verdict |
 |---|------------------------------------------|-------------|---------|
 | 1 | **Feasibility** — where, and how much per person? | Data + Calculation: 49 countries, regional cost-of-living (`/v1/income/calc`, `/v1/income/calc/regional`) | ✅ Ready |
-| 2 | **Budget projection** — what will it cost? | Simulation: coverage %, targeting, duration; single, multi-country compare, regional | ✅ Ready *(see %-of-GDP caveat)* |
+| 2 | **Budget projection** — what will it cost? | Simulation: coverage %, targeting, duration; single, multi-country compare, regional | ✅ Ready |
 | 3 | **Funding** — how do we pay for it? | 7 mechanism calculators + fiscal-context analysis | ⚠️ Works; assumptions optimistic, no uncertainty ranges |
 | 4 | **Impact** — what will it achieve? | 4-dimension model + policy brief with citations | ⚠️ Transparent, but deterministic point estimates only |
 | 5 | **Buy-in** — convince treasury / ministers / donors | Print-ready Program Briefs stitching sim + funding + impact | ✅ Ready |
 | 6 | **Stand up the pilot** | Pilot lifecycle, targeting rules, actual-vs-projected variance | ⚠️ Single sim per pilot; no multi-region roll-up |
-| 7 | **Enroll & verify people** | Recipient registry + cross-program dedup (built); `IdentityProvider` interface only; no admin UI | ⚠️ Half there |
-| 8 | **Actually pay people** | Solana/EVM produce real *unsigned* txns; **M-Pesa & SEPA are stubs** | ❌ Biggest blocker for a live pilot |
+| 7 | **Enroll & verify people** | Recipient registry + cross-program dedup; four non-custodial `IdentityProvider` connectors (national-ID, mobile-KYC, wallet, community) + admin enrollment/verify UI + bulk CSV import | ⚠️ Built; authoritative KYC delegated to the operator's verifier |
+| 8 | **Actually pay people** | Solana/EVM produce real *unsigned* txns; M-Pesa emits a Daraja **B2C** instruction batch and SEPA an **ISO 20022 pain.001** (+ Wise skeleton) — all operator-executable | ⚠️ Non-custodial: OGI prepares; the operator signs/submits (no server-side auto-submission) |
 | 9 | **Measure outcomes / run as an RCT** | Evidence layer: record, compare, aggregate, export (all built) | ⚠️ No randomization, significance testing, or survey delivery |
 | 10 | **Audit & accountability** | Signed (SHA-256) per-pilot audit exports; full disbursement log; HMAC webhooks | ✅ Ready |
 | 11 | **Operate as an institution** | DB-persisted admin sessions + login | ⚠️ RBAC not enforced; no user-management UI |
@@ -61,26 +65,39 @@ Legend: ✅ ready to use · ⚠️ partially there / use with caveats · ❌ not
 
 ## Where it cannot yet deliver for a *real* large-scale experiment
 
-### 1. No live payment rail for the obvious use case — the #1 blocker
-For a Kenyan pilot the natural channel is **M-Pesa**, which is a **pure stub**
-(`src/disbursements/providers/mpesa.ts`): it validates config, logs intent, and
-returns `{ mock: true }` — it never calls Safaricom. **SEPA**
-(`src/disbursements/providers/sepa.ts`) is likewise a stub that never calls
-Wise. Only **Solana** and **EVM** produce real transactions, and only as
-**unsigned** payloads — the government must run its own multisig signing and RPC
-infrastructure to actually move funds. **Net: you cannot pay real recipients
-through mobile money or bank transfer as shipped.**
+### 1. Payment rails are non-custodial — OGI prepares, the operator executes
+All four rails now emit real, operator-executable payment instructions, but OGI
+never moves the money itself. For a Kenyan pilot the natural channel is
+**M-Pesa**: the provider (`src/disbursements/providers/mpesa.ts`) emits a
+Safaricom Daraja **B2C PaymentRequest** instruction batch (env-correct
+endpoints + a populated request template; secrets never echoed) that the
+operator submits from their own authenticated environment. **SEPA**
+(`src/disbursements/providers/sepa.ts`) emits a standards-compliant **ISO 20022
+pain.001** document plus a Wise Payouts bulk skeleton. **Solana** and **EVM**
+produce real but **unsigned** transactions — the government runs its own
+multisig signing and RPC infrastructure to broadcast them. **Net: you can pay
+real recipients through every rail today, but your operator must run the
+execution step (sign / submit) — OGI stores no recipient PII and does not
+custody funds or auto-submit.** A future opt-in mode could submit Daraja / Wise
+server-side, but that is deliberately outside the default non-custodial flow.
 
-### 2. Identity & enrollment: the data model is built, the verifier is not
+### 2. Identity & enrollment: connectors are built; authoritative KYC is delegated
 Recipients are real and tested (`src/db/recipients-db.ts`,
 `src/api/routes/recipients.ts`): enrollment, SHA-256 account-hash deduplication
 across programs, and pending → verified → suspended transitions. The platform
 deliberately stores only *verified claims* and a non-reversible routing
-reference — never raw identity data, which is good design. **But there is no
-concrete `IdentityProvider`** (the interface at `src/core/types.ts:706` has zero
-implementations) and **no admin UI** to import, search, verify, or export the
-recipient roster. Onboarding thousands of real people requires building the
-verifier integration (national ID / civil registry / biometrics) yourself.
+reference — never raw identity data, which is good design. The
+`IdentityProvider` interface now ships with **four concrete non-custodial
+connectors** (`src/identity/`): national-ID (MOSIP-compatible, Verhoeff check
+digit), mobile-KYC (E.164 MSISDN), wallet (EVM / Solana), and
+community-attestation. `POST /v1/recipients/:id/verify` runs a claim through a
+provider and stores only the derived hash + routing ref, and the admin Identity
+page (`/admin/identity`) supports enrollment, per-recipient verify, bulk CSV
+import, and filtered export. **What's still delegated:** each connector does
+deterministic offline format/checksum validation only — the *authoritative*
+KYC / personhood assertion (national-ID registry lookup, MNO KYC, on-chain
+proof) is performed by the external provider the operator integrates, not by
+OGI.
 
 ### 3. The evidence layer records, but it doesn't run an experiment
 Phase 23 shipped a real framework: record recipient/control cohort measurements,
@@ -102,19 +119,16 @@ the 0.30–0.40 that European repeals suggest) and the speculative automation ta
 
 ## Bugs & limitations to be aware of (they affect the numbers you'd quote)
 
-1. **PPP-USD is treated as nominal USD throughout — this distorts every
-   "% of GDP" figure for poorer countries.** The simulation computes cost as a
-   share of GDP by dividing a PPP-dollar cost by a *nominal*-USD GDP
-   (`src/core/simulations.ts:42-44`), and the funding module uses the same
-   convention everywhere (`gdpTotal = gdpPerCapitaUsd × population`, revenue in
-   USD then `× pppConversionFactor`). Because the two layers share the
-   convention, they are *consistent with each other* — but both **inflate the
-   cost-as-%-of-GDP headline for low-income countries** by roughly the PPP gap
-   (often ~2–3× for a country like Kenya, where $210 PPP buys far more than $210
-   nominal). This is the single most important number a treasury would quote, so
-   it matters. **It is not a one-line bug** — a correct fix requires adding a
-   PPP-GDP (or market-FX) field to the data and applying it consistently across
-   funding, simulation, and impact. Tracked in the roadmap below.
+1. **~~PPP-USD is treated as nominal USD throughout~~ — FIXED.** Previously the
+   simulation, funding, impact, and savings layers divided a PPP-denominated cost
+   by a *nominal*-USD GDP (`gdpTotal = gdpPerCapitaUsd × population`), inflating
+   the cost-as-%-of-GDP headline for low-income countries by roughly the PPP gap
+   (~3× for Kenya, ~8× for Nigeria). A `gdpPerCapitaPppUsd` field (World Bank
+   NY.GDP.PCAP.PP.CD) was added to every country and is now used as the GDP base
+   wherever a PPP-USD cost or revenue is expressed as a share of GDP. Kenya's
+   20%-coverage headline, for example, dropped from a distorted 24.0% to a
+   consistent 7.7% of GDP. Funding mechanisms now yield genuine PPP-USD revenue
+   (the income-tax surcharge and carbon tax convert via the PPP/nominal ratio).
 
 2. **Targeting filters don't change the simulated cost.** Advanced filters (age,
    income ceiling, region) are applied only "at disbursement time" and do not
@@ -140,20 +154,21 @@ the 0.30–0.40 that European repeals suggest) and the speculative automation ta
 
 ## Roadmap — closing the gaps before a real experiment
 
-Sized roughly to help prioritize. The first three are the difference between a
-**modeling platform** and a **program you can trust with real money**.
+Sized roughly to help prioritize. RCT rigor is now the main difference between a
+**modeling platform** and a **program you can trust with real money** — the
+non-custodial payment rails and the identity connectors that used to head this
+list have since shipped.
 
 | Priority | Gap | Why it matters | Rough size |
 |----------|-----|----------------|-----------|
-| 🔴 P0 | **Live M-Pesa (and a real bank/SEPA) integration** | Without it, you cannot pay recipients through the channels they actually use | M (per provider): API creds + B2C calls + callback handling + compliance. The stub already documents the full interface. |
-| 🔴 P0 | **A concrete `IdentityProvider` + recipient admin UI / bulk import** | Without it, you cannot enroll and verify recipients at scale | M–L: one verifier integration (e.g. national ID) + import/search/verify screens |
 | 🔴 P0 | **RCT rigor in the Evidence layer** | A government experiment must withstand academic scrutiny | L: randomized assignment, significance tests, confidence intervals, power analysis, survey delivery |
-| 🟡 P1 | **PPP-vs-nominal correction for `% of GDP`** | The headline cost figure is currently distorted for low-income countries | M: add PPP-GDP/market-FX data field, apply across funding + simulation + impact, add regression tests |
+| 🟡 P1 | **An authoritative verifier integration** (national-ID registry / MNO KYC) behind the existing `IdentityProvider` connectors | The connectors do offline format/checksum validation only; real enrollment needs an authoritative KYC source | M: wire one external verifier (e.g. MOSIP IDA) into the national-ID connector |
 | 🟡 P1 | **Uncertainty ranges** on funding + impact (low/central/high) | Statisticians require sensitivity analysis, not point estimates | M: thread ranges through `funding.ts` / `impact.ts` and surface inline |
 | 🟡 P1 | **Live / automated data refresh** | Stale 2019–2023 data undermines credibility; `taxBreakdown` is empty | M: wire the World Bank importer (`npm run data:update`) into the refresh button with provenance/versioning |
 | 🟢 P2 | **RBAC enforcement + user-management UI** | Institutional deployment needs least-privilege access | S–M: enforce `role` in the route guard + add user CRUD screens |
 | 🟢 P2 | **Multi-region pilot orchestration** | A national rollout spans many regions; today each pilot links one simulation | M: roll-up across region-level pilots |
 | 🟢 P2 | **Automated budget-variance alerts** | Ops teams need to know when a pilot runs over budget | S: threshold alert on the existing actual-vs-projected variance |
+| ⚪ Optional | **Server-side auto-submission** of the Daraja B2C / Wise instructions | Removes the operator's manual submit step — deliberately outside the default non-custodial flow | M (per provider): API creds + secure secret handling + callback handling + compliance approvals |
 | ⚪ Future | **Federation** — cross-program interop, cross-border portability, open evidence base | The long-term protocol vision | XL |
 
 Size key: S ≈ days · M ≈ 1–2 weeks · L ≈ multi-week · XL ≈ multi-month/program.
@@ -164,9 +179,15 @@ Size key: S ≈ days · M ≈ 1–2 weeks · L ≈ multi-week · XL ≈ multi-mo
 
 - **Use OGI today for:** site selection, cost modeling, funding design, impact
   projection, and a defensible, citation-backed brief to win buy-in — plus
-  pilot tracking, recipient deduplication, and audit-grade reporting.
-- **Do not yet rely on OGI for:** moving real money through mobile money or
-  bank transfer, verifying recipient identity, or producing research-grade
-  experimental evidence — these require the P0 roadmap work above.
-- **Interpret the cost-as-%-of-GDP headline with care** for low-income
-  countries until the PPP/nominal correction lands.
+  pilot tracking, recipient enrollment + deduplication, audit-grade reporting,
+  and preparing operator-executable payment instructions on every rail (M-Pesa
+  Daraja B2C, SEPA ISO 20022, unsigned Solana / EVM txns).
+- **Understand the boundary:** OGI is **non-custodial** — your operator runs the
+  execution step (signs / submits the prepared instructions) and supplies the
+  *authoritative* KYC verifier behind the identity connectors. OGI does not move
+  funds, store recipient PII, or auto-submit.
+- **Do not yet rely on OGI for:** producing research-grade experimental evidence
+  (no randomization / significance testing / survey delivery) — this requires the
+  P0 roadmap work above.
+- **The cost-as-%-of-GDP headline is now PPP-consistent** for all countries
+  (PPP-denominated cost over PPP GDP), so it can be quoted directly.
