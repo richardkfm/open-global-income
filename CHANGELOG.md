@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-07-02
+
+### Added
+- **Live taxation sliders on the public calculator** (`/calculator`) — the interactive "make UBI possible by changing taxation" experience from the admin funding scenario builder, now for everyone. All seven funding mechanisms (income tax surcharge, VAT, carbon tax, wealth tax, FTT, automation tax, redirected social spending) are range sliders with live value labels; results, impact estimates, and the funding-coverage chart update as you drag (htmx fragment swap of the results region, ~300 ms debounce). The page URL is kept in sync on every change (`hx-replace-url`), so a dragged-together scenario is still fully shareable and reproducible — and the plain-GET "Calculate" fallback still works with JavaScript disabled.
+
+### Changed
+- Server-side clamps for funding rates now mirror the slider bounds (income ≤ 15%, VAT ≤ 10 pp, carbon ≤ $200/ton, wealth ≤ 5%, FTT ≤ 1%, automation ≤ 15%, redirect ≤ 80%), matching the admin scenario builder's ranges.
+- Test count: **701 tests** across 38 suites (was 699).
+
+### Fixed
+- Horizontal bar charts (fact-sheet fiscal context, calculator funding coverage) showed tick indices ("0", "1") instead of category labels on the y axis — the shared `charts.js` default tick callback now resolves category labels via `getLabelForValue`.
+
 ## [0.2.0] - 2026-07-02
 
 ### Added

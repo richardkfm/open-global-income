@@ -74,7 +74,7 @@ The funding and impact layers (Phases 14–16) are not a departure from the API 
 
 The sub-national data layer (Phase 17) brings precision where it matters most. A basic income floor in Nairobi (COL 1.35×) should not be the same local-currency amount as in rural Turkana (COL 0.68×). Regional cost-of-living indices adjust the national PPP conversion factor, and existing formulas work transparently via the "adjusted Country" pattern — zero formula changes needed.
 
-Secure admin UI with login, approval workflows, and audit trails — plus a public, no-login advocacy site at `/` for journalists, researchers and policy makers. **699 tests** across 38 suites.
+Secure admin UI with login, approval workflows, and audit trails — plus a public, no-login advocacy site at `/` for journalists, researchers and policy makers. **701 tests** across 38 suites.
 
 ### Phase 23: Evidence Layer ✅
 
@@ -372,7 +372,7 @@ A public, no-login web UI at `/` built for the people making the case for basic 
 
 - **`/countries`** — sortable explorer of all 49 countries with headline figures and CSV/JSON download
 - **`/countries/:code`** — per-country fact sheet: copy-ready summary paragraph and citation, cost in fiscal context (vs. tax revenue and social spending), targeted program options, impact estimates with every assumption listed, an illustrative funding package, and the entitlement formula with the country's own numbers plugged in. Print → PDF yields a briefing document
-- **`/calculator`** — cost & funding calculator: coverage, target group, duration, transfer amount, and optional rates for all seven funding mechanisms — results reproducible from the URL
+- **`/calculator`** — cost & funding calculator: coverage, target group, duration, transfer amount, and **live taxation sliders** for all seven funding mechanisms — results, impact and funding coverage update as you drag, and the URL tracks every change so scenarios stay reproducible
 - **`/compare`** — up to four countries side by side on identical terms
 - **`/methodology`** — every formula, constant, assumption, data source, and limitation; values imported from the actual code constants
 - **`/data`** — dataset downloads (`/data/countries.csv`, `/data/countries.json`) and API pointers
@@ -484,6 +484,8 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup, code style, test
 See [GOVERNANCE.md](./GOVERNANCE.md) for the decision-making process, API stability declaration, and versioning policy.
 
 ## 📋 Current Status
+
+**Version 0.2.1** — Live taxation sliders on the public calculator. The interactive funding-scenario experience from the admin panel is now public: all seven mechanisms (income tax, VAT, carbon tax, wealth tax, FTT, automation tax, redirected social spending) are sliders whose results — cost coverage, gap, chart, impact estimates — update live as you drag, with the URL tracking every change so a dragged-together scenario is still a shareable, reproducible link. Plain-GET fallback works without JavaScript. Also fixes horizontal bar charts showing tick indices instead of category labels. 701 tests across 38 suites.
 
 **Version 0.2.0** — Public advocacy site. A new no-login web UI at `/` (`src/web/`) gives journalists, researchers and policy makers directly quotable, verifiable basic income figures: per-country **fact sheets** with copy-ready summary paragraphs and citation blocks, a **cost & funding calculator** whose entire scenario lives in a shareable URL, **country comparison** on identical terms, a **methodology** page whose numbers are imported from the actual code constants, and **dataset downloads** (CSV/JSON) with computed entitlement and cost columns. Print any fact sheet or calculator result to get a briefing PDF. Poverty figures fall back to the $2.15/day extreme line (clearly marked) where no survey exists for the country-appropriate line. Disable with `ENABLE_WEB=false`. 699 tests across 38 suites.
 

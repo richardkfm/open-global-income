@@ -102,6 +102,14 @@ body.site { background: var(--color-bg); font-size: 0.9375rem; }
   font-family: 'SF Mono', 'Consolas', monospace;
 }
 
+/* ── Funding sliders (calculator) ───────────────────── */
+.slider-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 0.75rem 1.5rem;
+}
+.slider-grid input[type="range"] { accent-color: var(--color-primary); height: auto; }
+.slider-grid output { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
 /* ── Footer ─────────────────────────────────────────── */
 .site-footer { border-top: 1px solid var(--color-border); background: var(--color-surface); margin-top: 2rem; }
 .site-footer-inner {

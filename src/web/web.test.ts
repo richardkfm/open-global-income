@@ -168,6 +168,28 @@ describe('Public web UI', () => {
       expect(res.statusCode).toBe(200);
       expect(res.body).not.toContain('Estimated impact');
     });
+
+    it('renders taxation sliders wired for live htmx updates', async () => {
+      const res = await app.inject({ method: 'GET', url: '/calculator' });
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toContain('type="range"');
+      expect(res.body).toContain('name="f_carbon"');
+      expect(res.body).toContain('hx-get="/calculator"');
+      expect(res.body).toContain('hx-target="#calc-results"');
+      expect(res.body).toContain('id="calc-results"');
+      expect(res.body).toContain('htmx.org');
+    });
+
+    it('clamps funding rates to the slider bounds', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/calculator?country=KE&f_income=50',
+      });
+      expect(res.statusCode).toBe(200);
+      // 50% exceeds the 15% slider maximum — server clamps to match
+      expect(res.body).toContain('15.0% income tax surcharge');
+      expect(res.body).not.toContain('50.0% income tax surcharge');
+    });
   });
 
   describe('compare', () => {
