@@ -211,6 +211,16 @@ function impactSection(impact: ImpactAnalysisResult): string {
   </section>`;
 }
 
+/**
+ * Below this coverage threshold, the shortfall isn't a tax-policy problem —
+ * even a maxed-out, realistic mix of domestic mechanisms can't close a gap
+ * this large. That happens when the universal $/month floor times the
+ * population approaches or exceeds the country's own GDP, which is common
+ * for the lowest-income countries. Surface that explicitly instead of
+ * leaving readers to wonder why the mix "only" gets partway there.
+ */
+const LOW_DOMESTIC_COVERAGE_THRESHOLD = 30;
+
 function fundingSection(funding: FundingScenarioResult, countryCode: string): string {
   const rows = funding.mechanisms
     .map((m) => {
@@ -239,6 +249,18 @@ function fundingSection(funding: FundingScenarioResult, countryCode: string): st
       the cost${funding.gapPppUsd > 0 ? ` (gap: $${formatCompact(funding.gapPppUsd)})` : ''}.
       Adjust every rate in the <a href="/calculator?country=${escapeHtml(countryCode)}">calculator</a>.
     </p>
+    ${
+      funding.coverageOfUbiCost < LOW_DOMESTIC_COVERAGE_THRESHOLD
+        ? `<div class="alert alert-info">
+      This isn't a tax-rate problem: universal coverage for ${escapeHtml(funding.country.name)} costs
+      $${formatCompact(funding.ubiCost.annualPppUsd)}/year, ${formatPercent(funding.ubiCost.asPercentOfGdp)} of
+      the country's own PPP GDP — even every mechanism above at its realistic ceiling can't close a gap
+      that size from domestic revenue alone. That's typical for the lowest-income countries and points
+      toward external funding (aid, DAO or NGO transfers) or a <a href="#options">narrower coverage target</a>
+      rather than higher domestic tax rates.
+    </div>`
+        : ''
+    }
     <div class="data-table-container">
       <table class="data-table">
         <thead><tr><th>Mechanism</th><th class="num">Annual revenue (PPP)</th><th>Covers</th></tr></thead>
