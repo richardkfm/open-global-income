@@ -1,0 +1,138 @@
+/* =========================================================================
+   OGI Public Site — chrome for the public advocacy pages.
+   Loaded AFTER ogi.css and reuses its design tokens and components
+   (.card, .badge, .data-table, .btn, .grid, citations, print rules).
+   Everything here is public-page chrome: header nav, hero, footer,
+   audience cards, fact-sheet layout, and print refinements.
+   ========================================================================= */
+
+body.site { background: var(--color-bg); font-size: 0.9375rem; }
+
+/* ── Header / Nav ───────────────────────────────────── */
+.site-header {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  position: sticky; top: 0; z-index: 50;
+}
+.site-header-inner {
+  max-width: 1100px; margin: 0 auto; padding: 0 1.25rem;
+  display: flex; align-items: center; gap: 1.5rem; height: 60px;
+}
+.site-brand { display: flex; flex-direction: column; text-decoration: none; line-height: 1.15; }
+.site-brand:hover { text-decoration: none; }
+.site-brand-name { font-size: 1.05rem; font-weight: 700; color: var(--color-text); letter-spacing: -0.02em; }
+.site-brand-tagline { font-size: 0.65rem; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; }
+.site-nav { display: flex; gap: 0.25rem; margin-left: auto; align-items: center; flex-wrap: wrap; }
+.site-nav-link {
+  padding: 0.4rem 0.75rem; border-radius: var(--radius-md);
+  color: var(--color-text-secondary); font-size: 0.875rem; font-weight: 500;
+  text-decoration: none; transition: all 0.15s;
+}
+.site-nav-link:hover { background: var(--color-bg); color: var(--color-text); text-decoration: none; }
+.site-nav-link.active { background: var(--color-primary-light); color: var(--color-primary); }
+
+/* ── Main column ────────────────────────────────────── */
+.site-main { max-width: 1100px; margin: 0 auto; padding: 2rem 1.25rem 3rem; }
+
+/* ── Hero ───────────────────────────────────────────── */
+.hero { padding: 3rem 0 2.5rem; text-align: center; max-width: 780px; margin: 0 auto; }
+.hero h1 {
+  font-size: 2.5rem; font-weight: 700; letter-spacing: -0.03em; line-height: 1.15;
+  margin-bottom: 1rem;
+}
+.hero h1 .hero-accent { color: var(--color-primary); }
+.hero-lede { font-size: 1.1rem; color: var(--color-text-secondary); line-height: 1.65; margin-bottom: 1.75rem; }
+.hero-actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
+.hero-actions .btn { height: 42px; padding: 0 1.35rem; font-size: 0.95rem; }
+
+/* ── Stat strip ─────────────────────────────────────── */
+.stat-strip {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem; margin: 2rem 0;
+}
+.stat-strip .stat-card { text-align: center; }
+
+/* ── Audience cards ─────────────────────────────────── */
+.audience-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+.audience-card { display: flex; flex-direction: column; }
+.audience-card .audience-kicker {
+  font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--color-primary); margin-bottom: 0.4rem;
+}
+.audience-card h3 { font-size: 1.05rem; font-weight: 600; margin-bottom: 0.5rem; }
+.audience-card p { font-size: 0.875rem; color: var(--color-text-secondary); line-height: 1.6; flex: 1; }
+.audience-card .audience-links { margin-top: 0.9rem; display: flex; flex-direction: column; gap: 0.35rem; }
+.audience-card .audience-links a { font-size: 0.85rem; font-weight: 500; }
+
+/* ── Section headings on public pages ───────────────── */
+.site-section { margin: 2.5rem 0; }
+.site-section > h2 { font-size: 1.35rem; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 0.35rem; }
+.site-section > .section-lede { color: var(--color-text-secondary); margin-bottom: 1.25rem; max-width: 720px; line-height: 1.6; }
+
+/* ── Fact-sheet header ──────────────────────────────── */
+.factsheet-header { margin-bottom: 1.5rem; }
+.factsheet-kicker {
+  font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--color-text-secondary); margin-bottom: 0.25rem;
+}
+.factsheet-title { font-size: 2rem; font-weight: 700; letter-spacing: -0.025em; line-height: 1.15; }
+.factsheet-meta { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; margin-top: 0.5rem; color: var(--color-text-secondary); font-size: 0.85rem; }
+.factsheet-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1rem; }
+
+/* ── Pull quote (journalist copy block) ─────────────── */
+.pull-quote {
+  border-left: 4px solid var(--color-primary);
+  background: var(--color-primary-light);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  padding: 1rem 1.25rem; margin: 1rem 0; font-size: 1rem; line-height: 1.65;
+}
+.pull-quote em { font-style: normal; font-weight: 600; }
+
+/* ── Key-figures table (compare / options) ──────────── */
+.data-table th a { color: inherit; text-decoration: none; }
+.data-table th a:hover { color: var(--color-primary); }
+.data-table .sort-active { color: var(--color-primary); }
+.data-table td.num, .data-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ── Sources / citation block ───────────────────────── */
+.citation-box {
+  background: var(--color-bg); border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md); padding: 0.75rem 1rem;
+  font-size: 0.8rem; color: var(--color-text-secondary); line-height: 1.6;
+  font-family: 'SF Mono', 'Consolas', monospace;
+}
+
+/* ── Footer ─────────────────────────────────────────── */
+.site-footer { border-top: 1px solid var(--color-border); background: var(--color-surface); margin-top: 2rem; }
+.site-footer-inner {
+  max-width: 1100px; margin: 0 auto; padding: 2rem 1.25rem;
+  display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 2rem;
+  font-size: 0.85rem; color: var(--color-text-secondary);
+}
+.site-footer h4 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text); margin-bottom: 0.6rem; }
+.site-footer ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.35rem; }
+.site-footer p { line-height: 1.6; }
+.site-footer-legal {
+  max-width: 1100px; margin: 0 auto; padding: 0.75rem 1.25rem 1.5rem;
+  font-size: 0.75rem; color: var(--color-text-tertiary);
+  display: flex; gap: 1rem; flex-wrap: wrap;
+}
+
+/* ── Responsive ─────────────────────────────────────── */
+@media (max-width: 768px) {
+  .site-header-inner { height: auto; flex-direction: column; align-items: flex-start; gap: 0.5rem; padding: 0.75rem 1rem; }
+  .site-nav { margin-left: 0; }
+  .hero h1 { font-size: 1.75rem; }
+  .site-footer-inner { grid-template-columns: 1fr; gap: 1.25rem; }
+  .factsheet-title { font-size: 1.5rem; }
+}
+
+/* ── Print: fact sheets & calculator briefs ─────────── */
+@media print {
+  .site-header, .site-footer, .factsheet-actions, .chart-actions, .no-print { display: none !important; }
+  body.site { background: white; font-size: 11pt; }
+  .site-main { max-width: none; padding: 0; }
+  .card, .data-table-container { box-shadow: none; break-inside: avoid; }
+  .hero-actions { display: none; }
+  a { color: inherit; text-decoration: none; }
+}

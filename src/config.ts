@@ -99,6 +99,11 @@ export const config = {
     password: process.env.ADMIN_PASSWORD ?? 'admin',
   },
 
+  web: {
+    /** Mount and enable the public web UI at "/" (default: true) */
+    enabled: process.env.ENABLE_WEB !== 'false',
+  },
+
   metrics: {
     /** Expose the Prometheus /metrics endpoint (default: true) */
     enabled: process.env.ENABLE_METRICS !== 'false',

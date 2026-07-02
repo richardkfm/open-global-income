@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-02
+
+### Added
+- **Public web UI** (`src/web/`) — an advocacy-facing site at `/`, aimed at journalists, researchers and policy makers. No login, no JavaScript required to read anything, and every scenario is fully encoded in the URL so figures are shareable and reproducible. Pages:
+  - **`/`** — landing page with headline dataset stats and audience-specific entry points (journalists / researchers / policy makers).
+  - **`/countries`** — sortable country explorer (population, GDP per capita PPP, poverty rate, monthly floor in local currency, universal cost as % of GDP, need score) with client-side name filter and CSV/JSON download buttons.
+  - **`/countries/:code`** — per-country **basic income fact sheet**: copy-ready summary paragraph and citation block, stat tiles, fiscal-context chart (UBI cost vs. tax revenue vs. social spending, all % of PPP GDP), targeted program options (universal / poorest 50/20/10%), impact estimates with every assumption and citation attached, an illustrative 7-mechanism funding package, sub-national regions where available, and a "how these figures are calculated" drawer with the country's own numbers plugged into the formula. Print → PDF yields a briefing document.
+  - **`/calculator`** — cost & funding calculator driven by a plain GET form: country, target group, coverage, duration, transfer amount, plus optional rates for all seven funding mechanisms. Returns cost in fiscal context, impact estimates, and funding coverage with a gap figure — all reproducible from the URL.
+  - **`/compare`** — up to four countries side by side on identical terms (cost, % of GDP, % of tax revenue, poverty impact, need score) with chart.
+  - **`/methodology`** — the transparency contract: floor derivation, entitlement formula, cost math, the tiered country-appropriate poverty-line ladder, funding and impact model summaries, data sources, limitations, and citation guidance. Values are imported from the actual code constants so the page cannot drift.
+  - **`/data`** — dataset downloads and API pointers; **`/data/countries.csv`** and **`/data/countries.json`** export all countries with computed entitlement, need score, poverty lines and universal-cost columns.
+- **`ENABLE_WEB`** env var — set to `false` to disable the public site (mirrors `ENABLE_ADMIN`).
+- Public layout/chrome stylesheet `public/css/site.css` (loaded on top of the existing `ogi.css` design tokens) with print rules for briefing output.
+
+### Changed
+- Poverty figures on public pages fall back to the $2.15/day extreme-poverty headcount (clearly marked) when no survey exists for the country-appropriate line, and poverty-impact tiles show "No data" instead of a misleading "0 people" when the model has no baseline.
+- Test count: **699 tests** across 38 suites (was 671 across 37).
+
 ## [0.1.34] - 2026-06-21
 
 ### Fixed
