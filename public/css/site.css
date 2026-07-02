@@ -96,6 +96,7 @@ body.site { background: var(--color-bg); font-size: 0.9375rem; }
 .data-table th a:hover { color: var(--color-primary); }
 .data-table .sort-active { color: var(--color-primary); }
 .data-table td.num, .data-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.funding-row-solidarity td { font-style: italic; border-top: 1px dashed var(--color-border); }
 
 /* ── Sources / citation block ───────────────────────── */
 .citation-box {

@@ -219,6 +219,7 @@ describe('Admin Countries (Phase 14)', () => {
     expect(res.body).toContain('Core Economics');
     expect(res.body).toContain('Fiscal Capacity');
     expect(res.body).toContain('Data Completeness');
+    expect(res.body).toContain('Local adequacy estimate');
   });
 
   it('handles lowercase country code in URL', async () => {

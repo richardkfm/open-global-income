@@ -117,7 +117,7 @@ function numberField(
   name: string,
   label: string,
   value: number,
-  opts: { min?: number; max?: number; step?: number; help?: string } = {},
+  opts: { min?: number; max?: number; step?: number; help?: string; suggestion?: string } = {},
 ): string {
   return `<div class="form-group">
     <label for="${name}">${escapeHtml(label)}</label>
@@ -125,7 +125,24 @@ function numberField(
       ${opts.min != null ? `min="${opts.min}"` : ''} ${opts.max != null ? `max="${opts.max}"` : ''}
       step="${opts.step ?? 'any'}">
     ${opts.help ? `<span class="form-help">${escapeHtml(opts.help)}</span>` : ''}
+    ${opts.suggestion ?? ''}
   </div>`;
+}
+
+/**
+ * "Use local adequacy estimate" one-click override affordance (row C of
+ * INCOME_FLOOR_PROPOSED_ANSWERS.md): sets the amount field to the country's
+ * local adequacy line and lets the existing htmx live-update handle the rest.
+ * The default stays the $210 anchor; this is a suggestion, not a change to it.
+ */
+function adequacySuggestion(data: CalculatorData): string {
+  const adequacy = data.result?.simulation.simulation.costAtLocalAdequacyLine;
+  if (!adequacy) return '';
+  const value = Math.round(adequacy.monthlyPppUsd);
+  return `<button type="button" class="btn btn-xs btn-secondary mt-1"
+    onclick="var el=document.getElementById('amount'); el.value=${value}; el.dispatchEvent(new Event('change', {bubbles:true}));">
+    Use local adequacy estimate ($${value}/month)
+  </button>`;
 }
 
 function renderForm(data: CalculatorData): string {
@@ -165,7 +182,12 @@ function renderForm(data: CalculatorData): string {
         </div>
         ${numberField('coverage', 'Coverage of that group (%)', f.coveragePercent, { min: 1, max: 100, step: 1, help: 'Enrollment reach — pilots rarely hit 100%' })}
         ${numberField('months', 'Duration (months)', f.durationMonths, { min: 1, max: 120, step: 1 })}
-        ${numberField('amount', 'Monthly amount (PPP-USD)', f.monthlyAmount, { min: 1, step: 1, help: `Default $${GLOBAL_INCOME_FLOOR_PPP} = the global floor` })}
+        ${numberField('amount', 'Monthly amount (PPP-USD)', f.monthlyAmount, {
+          min: 1,
+          step: 1,
+          help: `Default $${GLOBAL_INCOME_FLOOR_PPP} = the global floor`,
+          suggestion: adequacySuggestion(data),
+        })}
       </div>
       <details class="targeting-details mt-2" ${hasFunding(f) || data.result ? 'open' : ''}>
         <summary class="targeting-summary">Make it possible: fund the program by adjusting taxation — drag the sliders and watch the coverage update</summary>

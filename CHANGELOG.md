@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-07-02
+
+Implements Phases 1, 2 and 4 of [INCOME_FLOOR_PROPOSED_ANSWERS.md](./INCOME_FLOOR_PROPOSED_ANSWERS.md) — the plan proposed for the open questions in [INCOME_FLOOR_OPEN_QUESTIONS.md](./INCOME_FLOOR_OPEN_QUESTIONS.md). Phases 3 (household-size reporting), 5 (donor-side solidarity pool) and 6 (a possible ruleset v3) remain future work.
+
+### Added
+- **Local adequacy estimate** (`src/core/adequacy.ts`, row C) — a second, locally-calibrated figure shown next to the fixed $210 PPP global anchor everywhere the anchor appears: `GET /v1/income/calc` responses (new `adequacyEstimate` field on `GlobalIncomeEntitlement`), `POST /v1/simulate` output (new `costAtLocalAdequacyLine` comparison line), country fact sheets, and the admin country dashboard. v1 re-presents the existing country-appropriate poverty-line ladder (`src/core/poverty.ts`) with adequacy-specific labeling and an explicit caveat. It is purely informational: it never feeds the need score, the default entitlement, or any disbursement math, and is named `adequacyEstimate` rather than `floor` to keep that distinction unmistakable in the API.
+- **"Use local adequacy estimate" override affordance** on the public calculator — a one-click button that sets the transfer-amount field to the country's adequacy line (existing `floorOverride`/`amount` parameter); the anchor stays the default.
+- **International solidarity transfer mechanism** (`src/core/funding.ts`, row D part 1) — an eighth, explicitly-labeled funding mechanism (`international_solidarity_transfer`). When a country's recommended mix of the seven domestic mechanisms still can't close the UBI cost even at realistic rate ceilings, `calculateRecommendedFundingMix` now attributes the residual to this mechanism instead of leaving it as an unlabeled `gapPppUsd`, with assumptions citing EU cohesion funds, the IMF's Poverty Reduction and Growth Trust, and Green Climate Fund precedents. `FundingScenarioResult` gains a `domesticCoveragePercent` field (coverage from the seven domestic mechanisms alone) alongside the existing `coverageOfUbiCost` (which now includes the solidarity line when present).
+- Methodology page: new "Local adequacy estimate" section explaining the anchor/adequacy split and a Balassa–Samuelson caveat on what the PPP conversion factor actually equalizes (row A); updated funding-mechanisms section explaining the eighth mechanism.
+- Test count: **730 tests** across 39 suites (was 708).
+
 ## [0.2.3] - 2026-07-02
 
 ### Added

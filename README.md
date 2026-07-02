@@ -58,7 +58,7 @@ Open Global Income is a stack. Each layer builds on the one below it. The lower 
 | Layer | What it does | Phase |
 |-------|-------------|-------|
 | **Data** | 49 countries with all 17 macro-economic indicators fully populated (World Bank, ILO, IMF); sub-national data for Kenya (47 counties), Germany (16 Bundesländer), France (13 regions), Netherlands (12 provinces) — 88 regions total | 14, 17 |
-| **Calculation** | Entitlement formulas (v1 active, v2 preview), scoring, country comparison, regional COL adjustments | 1–10, 17 |
+| **Calculation** | Entitlement formulas (v1 active, v2 preview), scoring, country comparison, regional COL adjustments; a locally-calibrated adequacy estimate reported alongside the fixed $210 global anchor (informational — never fed into the entitlement) | 1–10, 17, 25 |
 | **Simulation** | Budget modeling with targeting presets and programmable rules, multi-country comparison, regional simulation, saved scenarios | 11, 17, 22 |
 | **Disbursement** | Non-custodial payment rails — Solana USDC, EVM USDC, M-Pesa B2C (Daraja instruction batch), SEPA Credit Transfer (ISO 20022 pain.001 + Wise skeleton) — with approval workflow and audit trail | 12 |
 | **Recipients** | Enrollment, identity verification, cross-program duplicate detection — no raw identity data stored | 19 |
@@ -66,7 +66,7 @@ Open Global Income is a stack. Each layer builds on the one below it. The lower 
 | **Pilots** | Lifecycle management (planning → active → completed), programmable targeting rules, variance analysis, structured donor reports | 13, 22 |
 | **Audit Exports** | Compliance-grade signed export per pilot — methodology, recipient aggregate stats, full disbursement log, SHA-256 integrity hash | 21 |
 | **Targeting** | Programmable `TargetingRules` object: age range, urban/rural, income ceiling, identity provider filter, recency exclusion, region filter; `applyRulesToRecipients` for disbursement batch generation with per-rule filtering stats | 22 |
-| **Funding** | 6 funding mechanisms (income tax, VAT, carbon tax, wealth tax, FTT, redirect social spending) with informality, avoidance, and demand-response adjustments; fiscal context analysis | 15 |
+| **Funding** | 7 domestic funding mechanisms (income tax, VAT, carbon tax, wealth tax, FTT, automation tax, redirect social spending) with informality, avoidance, and demand-response adjustments; fiscal context analysis; an 8th mechanism — a labeled international solidarity transfer — covers the residual when the recommended mix still can't close the cost domestically | 15, 25 |
 | **Impact** | Poverty reduction, purchasing power, social coverage, GDP stimulus estimates — with exportable policy briefs | 16 |
 | **Public site** | Advocacy-facing web UI at `/` — country fact sheets with copy-ready citations, cost & funding calculator with shareable scenario URLs, country comparison, methodology, dataset downloads | 25 |
 
@@ -74,7 +74,7 @@ The funding and impact layers (Phases 14–16) are not a departure from the API 
 
 The sub-national data layer (Phase 17) brings precision where it matters most. A basic income floor in Nairobi (COL 1.35×) should not be the same local-currency amount as in rural Turkana (COL 0.68×). Regional cost-of-living indices adjust the national PPP conversion factor, and existing formulas work transparently via the "adjusted Country" pattern — zero formula changes needed.
 
-Secure admin UI with login, approval workflows, and audit trails — plus a public, no-login advocacy site at `/` for journalists, researchers and policy makers. **708 tests** across 38 suites.
+Secure admin UI with login, approval workflows, and audit trails — plus a public, no-login advocacy site at `/` for journalists, researchers and policy makers. **730 tests** across 39 suites.
 
 ### Phase 23: Evidence Layer ✅
 
@@ -287,7 +287,7 @@ All responses follow a consistent shape:
 | `GET` | `/v1/funding-scenarios/:id` | Retrieve a saved scenario |
 | `DELETE` | `/v1/funding-scenarios/:id` | Delete a saved scenario |
 
-**Supported funding mechanisms:** income tax surcharge, VAT increase, carbon tax, wealth tax, financial transaction tax, automation tax, redirect social spending. Each returns explicit assumptions and revenue estimates.
+**Supported funding mechanisms:** income tax surcharge, VAT increase, carbon tax, wealth tax, financial transaction tax, automation tax, redirect social spending — 7 domestic levers, each returning explicit assumptions and revenue estimates — plus an 8th, `international_solidarity_transfer`, which the country fact sheet's recommended mix (`calculateRecommendedFundingMix`) appends automatically to label any residual gap left after the seven domestic mechanisms are sized at realistic ceilings, instead of leaving it as an unlabeled shortfall.
 
 ### Economic Impact
 
@@ -484,6 +484,8 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup, code style, test
 See [GOVERNANCE.md](./GOVERNANCE.md) for the decision-making process, API stability declaration, and versioning policy.
 
 ## 📋 Current Status
+
+**Version 0.2.4** — Implements the first phases of [INCOME_FLOOR_PROPOSED_ANSWERS.md](./INCOME_FLOOR_PROPOSED_ANSWERS.md): a **local adequacy estimate** now appears next to the $210 PPP global anchor everywhere it's shown (calc API, simulation output, fact sheets, admin dashboard) — informational only, derived from the existing country-appropriate poverty line, never fed into the entitlement itself; a one-click "use local adequacy estimate" override on the public calculator; and an eighth, explicitly-labeled **international solidarity transfer** funding mechanism that attributes any residual gap (after the seven domestic mechanisms hit realistic ceilings) to a modeled external transfer instead of an unlabeled shortfall. 730 tests across 39 suites.
 
 **Version 0.2.3** — The fact-sheet funding mix now explains itself when domestic coverage is low: for countries where universal coverage would cost more than the country's own GDP (common at the low-income end, e.g. Afghanistan), a callout states that plainly instead of leaving readers to assume it's a tax-rate shortfall, and points to external funding or a narrower coverage target. 708 tests across 38 suites.
 

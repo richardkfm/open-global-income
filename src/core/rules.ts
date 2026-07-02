@@ -4,6 +4,7 @@ import {
   GLOBAL_INCOME_FLOOR_PPP,
   GINI_WEIGHT,
 } from './constants.js';
+import { localAdequacyLine } from './adequacy.js';
 
 /**
  * Calculate the global income entitlement for a country.
@@ -53,6 +54,7 @@ export function calculateEntitlement(
     pppUsdPerMonth,
     localCurrencyPerMonth,
     score,
+    adequacyEstimate: localAdequacyLine(country),
     meta: {
       rulesetVersion: RULESET_VERSION,
       dataVersion,

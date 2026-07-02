@@ -176,6 +176,28 @@ export interface User {
   createdAt: string;
 }
 
+/**
+ * A locally-calibrated estimate of what would be "enough" in a given
+ * country, shown next to the (fixed, comparable) global anchor. See
+ * `src/core/adequacy.ts`. Informational only: it never feeds the need
+ * score, the default entitlement, or any disbursement math — hence the
+ * field name `adequacyEstimate` rather than `floor`.
+ */
+export interface LocalAdequacyEstimate {
+  /** Per-person, per-month adequacy estimate in PPP-USD */
+  monthlyPppUsd: number;
+  /** Equivalent daily rate in PPP-USD */
+  dailyPppUsd: number;
+  /** How the line was determined — see `PovertyLineBasis` below */
+  basis: PovertyLineBasis;
+  /** Human-readable description, suitable for UI display */
+  label: string;
+  /** Citation / source for the underlying line */
+  source: string;
+  /** Honest caveat, always attached — see `src/core/adequacy.ts` */
+  caveat: string;
+}
+
 export interface GlobalIncomeEntitlement {
   /** ISO country code this was calculated for */
   countryCode: CountryCode;
@@ -189,6 +211,12 @@ export interface GlobalIncomeEntitlement {
    * average income, indicating greater need. Inequality (Gini) amplifies need.
    */
   score: number;
+  /**
+   * Locally-calibrated adequacy estimate, shown next to the (fixed) anchor
+   * above. Informational only — see `src/core/adequacy.ts`. Named
+   * `adequacyEstimate`, not `floor`, so it is never mistaken for a promise.
+   */
+  adequacyEstimate: LocalAdequacyEstimate;
   /** Which ruleset and data snapshot produced this result */
   meta: RulesetMeta;
 }
@@ -233,6 +261,19 @@ export interface SimulationParameters {
   };
 }
 
+/**
+ * Cost of the same program if it paid the country's local adequacy line
+ * instead of the (fixed) floor used in `cost` above — an informational
+ * comparison only; it never changes `recipientCount` or `entitlementPerPerson`.
+ */
+export interface AdequacyLineCostComparison {
+  monthlyPppUsd: number;
+  basis: PovertyLineBasis;
+  label: string;
+  annualPppUsd: number;
+  asPercentOfGdp: number;
+}
+
 /** Full result of a budget simulation */
 export interface SimulationResult {
   country: {
@@ -253,6 +294,13 @@ export interface SimulationResult {
       annualPppUsd: number;
       asPercentOfGdp: number;
     };
+    /**
+     * "Cost at local adequacy line" comparison — see `AdequacyLineCostComparison`.
+     * Always populated by `calculateSimulation()`; optional in the type only so
+     * that older or hand-built `SimulationResult` values (e.g. in tests) remain
+     * valid without this field.
+     */
+    costAtLocalAdequacyLine?: AdequacyLineCostComparison;
     meta: RulesetMeta;
   };
 }
@@ -334,7 +382,14 @@ export interface Pilot {
 
 // ── Funding types ─────────────────────────────────────────────────────────
 
-/** Supported funding mechanism types */
+/**
+ * Supported funding mechanism types. The first seven are domestic revenue
+ * levers. `international_solidarity_transfer` is not a domestic mechanism —
+ * it is the explicitly-labeled residual gap after the seven domestic
+ * mechanisms are sized at realistic ceilings (row D of
+ * INCOME_FLOOR_PROPOSED_ANSWERS.md), modeled as a pooled external transfer
+ * rather than left as an unlabeled shortfall. See `src/core/funding.ts`.
+ */
 export type FundingMechanismType =
   | 'income_tax_surcharge'
   | 'vat_increase'
@@ -342,7 +397,8 @@ export type FundingMechanismType =
   | 'wealth_tax'
   | 'financial_transaction_tax'
   | 'automation_tax'
-  | 'redirect_social_spending';
+  | 'redirect_social_spending'
+  | 'international_solidarity_transfer';
 
 /** Parameters for a specific funding mechanism */
 export type FundingMechanismInput =
@@ -352,7 +408,8 @@ export type FundingMechanismInput =
   | { type: 'wealth_tax'; rate: number }
   | { type: 'financial_transaction_tax'; rate: number }
   | { type: 'automation_tax'; rate: number }
-  | { type: 'redirect_social_spending'; percent: number };
+  | { type: 'redirect_social_spending'; percent: number }
+  | { type: 'international_solidarity_transfer'; annualAmountPppUsd: number };
 
 /** Result of a single funding mechanism estimate */
 export interface FundingEstimate {
@@ -382,6 +439,12 @@ export interface FundingScenarioResult {
   mechanisms: FundingEstimate[];
   totalRevenuePppUsd: number;
   coverageOfUbiCost: number;
+  /**
+   * Coverage from the seven domestic mechanisms only, excluding any
+   * `international_solidarity_transfer` line. Equal to `coverageOfUbiCost`
+   * when no solidarity mechanism is present.
+   */
+  domesticCoveragePercent: number;
   gapPppUsd: number;
   meta: RulesetMeta;
 }

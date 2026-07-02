@@ -120,6 +120,18 @@ describe('Public web UI', () => {
       expect(res.headers['content-type']).toContain('text/html');
       expect(res.body).toContain('Browse all countries');
     });
+
+    it('shows the local adequacy estimate next to the global anchor', async () => {
+      const res = await app.inject({ method: 'GET', url: '/countries/KE' });
+      expect(res.body).toContain('Local adequacy estimate');
+      expect(res.body).toContain('Global anchor');
+    });
+
+    it('shows the pooled international solidarity transfer for a low-income country', async () => {
+      const res = await app.inject({ method: 'GET', url: '/countries/BI' });
+      expect(res.body).toContain('Pooled international solidarity transfer');
+      expect(res.body).toContain('domestic mechanisms together target');
+    });
   });
 
   describe('calculator', () => {
@@ -167,6 +179,18 @@ describe('Public web UI', () => {
       const res = await app.inject({ method: 'GET', url: '/calculator?country=ZZ' });
       expect(res.statusCode).toBe(200);
       expect(res.body).not.toContain('Estimated impact');
+    });
+
+    it('offers a one-click local adequacy estimate override once a country is computed', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/calculator?country=KE&coverage=100&target=all&months=12',
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toContain('Use local adequacy estimate');
+      // Suggestion only appears once a scenario exists; empty form has none.
+      const empty = await app.inject({ method: 'GET', url: '/calculator' });
+      expect(empty.body).not.toContain('Use local adequacy estimate');
     });
 
     it('renders taxation sliders wired for live htmx updates', async () => {
@@ -227,6 +251,14 @@ describe('Public web UI', () => {
       expect(res.body).toContain('$6.85/day');
       expect(res.body).toContain('giniPenalty');
       expect(res.body).toContain('Citing these figures');
+    });
+
+    it('explains the local adequacy estimate and the international solidarity transfer', async () => {
+      const res = await app.inject({ method: 'GET', url: '/methodology' });
+      expect(res.body).toContain('id="adequacy"');
+      expect(res.body).toContain('Local adequacy estimate');
+      expect(res.body).toContain('comparability anchor');
+      expect(res.body).toContain('pooled international');
     });
 
     it('renders the data & API page', async () => {

@@ -8,6 +8,14 @@ const mockEntitlement: GlobalIncomeEntitlement = {
   pppUsdPerMonth: 210,
   localCurrencyPerMonth: 178.5,
   score: 0.0528,
+  adequacyEstimate: {
+    monthlyPppUsd: 1200,
+    dailyPppUsd: 40,
+    basis: 'relative_median',
+    label: '60% of estimated median income — ≈ $1200 PPP-USD/month',
+    source: 'OECD / Eurostat at-risk-of-poverty standard',
+    caveat: 'Informational only.',
+  },
   meta: { rulesetVersion: 'v1', dataVersion: 'worldbank-2023' },
 };
 

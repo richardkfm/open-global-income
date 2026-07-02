@@ -1,6 +1,7 @@
 import type { Country, SimulationParameters, SimulationResult } from './types.js';
 import { GLOBAL_INCOME_FLOOR_PPP, RULESET_VERSION } from './constants.js';
 import { populationFactorFromRules, expandPresetToRules } from './targeting.js';
+import { localAdequacyLine } from './adequacy.js';
 
 /**
  * Calculate a budget simulation for a country.
@@ -46,6 +47,13 @@ export function calculateSimulation(
   const asPercentOfGdp =
     gdpTotalPpp > 0 ? Math.round((annualPppUsd / gdpTotalPpp) * 10000) / 100 : 0;
 
+  // Informational comparison only: same recipientCount and duration, but
+  // priced at the country's local adequacy line instead of the floor above.
+  const adequacy = localAdequacyLine(country);
+  const adequacyAnnualPppUsd = Math.round(recipientCount * adequacy.monthlyPppUsd * params.durationMonths * 100) / 100;
+  const adequacyAsPercentOfGdp =
+    gdpTotalPpp > 0 ? Math.round((adequacyAnnualPppUsd / gdpTotalPpp) * 10000) / 100 : 0;
+
   return {
     country: {
       code: country.code,
@@ -64,6 +72,13 @@ export function calculateSimulation(
         annualLocalCurrency,
         annualPppUsd,
         asPercentOfGdp,
+      },
+      costAtLocalAdequacyLine: {
+        monthlyPppUsd: adequacy.monthlyPppUsd,
+        basis: adequacy.basis,
+        label: adequacy.label,
+        annualPppUsd: adequacyAnnualPppUsd,
+        asPercentOfGdp: adequacyAsPercentOfGdp,
       },
       meta: {
         rulesetVersion: RULESET_VERSION,
