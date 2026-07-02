@@ -22,6 +22,7 @@ export function renderHome(data: HomeData): string {
 
   const content = `
   <section class="hero">
+    <canvas id="hero-globe" class="hero-globe no-print" width="280" height="280" aria-hidden="true"></canvas>
     <h1>What would a basic income cost —<br><span class="hero-accent">and what would it change?</span></h1>
     <p class="hero-lede">
       Open Global Income answers the two questions every basic income debate gets stuck on,
@@ -145,5 +146,6 @@ export function renderHome(data: HomeData): string {
   return publicLayout('What would basic income cost?', content, {
     active: 'home',
     dataVersion: data.dataVersion,
+    includeGlobe: true,
   });
 }

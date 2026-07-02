@@ -1,6 +1,7 @@
 import type {
   Country,
   FundingMechanismInput,
+  FundingMechanismType,
   FundingEstimate,
   FiscalContext,
   FundingScenarioResult,
@@ -530,6 +531,239 @@ export function calculateFundingScenario(
     gapPppUsd: Math.round(gap),
     meta: simulation.simulation.meta,
   };
+}
+
+// ── Recommended funding mix ─────────────────────────────────────────────────
+
+/**
+ * Per-mechanism parameters used to build a recommended mix: a small "probe"
+ * value used to measure marginal revenue per unit of the mechanism's rate,
+ * a realistic ceiling on that rate, and a way to build the mechanism input
+ * once a value has been chosen.
+ */
+interface MixMechanismConfig {
+  type: FundingMechanismType;
+  probe: number;
+  cap: number;
+  toInput: (value: number) => FundingMechanismInput;
+  round: (value: number) => number;
+}
+
+const MIX_MECHANISMS: MixMechanismConfig[] = [
+  {
+    type: 'income_tax_surcharge',
+    probe: 0.01,
+    cap: 0.15,
+    toInput: (rate) => ({ type: 'income_tax_surcharge', rate }),
+    round: (v) => Math.round(v * 1000) / 1000, // nearest 0.1pp
+  },
+  {
+    type: 'vat_increase',
+    probe: 1,
+    cap: 10,
+    toInput: (points) => ({ type: 'vat_increase', points }),
+    round: (v) => Math.round(v * 2) / 2, // nearest 0.5pp
+  },
+  {
+    type: 'carbon_tax',
+    probe: 1,
+    cap: 100,
+    toInput: (dollarPerTon) => ({ type: 'carbon_tax', dollarPerTon }),
+    round: (v) => Math.round(v),
+  },
+  {
+    type: 'wealth_tax',
+    probe: 0.001,
+    cap: 0.03,
+    toInput: (rate) => ({ type: 'wealth_tax', rate }),
+    round: (v) => Math.round(v * 10000) / 10000, // nearest 0.01pp
+  },
+  {
+    type: 'financial_transaction_tax',
+    probe: 0.0001,
+    cap: 0.005,
+    toInput: (rate) => ({ type: 'financial_transaction_tax', rate }),
+    round: (v) => Math.round(v * 100000) / 100000, // nearest 0.001pp
+  },
+  {
+    type: 'automation_tax',
+    probe: 0.01,
+    cap: 0.08,
+    toInput: (rate) => ({ type: 'automation_tax', rate }),
+    round: (v) => Math.round(v * 1000) / 1000, // nearest 0.1pp
+  },
+  {
+    type: 'redirect_social_spending',
+    probe: 0.01,
+    cap: 0.5,
+    toInput: (percent) => ({ type: 'redirect_social_spending', percent }),
+    round: (v) => Math.round(v * 100) / 100, // nearest 1pp
+  },
+];
+
+/**
+ * Base suitability weights per income group, reflecting which mechanisms
+ * are realistic revenue levers in that kind of economy: formal-sector
+ * income and wealth taxes scale with formality and wealth concentration
+ * (both rise with income group), while consumption taxes and redirected
+ * social spending carry more of the load where the formal tax base is
+ * thin. These are starting weights only — {@link adjustMixWeights} nudges
+ * them using the country's actual tax and social-spending data where
+ * available.
+ */
+const MIX_WEIGHTS_BY_INCOME_GROUP: Record<string, Record<FundingMechanismType, number>> = {
+  HIC: {
+    income_tax_surcharge: 0.28,
+    vat_increase: 0.12,
+    carbon_tax: 0.12,
+    wealth_tax: 0.18,
+    financial_transaction_tax: 0.08,
+    automation_tax: 0.14,
+    redirect_social_spending: 0.08,
+  },
+  UMC: {
+    income_tax_surcharge: 0.20,
+    vat_increase: 0.20,
+    carbon_tax: 0.16,
+    wealth_tax: 0.10,
+    financial_transaction_tax: 0.05,
+    automation_tax: 0.09,
+    redirect_social_spending: 0.20,
+  },
+  LMC: {
+    income_tax_surcharge: 0.10,
+    vat_increase: 0.28,
+    carbon_tax: 0.12,
+    wealth_tax: 0.04,
+    financial_transaction_tax: 0.02,
+    automation_tax: 0.04,
+    redirect_social_spending: 0.40,
+  },
+  LIC: {
+    income_tax_surcharge: 0.05,
+    vat_increase: 0.30,
+    carbon_tax: 0.08,
+    wealth_tax: 0.02,
+    financial_transaction_tax: 0.01,
+    automation_tax: 0.02,
+    redirect_social_spending: 0.52,
+  },
+};
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+/**
+ * Nudges the income-group base weights using the country's own data where
+ * it's available, so the mix reflects that specific economy rather than
+ * just its income bracket:
+ *  - a country that already leans heavily on VAT (relative to its income
+ *    group's typical VAT/GDP share) has less realistic room to raise it
+ *    further, so its weight is reduced (and vice versa)
+ *  - a country with above-proxy existing social protection spending has
+ *    more to realistically redirect toward a UBI, so that weight rises
+ */
+function adjustMixWeights(
+  country: Country,
+  base: Record<FundingMechanismType, number>,
+): Record<FundingMechanismType, number> {
+  const adjusted = { ...base };
+
+  const vatProxy: Record<string, number> = { HIC: 7, UMC: 5, LMC: 4, LIC: 3 };
+  const vatPct = country.stats.taxBreakdown?.vatPercentGdp;
+  if (vatPct != null && vatPct > 0) {
+    const proxy = vatProxy[country.stats.incomeGroup] ?? 4;
+    adjusted.vat_increase *= clamp(proxy / vatPct, 0.5, 1.5);
+  }
+
+  const socialProxy: Record<string, number> = { HIC: 12, UMC: 5, LMC: 2.5, LIC: 1.5 };
+  const socialPct =
+    country.stats.socialProtectionExpenditureIloPercentGdp ??
+    country.stats.socialProtectionSpendingPercentGdp;
+  if (socialPct != null && socialPct > 0) {
+    const proxy = socialProxy[country.stats.incomeGroup] ?? 3;
+    adjusted.redirect_social_spending *= clamp(socialPct / proxy, 0.4, 2.0);
+  }
+
+  return adjusted;
+}
+
+/**
+ * Recommends a *mix* of funding mechanisms sized to a country's economic
+ * profile, instead of showing seven mechanisms each at one fixed
+ * illustrative rate (where, e.g., a single mechanism can look like it
+ * massively over- or under-shoots the UBI cost depending on the country).
+ *
+ * Approach: start from income-group suitability weights, adjust them with
+ * the country's actual VAT and social-spending data, then water-fill the
+ * UBI cost across mechanisms in proportion to weight — capping any
+ * mechanism that would need an unrealistic rate and redistributing the
+ * remainder across the mechanisms still below their cap. The result is a
+ * scenario (same shape as {@link calculateFundingScenario}) where each
+ * mechanism is set to a plausible rate and the mix, taken together,
+ * targets full coverage rather than any single mechanism doing so alone.
+ */
+export function calculateRecommendedFundingMix(
+  country: Country,
+  simulation: SimulationResult,
+  dataVersion: string,
+  simulationId?: string | null,
+): FundingScenarioResult {
+  const annualCost = simulation.simulation.cost.annualPppUsd;
+  const baseWeights =
+    MIX_WEIGHTS_BY_INCOME_GROUP[country.stats.incomeGroup] ?? MIX_WEIGHTS_BY_INCOME_GROUP.UMC;
+  const weights = adjustMixWeights(country, baseWeights);
+
+  // Marginal revenue per unit of each mechanism's rate parameter (these
+  // calculators are all linear in their rate, so one probe point suffices).
+  const revenuePerUnit = new Map<FundingMechanismType, number>();
+  for (const m of MIX_MECHANISMS) {
+    const probeEstimate = calculateFundingMechanism(country, m.toInput(m.probe));
+    revenuePerUnit.set(m.type, probeEstimate.annualRevenuePppUsd / m.probe);
+  }
+
+  const finalValue = new Map<FundingMechanismType, number>();
+  const active = new Set(MIX_MECHANISMS.map((m) => m.type));
+
+  for (let iteration = 0; iteration < 8 && active.size > 0; iteration++) {
+    let coveredByCapped = 0;
+    for (const m of MIX_MECHANISMS) {
+      if (active.has(m.type)) continue;
+      coveredByCapped += (finalValue.get(m.type) ?? 0) * (revenuePerUnit.get(m.type) ?? 0);
+    }
+    const remaining = Math.max(0, annualCost - coveredByCapped);
+    const activeWeightSum = MIX_MECHANISMS.filter((m) => active.has(m.type)).reduce(
+      (sum, m) => sum + (weights[m.type] ?? 0),
+      0,
+    );
+    if (activeWeightSum <= 0 || remaining <= 0) break;
+
+    let anyCapped = false;
+    for (const m of MIX_MECHANISMS) {
+      if (!active.has(m.type)) continue;
+      const share = (weights[m.type] ?? 0) / activeWeightSum;
+      const targetRevenue = remaining * share;
+      const perUnit = revenuePerUnit.get(m.type) ?? 0;
+      const requiredValue = perUnit > 0 ? targetRevenue / perUnit : 0;
+      if (requiredValue >= m.cap) {
+        finalValue.set(m.type, m.cap);
+        active.delete(m.type);
+        anyCapped = true;
+      } else {
+        finalValue.set(m.type, requiredValue);
+      }
+    }
+    if (!anyCapped) break;
+  }
+
+  const mechanisms: FundingMechanismInput[] = MIX_MECHANISMS.filter((m) => {
+    const value = finalValue.get(m.type) ?? 0;
+    const perUnit = revenuePerUnit.get(m.type) ?? 0;
+    return annualCost > 0 && (value * perUnit) / annualCost >= 0.005; // drop sub-0.5% noise
+  }).map((m) => m.toInput(m.round(finalValue.get(m.type) ?? 0)));
+
+  return calculateFundingScenario(country, simulation, mechanisms, dataVersion, simulationId);
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────

@@ -231,9 +231,12 @@ function fundingSection(funding: FundingScenarioResult, countryCode: string): st
   return `<section class="site-section" id="funding">
     <h2>Where could the money come from?</h2>
     <p class="section-lede">
-      An illustrative package of seven funding mechanisms at moderate rates, each showing how much
-      of the universal program's annual cost it would cover. Together this package covers
-      <strong>${formatPercent(funding.coverageOfUbiCost)}</strong> of the cost${funding.gapPppUsd > 0 ? ` (gap: $${formatCompact(funding.gapPppUsd)})` : ''}.
+      A recommended mix, not one mechanism maxed out: each rate below is sized to
+      ${escapeHtml(funding.country.name)}'s own economic profile — how formal its labor market is, how
+      much it already collects from VAT, how concentrated its wealth is, how much social spending
+      exists to redirect — so mechanisms poorly suited to this economy stay small or drop out
+      entirely. Together this mix targets <strong>${formatPercent(funding.coverageOfUbiCost)}</strong> of
+      the cost${funding.gapPppUsd > 0 ? ` (gap: $${formatCompact(funding.gapPppUsd)})` : ''}.
       Adjust every rate in the <a href="/calculator?country=${escapeHtml(countryCode)}">calculator</a>.
     </p>
     <div class="data-table-container">

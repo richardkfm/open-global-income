@@ -10,6 +10,7 @@ import {
   calculateFundingMechanism,
   calculateFiscalContext,
   calculateFundingScenario,
+  calculateRecommendedFundingMix,
 } from './funding.js';
 import type { Country, SimulationResult, FundingMechanismInput } from './types.js';
 
@@ -361,5 +362,99 @@ describe('calculateFundingScenario', () => {
     const a = calculateFundingScenario(kenya, simulationResult, mechanisms, 'test');
     const b = calculateFundingScenario(kenya, simulationResult, mechanisms, 'test');
     expect(a).toEqual(b);
+  });
+});
+
+describe('calculateRecommendedFundingMix', () => {
+  const germanySimulation: SimulationResult = {
+    country: { code: 'DE', name: 'Germany', population: 83800000 },
+    simulation: {
+      recipientCount: 83800000,
+      coverageRate: 1,
+      entitlementPerPerson: { pppUsdPerMonth: 210, localCurrencyPerMonth: 163.8 },
+      cost: {
+        monthlyLocalCurrency: 13726440000,
+        annualLocalCurrency: 164717280000,
+        annualPppUsd: 211176000000,
+        asPercentOfGdp: 3.73,
+      },
+      meta: { rulesetVersion: 'v1', dataVersion: 'test' },
+    },
+  };
+
+  it('recommends a mix of more than one mechanism rather than maxing one out', () => {
+    const result = calculateRecommendedFundingMix(germany, germanySimulation, 'test');
+    expect(result.mechanisms.length).toBeGreaterThan(1);
+  });
+
+  it('targets close to full coverage for a high-income country without wildly overshooting', () => {
+    const result = calculateRecommendedFundingMix(germany, germanySimulation, 'test');
+    expect(result.coverageOfUbiCost).toBeGreaterThan(70);
+    expect(result.coverageOfUbiCost).toBeLessThan(140);
+  });
+
+  it('every mechanism revenue sums to totalRevenuePppUsd', () => {
+    const result = calculateRecommendedFundingMix(germany, germanySimulation, 'test');
+    const sum = result.mechanisms.reduce((s, m) => s + m.annualRevenuePppUsd, 0);
+    expect(result.totalRevenuePppUsd).toBe(Math.round(sum));
+  });
+
+  it('a low-income country with a large cost target falls well short, not over 100%', () => {
+    const lic: Country = {
+      code: 'XX',
+      name: 'Test LIC',
+      stats: {
+        gdpPerCapitaUsd: 600,
+        gdpPerCapitaPppUsd: 1800,
+        gniPerCapitaUsd: 550,
+        pppConversionFactor: 300,
+        giniIndex: 40,
+        population: 10_000_000,
+        incomeGroup: 'LIC',
+        laborForceParticipation: 70,
+      },
+    };
+    const licSimulation: SimulationResult = {
+      country: { code: 'XX', name: 'Test LIC', population: 10_000_000 },
+      simulation: {
+        recipientCount: 10_000_000,
+        coverageRate: 1,
+        entitlementPerPerson: { pppUsdPerMonth: 210, localCurrencyPerMonth: 63000 },
+        cost: {
+          monthlyLocalCurrency: 630_000_000_000,
+          annualLocalCurrency: 7_560_000_000_000,
+          annualPppUsd: 25_200_000_000,
+          asPercentOfGdp: 140,
+        },
+        meta: { rulesetVersion: 'v1', dataVersion: 'test' },
+      },
+    };
+    const result = calculateRecommendedFundingMix(lic, licSimulation, 'test');
+    expect(result.coverageOfUbiCost).toBeLessThan(100);
+    expect(result.gapPppUsd).toBeGreaterThan(0);
+  });
+
+  it('returns no mechanisms and zero coverage when the UBI cost is zero', () => {
+    const zeroCostSimulation: SimulationResult = {
+      ...simulationResult,
+      simulation: {
+        ...simulationResult.simulation,
+        cost: { ...simulationResult.simulation.cost, annualPppUsd: 0 },
+      },
+    };
+    const result = calculateRecommendedFundingMix(kenya, zeroCostSimulation, 'test');
+    expect(result.mechanisms).toHaveLength(0);
+    expect(result.coverageOfUbiCost).toBe(0);
+  });
+
+  it('is deterministic', () => {
+    const a = calculateRecommendedFundingMix(kenya, simulationResult, 'test');
+    const b = calculateRecommendedFundingMix(kenya, simulationResult, 'test');
+    expect(a).toEqual(b);
+  });
+
+  it('assigns simulationId when provided', () => {
+    const result = calculateRecommendedFundingMix(kenya, simulationResult, 'test', 'sim-456');
+    expect(result.simulationId).toBe('sim-456');
   });
 });

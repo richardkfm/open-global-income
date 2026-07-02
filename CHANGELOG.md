@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-07-02
+
+### Added
+- **Rotating wireframe globe on the landing page hero** (`public/js/globe.js`) — a dependency-free canvas animation (graticule + simplified world coastlines derived from Natural Earth 110m data, `public/geo/world-outline.json`) that rotates continuously above the headline. No WebGL, no third-party JS; falls back to a static frame for `prefers-reduced-motion`.
+- **`calculateRecommendedFundingMix`** (`src/core/funding.ts`) — replaces the fact sheet's old fixed-rate 7-mechanism package (which could look wildly over- or under-funded depending on the country, e.g. Australia showing >200% coverage from generic rates while Afghanistan showed a token 2%) with a mix sized to each country's own economic profile. Income-group suitability weights (formal-sector income and wealth taxes scale up with income group; consumption taxes and redirected social spending carry more weight where the formal tax base is thin) are nudged by the country's actual VAT/GDP share and social-spending data, then water-filled across mechanisms — capping any mechanism at a realistic rate ceiling and redistributing the remainder — so the mix targets full coverage together rather than any single mechanism doing so alone.
+
+### Changed
+- Country fact sheet "Where could the money come from?" section (`src/web/views/country.ts`, `src/web/routes.ts`) now renders the recommended mix instead of the illustrative fixed-rate package.
+- Test count: **708 tests** across 38 suites (was 701).
+
 ## [0.2.1] - 2026-07-02
 
 ### Added

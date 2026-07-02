@@ -37,7 +37,11 @@ import {
 } from '../data/loader.js';
 import { calculateEntitlement } from '../core/rules.js';
 import { calculateSimulation } from '../core/simulations.js';
-import { calculateFiscalContext, calculateFundingScenario } from '../core/funding.js';
+import {
+  calculateFiscalContext,
+  calculateFundingScenario,
+  calculateRecommendedFundingMix,
+} from '../core/funding.js';
 import { calculateImpactAnalysis } from '../core/impact.js';
 import { resolveCountryPovertyLine } from '../core/poverty.js';
 import { getCurrencyForCountry, formatLocalCurrency } from '../data/currencies.js';
@@ -61,21 +65,6 @@ const TARGET_GROUPS: TargetGroup[] = [
   'bottom_third',
   'bottom_quintile',
   'bottom_decile',
-];
-
-/**
- * Illustrative default funding package shown on fact sheets: moderate rates
- * across all seven mechanisms so readers see the whole menu. Clearly labeled
- * as illustrative; the calculator lets users set every rate themselves.
- */
-const DEFAULT_FUNDING_PACKAGE: FundingMechanismInput[] = [
-  { type: 'income_tax_surcharge', rate: 0.05 },
-  { type: 'vat_increase', points: 2 },
-  { type: 'carbon_tax', dollarPerTon: 30 },
-  { type: 'wealth_tax', rate: 0.01 },
-  { type: 'financial_transaction_tax', rate: 0.001 },
-  { type: 'automation_tax', rate: 0.02 },
-  { type: 'redirect_social_spending', percent: 0.25 },
 ];
 
 function simulationParams(
@@ -178,7 +167,7 @@ function buildFactSheetData(country: Country, pageUrl: string): CountryFactSheet
     },
     dataVersion,
   );
-  const funding = calculateFundingScenario(country, universal, DEFAULT_FUNDING_PACKAGE, dataVersion);
+  const funding = calculateRecommendedFundingMix(country, universal, dataVersion);
 
   const targetedOptions: TargetedOption[] = (
     [
