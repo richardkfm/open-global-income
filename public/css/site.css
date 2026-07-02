@@ -41,6 +41,9 @@ body.site { background: var(--color-bg); font-size: 0.9375rem; }
   margin-bottom: 1rem;
 }
 .hero h1 .hero-accent { color: var(--color-primary); }
+.hero-globe {
+  display: block; width: 220px; height: 220px; margin: 0 auto 1.25rem;
+}
 .hero-lede { font-size: 1.1rem; color: var(--color-text-secondary); line-height: 1.65; margin-bottom: 1.75rem; }
 .hero-actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
 .hero-actions .btn { height: 42px; padding: 0 1.35rem; font-size: 0.95rem; }

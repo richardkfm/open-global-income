@@ -29,6 +29,8 @@ export interface PublicLayoutOptions {
   includeCharts?: boolean;
   /** Include htmx (only pages with live-updating fragments, e.g. the calculator) */
   includeHtmx?: boolean;
+  /** Include the rotating wireframe globe script (home page hero only) */
+  includeGlobe?: boolean;
   /** Data snapshot identifier shown in the footer */
   dataVersion?: string;
 }
@@ -64,6 +66,10 @@ export function publicLayout(
     ? `
   <script src="https://unpkg.com/htmx.org@2.0.4"></script>`
     : '';
+  const globeScript = opts.includeGlobe
+    ? `
+  <script src="/js/globe.js" defer></script>`
+    : '';
 
   const dataVersionHtml = opts.dataVersion
     ? `<span>Data snapshot: ${escapeHtml(opts.dataVersion)}</span>`
@@ -77,7 +83,7 @@ export function publicLayout(
   <meta name="description" content="${escapeHtml(description)}">
   <title>${escapeHtml(title)} — Open Global Income</title>
   <link href="/css/ogi.css" rel="stylesheet">
-  <link href="/css/site.css" rel="stylesheet">${chartScripts}${htmxScript}
+  <link href="/css/site.css" rel="stylesheet">${chartScripts}${htmxScript}${globeScript}
 </head>
 <body class="site">
   <header class="site-header">
