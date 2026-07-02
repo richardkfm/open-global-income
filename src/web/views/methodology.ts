@@ -18,6 +18,7 @@ import {
   POVERTY_LINE_LMIC_DAILY_PPP_USD,
   POVERTY_LINE_UMIC_DAILY_PPP_USD,
   RELATIVE_POVERTY_MEDIAN_FRACTION,
+  dailyToMonthlyPppUsd,
 } from '../../core/poverty.js';
 import { packageVersion } from '../../config.js';
 
@@ -54,10 +55,73 @@ export function renderMethodology(data: MethodologyData): string {
       and is converted to each country's currency with the World Bank PPP conversion factor
       (indicator <code class="mono">PA.NUS.PPP</code>).
     </p>
+    <p class="section-lede mt-1">
+      <strong>What the anchor is, and is not.</strong> $${GLOBAL_INCOME_FLOOR_PPP} is a
+      <strong>comparability anchor</strong>, not a claim that it is locally adequate everywhere it is
+      quoted. It is the one number used for need-scoring, cross-country comparison, and headline
+      program-cost figures, precisely because it is held fixed — a Kenyan and a German pilot can be
+      compared on equal terms only if the underlying unit does not itself vary by country. It is a
+      floor on comparability, not a verdict on sufficiency.
+    </p>
+    <p class="section-lede mt-1">
+      <strong>A caveat on what the PPP conversion actually equalizes.</strong> The PPP factor (the
+      World Bank's International Comparison Program surveys ~1,000+ items, weighted by consumption
+      share) equalizes purchasing power <em>in aggregate, over a whole national consumption
+      basket</em> — not good by good. Non-traded, labor-intensive items that dominate a basic-income
+      recipient's actual spending (local food, rent, domestic services, local transport) are
+      systematically cheaper in poor countries than the aggregate PPP factor implies, a pattern
+      economists call the Balassa–Samuelson effect; internationally traded goods price closer to
+      world levels everywhere. Because recipient spending skews heavily toward non-tradables, the
+      $${GLOBAL_INCOME_FLOOR_PPP} anchor likely buys <em>more</em> recipient-relevant consumption in a
+      low-income country than the headline PPP figure suggests, and <em>less</em> in a high-income
+      one — the adjustment is conservative in exactly the direction critics of a flat global figure
+      worry about. The country-specific <a href="#adequacy">local adequacy line</a> below is the
+      number that accounts for this in each country's own terms.
+    </p>
+  </section>
+
+  <section class="site-section" id="adequacy">
+    <h2>2. Local adequacy estimate — a second, deliberately different number</h2>
+    <p class="section-lede">
+      Every calc response, fact sheet and simulation on this site shows a second figure next to the
+      $${GLOBAL_INCOME_FLOOR_PPP} anchor: a <strong>local adequacy estimate</strong> — "what would be
+      enough to live on <em>here</em>", derived from the same country-appropriate poverty line used in
+      §4 below. It answers a genuinely different question from the anchor, and the platform never
+      confuses the two: the field is named <code class="mono">adequacyEstimate</code>, not
+      <code class="mono">floor</code>, and it is <strong>informational only</strong> — it never feeds
+      the need score, the default entitlement, or any disbursement math. Programs that want to actually
+      pay the local figure can already do so via the existing <code class="mono">floorOverride</code>
+      parameter; the platform's job is to make the locally-honest number visible and auditable, not to
+      impose it.
+    </p>
+    <p class="section-lede mt-1">
+      Because it is built from the income-group poverty ladder, the adequacy estimate sits
+      <strong>below</strong> the $${GLOBAL_INCOME_FLOOR_PPP} anchor in low-income countries and
+      <strong>above</strong> it in high-income ones — by construction, since the anchor is calibrated
+      to the upper-middle-income line:
+    </p>
+    <div class="data-table-container">
+      <table class="data-table">
+        <thead><tr><th>Income group</th><th>Local adequacy estimate</th><th>vs. the $${GLOBAL_INCOME_FLOOR_PPP} anchor</th></tr></thead>
+        <tbody>
+          <tr><td>Low income</td><td>≈ $${dailyToMonthlyPppUsd(POVERTY_LINE_EXTREME_DAILY_PPP_USD).toFixed(0)}/month</td><td>well below</td></tr>
+          <tr><td>Lower-middle income</td><td>≈ $${dailyToMonthlyPppUsd(POVERTY_LINE_LMIC_DAILY_PPP_USD).toFixed(0)}/month</td><td>below</td></tr>
+          <tr><td>Upper-middle income</td><td>≈ $${dailyToMonthlyPppUsd(POVERTY_LINE_UMIC_DAILY_PPP_USD).toFixed(0)}/month</td><td>the anchor <em>is</em> this line</td></tr>
+          <tr><td>High income</td><td>${RELATIVE_POVERTY_MEDIAN_FRACTION * 100}% of estimated median income</td><td>typically well above</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="text-sm text-muted mt-1">
+      v1 (current) re-presents the same poverty-line ladder as §4, with an adequacy-specific label and
+      caveat — no new data. A future v2 would replace the ladder with each country's own national
+      poverty line monetary value where curated data is available. Source:
+      <a href="${REPO_URL}/blob/main/src/core/adequacy.ts" target="_blank" rel="noopener noreferrer"><code class="mono">src/core/adequacy.ts</code></a>
+      · design rationale: <a href="${REPO_URL}/blob/main/INCOME_FLOOR_PROPOSED_ANSWERS.md" target="_blank" rel="noopener noreferrer">INCOME_FLOOR_PROPOSED_ANSWERS.md</a>.
+    </p>
   </section>
 
   <section class="site-section" id="formula">
-    <h2>2. The entitlement formula (ruleset ${RULESET_VERSION})</h2>
+    <h2>3. The entitlement formula (ruleset ${RULESET_VERSION})</h2>
     <div class="card">
       <pre class="mono text-sm" style="white-space:pre-wrap">pppUsdPerMonth        = ${GLOBAL_INCOME_FLOOR_PPP}                        (the global floor)
 localCurrencyPerMonth = pppUsdPerMonth × pppConversionFactor
@@ -78,7 +142,7 @@ score        = clamp(incomeRatio + giniPenalty, 0, 1)</pre>
   </section>
 
   <section class="site-section" id="simulation">
-    <h2>3. Program cost</h2>
+    <h2>4. Program cost</h2>
     <div class="card">
       <pre class="mono text-sm" style="white-space:pre-wrap">recipients   = population × targetGroupFraction × coverage
 annualCost   = recipients × monthlyAmount × 12       (PPP-USD)
@@ -94,7 +158,7 @@ annualCost   = recipients × monthlyAmount × 12       (PPP-USD)
   </section>
 
   <section class="site-section" id="poverty-lines">
-    <h2>4. Country-appropriate poverty lines</h2>
+    <h2>5. Country-appropriate poverty lines</h2>
     <p class="section-lede">
       Using one global line everywhere produces nonsense — by the $${POVERTY_LINE_EXTREME_DAILY_PPP_USD}/day line, Germany has
       no poverty. Poverty figures on this site therefore use a tiered ladder, per country income group:
@@ -117,20 +181,27 @@ annualCost   = recipients × monthlyAmount × 12       (PPP-USD)
   </section>
 
   <section class="site-section" id="funding">
-    <h2>5. Funding mechanisms</h2>
+    <h2>6. Funding mechanisms</h2>
     <p class="section-lede">
-      Seven revenue calculators estimate what a given tax or reallocation would raise: income tax
-      surcharge, VAT increase, carbon tax, wealth tax, financial transaction tax, automation tax,
+      Seven domestic revenue calculators estimate what a given tax or reallocation would raise: income
+      tax surcharge, VAT increase, carbon tax, wealth tax, financial transaction tax, automation tax,
       and redirected social spending. Each applies documented behavioural discounts and
       income-group proxies (e.g. a 20% VAT demand response, wealth-tax collection factors that
       account for avoidance, formal-economy shares for income tax). Every estimate returns its
-      assumption list, which is displayed wherever the number appears.
+      assumption list, which is displayed wherever the number appears. When a country's recommended
+      mix of these seven mechanisms — each already capped at a realistic rate — still can't close the
+      cost, the residual is shown as an explicit eighth line, a <strong>pooled international
+      solidarity transfer</strong>, rather than left as a silent gap. It is not a domestic revenue
+      estimate; it is modeled on precedents for rules-based cross-border transfers (EU cohesion funds,
+      the IMF's Poverty Reduction and Growth Trust, Green Climate Fund contributions). Sizing a
+      donor-side pool and allocation key across contributing countries is Federation-layer work, not
+      yet built.
       Source: <a href="${REPO_URL}/blob/main/src/core/funding.ts" target="_blank" rel="noopener noreferrer"><code class="mono">src/core/funding.ts</code></a>.
     </p>
   </section>
 
   <section class="site-section" id="impact">
-    <h2>6. Impact estimates</h2>
+    <h2>7. Impact estimates</h2>
     <p class="section-lede">
       Five modeled dimensions: poverty reduction (income-gap method against the country-appropriate
       line), purchasing power for the poorest quintile (income-share estimates from Gini),
@@ -144,7 +215,7 @@ annualCost   = recipients × monthlyAmount × 12       (PPP-USD)
   </section>
 
   <section class="site-section" id="data-sources">
-    <h2>7. Data sources</h2>
+    <h2>8. Data sources</h2>
     <p class="section-lede">
       ${data.countryCount} countries, 17+ indicators each, current snapshot <strong>${escapeHtml(data.dataVersion)}</strong>:
     </p>
@@ -162,18 +233,20 @@ annualCost   = recipients × monthlyAmount × 12       (PPP-USD)
   </section>
 
   <section class="site-section" id="limitations">
-    <h2>8. What these numbers are not</h2>
+    <h2>9. What these numbers are not</h2>
     <ul class="assumption-list">
       <li>They are <strong>static estimates</strong> — no behavioural responses to the transfer itself (labor supply, prices, migration) are modeled.</li>
       <li>Administrative and delivery costs are excluded (well-run cash transfer programs add roughly 5–15%).</li>
       <li>Funding-mechanism yields use income-group proxies where country data is missing — the assumption list on each estimate says exactly when.</li>
       <li>Impact figures are model projections. Measured pilot outcomes belong to the platform's evidence layer, which is a separate, clearly-labeled dataset.</li>
       <li>Data vintages vary by indicator; each country fact sheet shows its snapshot identifier.</li>
+      <li>The local adequacy estimate is a poverty-line-derived approximation, not a priced budget standard, and it never changes the entitlement amount.</li>
+      <li>The international solidarity transfer line is a modeled funding requirement, not a real revenue stream or a commitment from any donor.</li>
     </ul>
   </section>
 
   <section class="site-section" id="citing">
-    <h2>9. Citing these figures</h2>
+    <h2>10. Citing these figures</h2>
     <p class="section-lede">
       Cite the platform version and data snapshot — both appear on every page, and every fact
       sheet has a copy-ready citation for its own figures.

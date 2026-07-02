@@ -350,11 +350,16 @@ export function renderCountryDetail(
       </div>
     </div>
 
-    <div class="grid grid-3 mb-2">
+    <div class="grid grid-4 mb-2">
       <div class="card stat-card">
         <div class="stat-label">${t('countries.ubiFloorMonth')}</div>
         <div class="stat-value">$${entitlement.pppUsdPerMonth} <span class="text-sm text-muted">${t('countries.pppUsdUnit')}</span></div>
         <div class="text-sm text-muted">${localFmt.format(entitlement.localCurrencyPerMonth)} ${t('countries.localUnit')} (${escapeHtml(currencyCode)})</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-label">${t('countries.localAdequacyEstimate')}</div>
+        <div class="stat-value">$${entitlement.adequacyEstimate.monthlyPppUsd.toFixed(0)} <span class="text-sm text-muted">${t('countries.pppUsdUnit')}</span></div>
+        <div class="text-sm text-muted">${escapeHtml(entitlement.adequacyEstimate.label)}</div>
       </div>
       <div class="card stat-card">
         <div class="stat-label">${t('countries.gdpPerCapita')}</div>
@@ -378,6 +383,7 @@ export function renderCountryDetail(
       <li><strong>${t('countries.drawerInputGni')}</strong> $${s.gniPerCapitaUsd.toLocaleString('en-US')}/yr — ${t('countries.worldBank')} 2023 (NY.GNP.PCAP.CD)</li>
       <li><strong>${t('countries.drawerInputGini')}</strong> ${s.giniIndex != null ? s.giniIndex : t('common.none')} — ${t('countries.worldBank')} 2023 (SI.POV.GINI)</li>
       <li><strong>${t('countries.drawerRuleset')}</strong> ${escapeHtml(entitlement.meta.rulesetVersion)}</li>
+      <li><strong>${t('countries.localAdequacyEstimate')}:</strong> $${entitlement.adequacyEstimate.monthlyPppUsd.toFixed(0)} PPP-USD/month — ${escapeHtml(entitlement.adequacyEstimate.label)}. Informational only; never an input to the formula above.</li>
     </ul>
     <p class="text-xs text-muted" style="font-style:italic">${t('countries.drawerEntitlementNote')}</p>`,
   );
@@ -388,11 +394,16 @@ export function renderCountryDetail(
         <h2 class="card-title">${t('countries.incomeCalculation')}</h2>
         ${sourceBadge('wb')}
       </div>
-      <div class="grid grid-3">
+      <div class="grid grid-4">
         <div class="card stat-card">
           <div class="stat-label">${t('countries.ubiFloorMonth')}</div>
           <div class="stat-value">$${entitlement.pppUsdPerMonth} <span class="text-sm text-muted">${t('countries.pppUsdUnit')}</span></div>
           <div class="text-sm text-muted">${localFmt.format(entitlement.localCurrencyPerMonth)} ${t('countries.localUnit')} (${escapeHtml(currencyCode)})</div>
+        </div>
+        <div class="card stat-card">
+          <div class="stat-label">${t('countries.localAdequacyEstimate')}</div>
+          <div class="stat-value">$${entitlement.adequacyEstimate.monthlyPppUsd.toFixed(0)} <span class="text-sm text-muted">${t('countries.pppUsdUnit')}</span></div>
+          <div class="text-xs text-muted">${t('countries.localAdequacyNote')}</div>
         </div>
         <div class="card stat-card">
           <div class="stat-label">${t('countries.needScore')}</div>

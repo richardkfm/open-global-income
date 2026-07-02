@@ -173,4 +173,44 @@ describe('calculateSimulation', () => {
       result.simulation.cost.monthlyLocalCurrency,
     );
   });
+
+  describe('costAtLocalAdequacyLine', () => {
+    it('is informational only — does not change recipientCount or the entitlement itself', () => {
+      const result = calculateSimulation(kenya, defaultParams, DATA_VERSION);
+      expect(result.simulation.entitlementPerPerson.pppUsdPerMonth).toBe(210);
+      expect(result.simulation.costAtLocalAdequacyLine?.basis).toBe('lower_middle');
+    });
+
+    it('uses the same recipientCount as the anchor-priced cost', () => {
+      const result = calculateSimulation(kenya, defaultParams, DATA_VERSION);
+      const adequacy = result.simulation.costAtLocalAdequacyLine!;
+      const impliedRecipients = adequacy.annualPppUsd / (adequacy.monthlyPppUsd * 12);
+      expect(impliedRecipients).toBeCloseTo(result.simulation.recipientCount, 0);
+    });
+
+    it('is lower than the anchor cost for a low/lower-middle income country', () => {
+      const result = calculateSimulation(kenya, defaultParams, DATA_VERSION);
+      expect(result.simulation.costAtLocalAdequacyLine!.annualPppUsd).toBeLessThan(
+        result.simulation.cost.annualPppUsd,
+      );
+    });
+
+    it('is higher than the anchor cost for a high-income country', () => {
+      const params: SimulationParameters = { ...defaultParams, country: 'DE' };
+      const result = calculateSimulation(germany, params, DATA_VERSION);
+      expect(result.simulation.costAtLocalAdequacyLine!.annualPppUsd).toBeGreaterThan(
+        result.simulation.cost.annualPppUsd,
+      );
+      expect(result.simulation.costAtLocalAdequacyLine!.basis).toBe('relative_median');
+    });
+
+    it('unaffected by floorOverride — always priced at the country adequacy line', () => {
+      const params: SimulationParameters = {
+        ...defaultParams,
+        adjustments: { floorOverride: 100, householdSize: null },
+      };
+      const result = calculateSimulation(kenya, params, DATA_VERSION);
+      expect(result.simulation.costAtLocalAdequacyLine!.monthlyPppUsd).not.toBe(100);
+    });
+  });
 });

@@ -417,6 +417,42 @@ export function calcRedirectSocialSpending(
   };
 }
 
+/**
+ * Pooled international solidarity transfer.
+ *
+ * Not a domestic mechanism: this represents the residual funding gap after
+ * the seven domestic mechanisms above are sized at realistic ceilings,
+ * relabeled as an explicit external-transfer requirement instead of an
+ * unlabeled shortfall (row D of INCOME_FLOOR_PROPOSED_ANSWERS.md). The
+ * amount is a modeled need, not a real revenue estimate — it is sized by
+ * the caller (see `calculateRecommendedFundingMix`), not computed here.
+ *
+ * Precedents for GNI-proportional, rules-based cross-border transfers:
+ * EU cohesion funds, the IMF Poverty Reduction and Growth Trust (PRGT),
+ * and Green Climate Fund contributions. Sizing the donor-side pool and its
+ * allocation key is Federation-layer work (see `src/core/solidarity.ts`,
+ * once built); this function only states the recipient-side requirement.
+ */
+export function calcInternationalSolidarityTransfer(
+  country: Country,
+  annualAmountPppUsd: number,
+): FundingEstimate {
+  const revenuePpp = Math.max(0, annualAmountPppUsd);
+
+  return {
+    mechanism: 'international_solidarity_transfer',
+    label: 'Pooled international solidarity transfer',
+    annualRevenueLocal: Math.round(revenuePpp * country.stats.pppConversionFactor),
+    annualRevenuePppUsd: Math.round(revenuePpp),
+    coversPercentOfUbiCost: 0, // filled in by scenario builder
+    assumptions: [
+      'Not a domestic mechanism: the residual gap after the seven domestic mechanisms are sized at realistic ceilings, relabeled as an explicit external-transfer requirement rather than left unlabeled',
+      'Modeled on precedents for rules-based, GNI-proportional cross-border transfers: EU cohesion funds, the IMF Poverty Reduction and Growth Trust (PRGT), and Green Climate Fund contributions',
+      'Sizing the donor-side pool and allocation key across contributing countries is separate, Federation-layer work — this figure states only the recipient-side requirement',
+    ],
+  };
+}
+
 // ── Dispatch: calculate a single mechanism ─────────────────────────────────
 
 export function calculateFundingMechanism(
@@ -438,6 +474,8 @@ export function calculateFundingMechanism(
       return calcAutomationTax(country, input.rate);
     case 'redirect_social_spending':
       return calcRedirectSocialSpending(country, input.percent);
+    case 'international_solidarity_transfer':
+      return calcInternationalSolidarityTransfer(country, input.annualAmountPppUsd);
   }
 }
 
@@ -511,6 +549,12 @@ export function calculateFundingScenario(
   const coverage = annualCost > 0 ? Math.round((totalRevenue / annualCost) * 10000) / 100 : 0;
   const gap = Math.max(0, annualCost - totalRevenue);
 
+  const domesticRevenue = estimates
+    .filter((e) => e.mechanism !== 'international_solidarity_transfer')
+    .reduce((sum, e) => sum + e.annualRevenuePppUsd, 0);
+  const domesticCoveragePercent =
+    annualCost > 0 ? Math.round((domesticRevenue / annualCost) * 10000) / 100 : 0;
+
   const fiscal = calculateFiscalContext(country, annualCost);
 
   return {
@@ -528,6 +572,7 @@ export function calculateFundingScenario(
     mechanisms: estimates,
     totalRevenuePppUsd: Math.round(totalRevenue),
     coverageOfUbiCost: coverage,
+    domesticCoveragePercent,
     gapPppUsd: Math.round(gap),
     meta: simulation.simulation.meta,
   };
@@ -620,6 +665,7 @@ const MIX_WEIGHTS_BY_INCOME_GROUP: Record<string, Record<FundingMechanismType, n
     financial_transaction_tax: 0.08,
     automation_tax: 0.14,
     redirect_social_spending: 0.08,
+    international_solidarity_transfer: 0, // never part of the domestic mix; appended separately if a gap remains
   },
   UMC: {
     income_tax_surcharge: 0.20,
@@ -629,6 +675,7 @@ const MIX_WEIGHTS_BY_INCOME_GROUP: Record<string, Record<FundingMechanismType, n
     financial_transaction_tax: 0.05,
     automation_tax: 0.09,
     redirect_social_spending: 0.20,
+    international_solidarity_transfer: 0,
   },
   LMC: {
     income_tax_surcharge: 0.10,
@@ -638,6 +685,7 @@ const MIX_WEIGHTS_BY_INCOME_GROUP: Record<string, Record<FundingMechanismType, n
     financial_transaction_tax: 0.02,
     automation_tax: 0.04,
     redirect_social_spending: 0.40,
+    international_solidarity_transfer: 0,
   },
   LIC: {
     income_tax_surcharge: 0.05,
@@ -647,6 +695,7 @@ const MIX_WEIGHTS_BY_INCOME_GROUP: Record<string, Record<FundingMechanismType, n
     financial_transaction_tax: 0.01,
     automation_tax: 0.02,
     redirect_social_spending: 0.52,
+    international_solidarity_transfer: 0,
   },
 };
 
@@ -763,7 +812,21 @@ export function calculateRecommendedFundingMix(
     return annualCost > 0 && (value * perUnit) / annualCost >= 0.005; // drop sub-0.5% noise
   }).map((m) => m.toInput(m.round(finalValue.get(m.type) ?? 0)));
 
-  return calculateFundingScenario(country, simulation, mechanisms, dataVersion, simulationId);
+  const domesticScenario = calculateFundingScenario(country, simulation, mechanisms, dataVersion, simulationId);
+
+  // If even the seven domestic mechanisms at realistic ceilings can't close
+  // the cost, attribute the residual to an explicit, labeled international
+  // solidarity transfer (row D of INCOME_FLOOR_PROPOSED_ANSWERS.md) instead
+  // of leaving it as an unlabeled gap.
+  if (domesticScenario.gapPppUsd > 0) {
+    mechanisms.push({
+      type: 'international_solidarity_transfer',
+      annualAmountPppUsd: domesticScenario.gapPppUsd,
+    });
+    return calculateFundingScenario(country, simulation, mechanisms, dataVersion, simulationId);
+  }
+
+  return domesticScenario;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────

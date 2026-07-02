@@ -26,6 +26,16 @@ export const solanaUsdcProvider: DisbursementProvider = {
         pppUsdPerMonth: entitlementPerRecipient,
         localCurrencyPerMonth: entitlementPerRecipient,
         score: 0,
+        // Adapters only read pppUsdPerMonth for token conversion; this is an
+        // unused placeholder required by the GlobalIncomeEntitlement shape.
+        adequacyEstimate: {
+          monthlyPppUsd: entitlementPerRecipient,
+          dailyPppUsd: entitlementPerRecipient / 30,
+          basis: 'upper_middle',
+          label: 'Not applicable — disbursement providers do not use the adequacy estimate',
+          source: 'n/a',
+          caveat: 'n/a',
+        },
         meta: { rulesetVersion: 'v1', dataVersion: 'worldbank-2023' },
       },
       { tokenSymbol: 'USDC', tokenDecimals: 6, exchangeRate: 1 },

@@ -441,6 +441,8 @@ const en = {
     ubiFloorMonth: 'UBI Floor / month',
     pppUsdUnit: 'PPP-USD',
     localUnit: 'local',
+    localAdequacyEstimate: 'Local adequacy estimate',
+    localAdequacyNote: 'Informational — never used to compute the entitlement above',
     gdpPerCapita: 'GDP / Capita',
     population: 'Population',
     needScore: 'Need Score',

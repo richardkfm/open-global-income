@@ -184,4 +184,26 @@ describe('calculateEntitlement (Ruleset v1)', () => {
       dataVersion: DATA_VERSION,
     });
   });
+
+  it('attaches a local adequacy estimate that never equals the fixed anchor except by coincidence at UMC', () => {
+    const de = calculateEntitlement(germany, DATA_VERSION);
+    const br = calculateEntitlement(brazil, DATA_VERSION);
+    const bi = calculateEntitlement(burundi, DATA_VERSION);
+
+    // LIC adequacy sits well below the $210 anchor
+    expect(bi.adequacyEstimate.basis).toBe('extreme');
+    expect(bi.adequacyEstimate.monthlyPppUsd).toBeLessThan(bi.pppUsdPerMonth);
+
+    // UMC adequacy is the line the anchor is calibrated to
+    expect(br.adequacyEstimate.basis).toBe('upper_middle');
+    expect(br.adequacyEstimate.monthlyPppUsd).toBeCloseTo(205.5, 0);
+
+    // HIC adequacy (60% of estimated median) sits above the anchor
+    expect(de.adequacyEstimate.basis).toBe('relative_median');
+    expect(de.adequacyEstimate.monthlyPppUsd).toBeGreaterThan(de.pppUsdPerMonth);
+
+    // Never feeds the score/entitlement — same score before and after reading it
+    expect(de.score).toBeGreaterThan(0);
+    expect(de.adequacyEstimate.caveat).toMatch(/never feeds/i);
+  });
 });

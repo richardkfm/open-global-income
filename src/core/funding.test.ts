@@ -7,6 +7,7 @@ import {
   calcFinancialTransactionTax,
   calcAutomationTax,
   calcRedirectSocialSpending,
+  calcInternationalSolidarityTransfer,
   calculateFundingMechanism,
   calculateFiscalContext,
   calculateFundingScenario,
@@ -281,12 +282,40 @@ describe('calcRedirectSocialSpending', () => {
   });
 });
 
+describe('calcInternationalSolidarityTransfer', () => {
+  it('sizes revenue exactly to the requested amount, unlike the other mechanisms', () => {
+    const est = calcInternationalSolidarityTransfer(kenya, 5_000_000_000);
+    expect(est.mechanism).toBe('international_solidarity_transfer');
+    expect(est.annualRevenuePppUsd).toBe(5_000_000_000);
+    expect(est.annualRevenueLocal).toBe(Math.round(5_000_000_000 * kenya.stats.pppConversionFactor));
+  });
+
+  it('clamps negative amounts to zero', () => {
+    const est = calcInternationalSolidarityTransfer(kenya, -100);
+    expect(est.annualRevenuePppUsd).toBe(0);
+  });
+
+  it('assumptions cite that it is not a domestic mechanism', () => {
+    const est = calcInternationalSolidarityTransfer(kenya, 1000);
+    expect(est.assumptions.some((a) => a.toLowerCase().includes('not a domestic mechanism'))).toBe(true);
+  });
+});
+
 describe('calculateFundingMechanism (dispatch)', () => {
   it('dispatches to correct calculator', () => {
     const est = calculateFundingMechanism(kenya, { type: 'income_tax_surcharge', rate: 0.02 });
     expect(est.mechanism).toBe('income_tax_surcharge');
     const est2 = calculateFundingMechanism(kenya, { type: 'carbon_tax', dollarPerTon: 10 });
     expect(est2.mechanism).toBe('carbon_tax');
+  });
+
+  it('dispatches the international solidarity transfer', () => {
+    const est = calculateFundingMechanism(kenya, {
+      type: 'international_solidarity_transfer',
+      annualAmountPppUsd: 42,
+    });
+    expect(est.mechanism).toBe('international_solidarity_transfer');
+    expect(est.annualRevenuePppUsd).toBe(42);
   });
 });
 
@@ -349,6 +378,26 @@ describe('calculateFundingScenario', () => {
     expect(result.gapPppUsd).toBe(27231120000);
   });
 
+  it('domesticCoveragePercent excludes the international solidarity transfer', () => {
+    const mechanisms: FundingMechanismInput[] = [
+      { type: 'income_tax_surcharge', rate: 0.03 },
+      { type: 'international_solidarity_transfer', annualAmountPppUsd: 27231120000 },
+    ];
+    const result = calculateFundingScenario(kenya, simulationResult, mechanisms, 'test');
+    // Total coverage includes the solidarity transfer and reaches (well over) 100%...
+    expect(result.coverageOfUbiCost).toBeGreaterThan(100);
+    // ...but domestic coverage is just the income tax surcharge's contribution.
+    expect(result.domesticCoveragePercent).toBeLessThan(result.coverageOfUbiCost);
+    expect(result.domesticCoveragePercent).toBeGreaterThan(0);
+    expect(result.domesticCoveragePercent).toBeLessThan(100);
+  });
+
+  it('domesticCoveragePercent equals coverageOfUbiCost when no solidarity mechanism is present', () => {
+    const mechanisms: FundingMechanismInput[] = [{ type: 'income_tax_surcharge', rate: 0.03 }];
+    const result = calculateFundingScenario(kenya, simulationResult, mechanisms, 'test');
+    expect(result.domesticCoveragePercent).toBe(result.coverageOfUbiCost);
+  });
+
   it('assigns simulationId when provided', () => {
     const result = calculateFundingScenario(kenya, simulationResult, [], 'test', 'sim-123');
     expect(result.simulationId).toBe('sim-123');
@@ -399,7 +448,7 @@ describe('calculateRecommendedFundingMix', () => {
     expect(result.totalRevenuePppUsd).toBe(Math.round(sum));
   });
 
-  it('a low-income country with a large cost target falls well short, not over 100%', () => {
+  it('a low-income country with a large cost target: domestic mechanisms fall well short, and an international solidarity transfer closes the rest', () => {
     const lic: Country = {
       code: 'XX',
       name: 'Test LIC',
@@ -430,8 +479,15 @@ describe('calculateRecommendedFundingMix', () => {
       },
     };
     const result = calculateRecommendedFundingMix(lic, licSimulation, 'test');
-    expect(result.coverageOfUbiCost).toBeLessThan(100);
-    expect(result.gapPppUsd).toBeGreaterThan(0);
+    // The seven domestic mechanisms alone fall well short...
+    expect(result.domesticCoveragePercent).toBeLessThan(100);
+    // ...but the residual is attributed to an explicit, labeled international
+    // solidarity transfer rather than left as a silent gap.
+    const solidarity = result.mechanisms.find((m) => m.mechanism === 'international_solidarity_transfer');
+    expect(solidarity).toBeDefined();
+    expect(solidarity!.annualRevenuePppUsd).toBeGreaterThan(0);
+    expect(result.coverageOfUbiCost).toBeCloseTo(100, 0);
+    expect(result.gapPppUsd).toBe(0);
   });
 
   it('returns no mechanisms and zero coverage when the UBI cost is zero', () => {

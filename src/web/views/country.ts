@@ -222,10 +222,12 @@ function impactSection(impact: ImpactAnalysisResult): string {
 const LOW_DOMESTIC_COVERAGE_THRESHOLD = 30;
 
 function fundingSection(funding: FundingScenarioResult, countryCode: string): string {
+  const solidarity = funding.mechanisms.find((m) => m.mechanism === 'international_solidarity_transfer');
   const rows = funding.mechanisms
     .map((m) => {
       const pct = Math.min(100, m.coversPercentOfUbiCost);
-      return `<tr>
+      const isSolidarity = m.mechanism === 'international_solidarity_transfer';
+      return `<tr${isSolidarity ? ' class="funding-row-solidarity"' : ''}>
       <td>${escapeHtml(m.label)}</td>
       <td class="num">$${formatCompact(m.annualRevenuePppUsd)}</td>
       <td style="width:40%">
@@ -245,19 +247,27 @@ function fundingSection(funding: FundingScenarioResult, countryCode: string): st
       ${escapeHtml(funding.country.name)}'s own economic profile — how formal its labor market is, how
       much it already collects from VAT, how concentrated its wealth is, how much social spending
       exists to redirect — so mechanisms poorly suited to this economy stay small or drop out
-      entirely. Together this mix targets <strong>${formatPercent(funding.coverageOfUbiCost)}</strong> of
-      the cost${funding.gapPppUsd > 0 ? ` (gap: $${formatCompact(funding.gapPppUsd)})` : ''}.
+      entirely. The seven domestic mechanisms together target
+      <strong>${formatPercent(funding.domesticCoveragePercent)}</strong> of the cost domestically${
+        solidarity
+          ? `; the remaining <strong>${formatPercent(solidarity.coversPercentOfUbiCost)}</strong>
+      (≈$${formatCompact(solidarity.annualRevenuePppUsd)}/year) is shown below as a pooled
+      international solidarity transfer rather than an unlabeled gap`
+          : ''
+      }.
       Adjust every rate in the <a href="/calculator?country=${escapeHtml(countryCode)}">calculator</a>.
     </p>
     ${
-      funding.coverageOfUbiCost < LOW_DOMESTIC_COVERAGE_THRESHOLD
+      funding.domesticCoveragePercent < LOW_DOMESTIC_COVERAGE_THRESHOLD
         ? `<div class="alert alert-info">
       This isn't a tax-rate problem: universal coverage for ${escapeHtml(funding.country.name)} costs
       $${formatCompact(funding.ubiCost.annualPppUsd)}/year, ${formatPercent(funding.ubiCost.asPercentOfGdp)} of
-      the country's own PPP GDP — even every mechanism above at its realistic ceiling can't close a gap
-      that size from domestic revenue alone. That's typical for the lowest-income countries and points
-      toward external funding (aid, DAO or NGO transfers) or a <a href="#options">narrower coverage target</a>
-      rather than higher domestic tax rates.
+      the country's own PPP GDP — even every domestic mechanism above at its realistic ceiling can't
+      close a gap that size from domestic revenue alone. That's typical for the lowest-income countries;
+      the pooled international solidarity transfer row below quantifies the resulting external-funding
+      requirement (aid, DAO or NGO transfers, or a rules-based donor pool modeled on EU cohesion funds
+      and the IMF's Poverty Reduction and Growth Trust) rather than leaving it as a silent shortfall.
+      A <a href="#options">narrower coverage target</a> is the other lever available.
     </div>`
         : ''
     }
@@ -380,7 +390,8 @@ export function renderCountryFactSheet(data: CountryFactSheetData): string {
   <div class="pull-quote">${escapeHtml(summary)}</div>
 
   <div class="grid grid-auto mb-2">
-    ${statTile(`$${universal.simulation.entitlementPerPerson.pppUsdPerMonth}`, 'Per person / month (PPP-USD)', `${data.monthlyLocalFormatted} in local currency`)}
+    ${statTile(`$${universal.simulation.entitlementPerPerson.pppUsdPerMonth}`, 'Global anchor — per person / month (PPP-USD)', `${data.monthlyLocalFormatted} in local currency. Fixed everywhere for comparability.`)}
+    ${statTile(`$${data.entitlement.adequacyEstimate.monthlyPppUsd.toFixed(0)}`, `Local adequacy estimate (${data.country.name})`, data.entitlement.adequacyEstimate.label)}
     ${statTile(`$${formatCompact(cost.annualPppUsd)}`, 'Universal program, annual cost (PPP)', `${formatCompact(universal.simulation.recipientCount)} recipients`)}
     ${statTile(formatPercent(cost.asPercentOfGdp), 'Share of GDP (PPP)', 'Cost and GDP in matching PPP units')}
     ${statTile(
@@ -390,6 +401,13 @@ export function renderCountryFactSheet(data: CountryFactSheetData): string {
     )}
     ${statTile(povertyTileValue, countryLineRate != null ? 'Poverty rate (country line)' : 'Poverty rate (extreme line)', povertyTileNote)}
   </div>
+  <p class="text-sm text-muted mb-2">
+    Two different numbers, on purpose: the <strong>global anchor</strong> is fixed everywhere so
+    programs stay comparable; the <strong>local adequacy estimate</strong> answers "enough to live on
+    here" and is informational only — it is never used to compute the entitlement above. See
+    <a href="/methodology#adequacy">Methodology</a> for why, and set it as a suggested override in the
+    <a href="/calculator?country=${escapeHtml(country.code)}">calculator</a>.
+  </p>
 
   ${fiscalChart(data)}
 
