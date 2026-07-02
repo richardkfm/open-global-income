@@ -28,6 +28,7 @@ import { identityRoute } from './routes/identity.js';
 import { inboundWebhooksRoute } from './routes/inboundWebhooks.js';
 import { outcomesRoute, evidenceRoute } from './routes/outcomes.js';
 import { adminRoutes } from '../admin/routes.js';
+import { webRoutes } from '../web/routes.js';
 import { config, packageVersion } from '../config.js';
 
 export interface ServerOptions {
@@ -200,6 +201,11 @@ export function buildServer(opts?: ServerOptions) {
   // Admin UI (disabled only if ENABLE_ADMIN=false explicitly)
   if (config.admin.enabled) {
     app.register(adminRoutes, { prefix: '/admin' });
+  }
+
+  // Public web UI at "/" (disabled only if ENABLE_WEB=false explicitly)
+  if (config.web.enabled) {
+    app.register(webRoutes);
   }
 
   return app;

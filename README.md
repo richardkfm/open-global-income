@@ -21,7 +21,7 @@
 
 Like what OpenStreetMap did for geographic data, or what SMTP did for email: a shared standard that makes every program built on top of it cheaper, faster, and more trustworthy than if they built alone.
 
-[Vision](#-vision) · [Who It's For](#-who-its-for) · [Principles](#-principles) · [Quickstart](#-quickstart) · [API](#-api) · [Admin UI](#-admin-ui) · [Rulesets](#-rulesets) · [Chain Adapters](#-chain-adapters) · [Disbursements](#-disbursement-providers) · [Webhooks](#-webhooks) · [SDK](#-typescript-sdk) · [Database](#-database) · [Auth](#-authentication) · [Config](#%EF%B8%8F-environment-variables) · [Contributing](#-contributing) · [Governance](#-governance)
+[Vision](#-vision) · [Who It's For](#-who-its-for) · [Principles](#-principles) · [Quickstart](#-quickstart) · [API](#-api) · [Public Site](#-public-site) · [Admin UI](#-admin-ui) · [Rulesets](#-rulesets) · [Chain Adapters](#-chain-adapters) · [Disbursements](#-disbursement-providers) · [Webhooks](#-webhooks) · [SDK](#-typescript-sdk) · [Database](#-database) · [Auth](#-authentication) · [Config](#%EF%B8%8F-environment-variables) · [Contributing](#-contributing) · [Governance](#-governance)
 
 ---
 
@@ -68,12 +68,13 @@ Open Global Income is a stack. Each layer builds on the one below it. The lower 
 | **Targeting** | Programmable `TargetingRules` object: age range, urban/rural, income ceiling, identity provider filter, recency exclusion, region filter; `applyRulesToRecipients` for disbursement batch generation with per-rule filtering stats | 22 |
 | **Funding** | 6 funding mechanisms (income tax, VAT, carbon tax, wealth tax, FTT, redirect social spending) with informality, avoidance, and demand-response adjustments; fiscal context analysis | 15 |
 | **Impact** | Poverty reduction, purchasing power, social coverage, GDP stimulus estimates — with exportable policy briefs | 16 |
+| **Public site** | Advocacy-facing web UI at `/` — country fact sheets with copy-ready citations, cost & funding calculator with shareable scenario URLs, country comparison, methodology, dataset downloads | 25 |
 
 The funding and impact layers (Phases 14–16) are not a departure from the API — they are the **demand-side tools** that make the API worth building. A calculation engine answers "how much per person?" but nobody funds a program based on that alone. Governments need to see where the money comes from. Donors need to see what happens to poverty. NGOs need a policy brief they can attach to a grant proposal. These layers turn the API into a tool that **sells basic income to policymakers**.
 
 The sub-national data layer (Phase 17) brings precision where it matters most. A basic income floor in Nairobi (COL 1.35×) should not be the same local-currency amount as in rural Turkana (COL 0.68×). Regional cost-of-living indices adjust the national PPP conversion factor, and existing formulas work transparently via the "adjusted Country" pattern — zero formula changes needed.
 
-Secure admin UI with login, approval workflows, and audit trails. **671 tests** across 37 suites.
+Secure admin UI with login, approval workflows, and audit trails — plus a public, no-login advocacy site at `/` for journalists, researchers and policy makers. **699 tests** across 38 suites.
 
 ### Phase 23: Evidence Layer ✅
 
@@ -158,6 +159,7 @@ Once the container is running, the following URLs are available:
 
 | URL | Description |
 |-----|-------------|
+| `http://localhost:3333/` | Public site — fact sheets, calculator, comparison, methodology, downloads |
 | `http://localhost:3333/health` | Health check — verify the server is up |
 | `http://localhost:3333/docs` | Swagger UI — interactive API documentation |
 | `http://localhost:3333/docs/json` | Raw OpenAPI spec (JSON) |
@@ -214,6 +216,7 @@ npm run db:migrate   # Run PostgreSQL migrations
 | `RATE_LIMIT_WINDOW_MS` | `60000` | Rate limit window (ms) |
 | `API_KEY_REQUIRED` | — | Set to `true` to require API keys |
 | `ENABLE_ADMIN` | — | Set to `true` to enable admin UI |
+| `ENABLE_WEB` | `true` | Set to `false` to disable the public site at `/` |
 | `ADMIN_USERNAME` | `admin` | Admin UI login username |
 | `ADMIN_PASSWORD` | `admin` | Admin UI login password |
 | `ENABLE_METRICS` | `true` | Set to `false` to disable Prometheus |
@@ -363,6 +366,19 @@ Extends v1 with HDI and urbanization factors. Not yet active. See `GET /v1/incom
 
 ---
 
+## 🌍 Public Site
+
+A public, no-login web UI at `/` built for the people making the case for basic income — journalists, researchers, and policy makers. Server-rendered, readable without JavaScript, print-friendly, and every scenario is fully encoded in the URL so figures are shareable and reproducible. Disable with `ENABLE_WEB=false`.
+
+- **`/countries`** — sortable explorer of all 49 countries with headline figures and CSV/JSON download
+- **`/countries/:code`** — per-country fact sheet: copy-ready summary paragraph and citation, cost in fiscal context (vs. tax revenue and social spending), targeted program options, impact estimates with every assumption listed, an illustrative funding package, and the entitlement formula with the country's own numbers plugged in. Print → PDF yields a briefing document
+- **`/calculator`** — cost & funding calculator: coverage, target group, duration, transfer amount, and optional rates for all seven funding mechanisms — results reproducible from the URL
+- **`/compare`** — up to four countries side by side on identical terms
+- **`/methodology`** — every formula, constant, assumption, data source, and limitation; values imported from the actual code constants
+- **`/data`** — dataset downloads (`/data/countries.csv`, `/data/countries.json`) and API pointers
+
+---
+
 ## 🖥️ Admin UI
 
 Server-rendered dashboard using htmx (no SPA). Enable with `ENABLE_ADMIN=true`.
@@ -448,6 +464,7 @@ src/
 ├── api/         HTTP layer (Fastify), middleware (auth, audit, metrics)
 ├── db/          SQLite persistence, PostgreSQL migrations
 ├── admin/       Server-rendered admin UI (htmx)
+├── web/         Public advocacy site at / (fact sheets, calculator, methodology)
 ├── adapters/    Chain/currency adapters (Solana, EVM)
 └── webhooks/    Event dispatch with HMAC-SHA256 signatures
 scripts/         SDK generation, tooling
@@ -467,6 +484,8 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup, code style, test
 See [GOVERNANCE.md](./GOVERNANCE.md) for the decision-making process, API stability declaration, and versioning policy.
 
 ## 📋 Current Status
+
+**Version 0.2.0** — Public advocacy site. A new no-login web UI at `/` (`src/web/`) gives journalists, researchers and policy makers directly quotable, verifiable basic income figures: per-country **fact sheets** with copy-ready summary paragraphs and citation blocks, a **cost & funding calculator** whose entire scenario lives in a shareable URL, **country comparison** on identical terms, a **methodology** page whose numbers are imported from the actual code constants, and **dataset downloads** (CSV/JSON) with computed entitlement and cost columns. Print any fact sheet or calculator result to get a briefing PDF. Poverty figures fall back to the $2.15/day extreme line (clearly marked) where no survey exists for the country-appropriate line. Disable with `ENABLE_WEB=false`. 699 tests across 38 suites.
 
 **Version 0.1.34** — PPP-consistent "% of GDP" everywhere. A new `gdpPerCapitaPppUsd` field (World Bank `NY.GDP.PCAP.PP.CD`) is added to all 49 countries and used as the GDP base wherever a PPP-denominated cost or revenue is expressed as a share of GDP — fixing a distortion that inflated the cost-as-%-of-GDP headline for low-income countries by roughly the PPP gap (Kenya's 20%-coverage figure drops from 24.0% to 7.7%; Nigeria from 23.1% to 2.8%). Simulation, funding, impact, savings, and the admin projection chart all share the PPP unit; funding mechanisms now emit genuine PPP-USD revenue. 671 tests across 37 suites.
 
