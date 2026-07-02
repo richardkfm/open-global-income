@@ -485,6 +485,8 @@ See [GOVERNANCE.md](./GOVERNANCE.md) for the decision-making process, API stabil
 
 ## 📋 Current Status
 
+**Version 0.2.3** — The fact-sheet funding mix now explains itself when domestic coverage is low: for countries where universal coverage would cost more than the country's own GDP (common at the low-income end, e.g. Afghanistan), a callout states that plainly instead of leaving readers to assume it's a tax-rate shortfall, and points to external funding or a narrower coverage target. 708 tests across 38 suites.
+
 **Version 0.2.2** — Rotating wireframe globe on the landing page hero (dependency-free canvas animation), and a country-specific **recommended funding mix** on fact sheets — replacing the old fixed-rate 7-mechanism package (which could show wildly over- or under-shooting coverage depending on the country) with rates sized to each country's own formality, tax base, wealth concentration, and social-spending profile, water-filled across mechanisms toward full coverage. 708 tests across 38 suites.
 
 **Version 0.2.1** — Live taxation sliders on the public calculator. The interactive funding-scenario experience from the admin panel is now public: all seven mechanisms (income tax, VAT, carbon tax, wealth tax, FTT, automation tax, redirected social spending) are sliders whose results — cost coverage, gap, chart, impact estimates — update live as you drag, with the URL tracking every change so a dragged-together scenario is still a shareable, reproducible link. Plain-GET fallback works without JavaScript. Also fixes horizontal bar charts showing tick indices instead of category labels. 701 tests across 38 suites.

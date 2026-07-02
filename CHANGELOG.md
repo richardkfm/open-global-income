@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-07-02
+
+### Added
+- Fact-sheet funding section now surfaces an explanatory callout when the recommended mix covers less than 30% of the UBI cost even at every mechanism's realistic ceiling (common for the lowest-income countries, e.g. Afghanistan, where universal coverage can exceed the country's own GDP). The callout states the cost as a share of PPP GDP and points to external funding or a narrower coverage target instead of leaving readers to assume the low number is a tax-rate shortfall.
+
 ## [0.2.2] - 2026-07-02
 
 ### Added
