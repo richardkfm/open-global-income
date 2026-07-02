@@ -117,6 +117,11 @@ const DEFAULT_OPTIONS = {
           if (typeof value === 'number' && Math.abs(value) >= 1000) {
             return formatAxisTick(value);
           }
+          // Category axes (horizontal bars) pass the tick index here —
+          // resolve it to the actual label instead of echoing the index.
+          if (this.getLabelForValue) {
+            return this.getLabelForValue(value);
+          }
           return value;
         },
       },

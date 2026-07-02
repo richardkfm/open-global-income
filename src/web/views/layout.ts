@@ -27,6 +27,8 @@ export interface PublicLayoutOptions {
   description?: string;
   /** Include Chart.js + charts.js (only pages that render charts) */
   includeCharts?: boolean;
+  /** Include htmx (only pages with live-updating fragments, e.g. the calculator) */
+  includeHtmx?: boolean;
   /** Data snapshot identifier shown in the footer */
   dataVersion?: string;
 }
@@ -58,6 +60,10 @@ export function publicLayout(
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="/js/charts.js" defer></script>`
     : '';
+  const htmxScript = opts.includeHtmx
+    ? `
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>`
+    : '';
 
   const dataVersionHtml = opts.dataVersion
     ? `<span>Data snapshot: ${escapeHtml(opts.dataVersion)}</span>`
@@ -71,7 +77,7 @@ export function publicLayout(
   <meta name="description" content="${escapeHtml(description)}">
   <title>${escapeHtml(title)} — Open Global Income</title>
   <link href="/css/ogi.css" rel="stylesheet">
-  <link href="/css/site.css" rel="stylesheet">${chartScripts}
+  <link href="/css/site.css" rel="stylesheet">${chartScripts}${htmxScript}
 </head>
 <body class="site">
   <header class="site-header">

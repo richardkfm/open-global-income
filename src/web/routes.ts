@@ -353,13 +353,14 @@ export const webRoutes: FastifyPluginAsync = async (app) => {
         targetGroup,
         durationMonths: toNumber(q.months, 12, 1, 120),
         monthlyAmount: toNumber(q.amount, GLOBAL_INCOME_FLOOR_PPP, 1, 100000),
-        fIncomeTax: toNumber(q.f_income, 0, 0, 50),
-        fVat: toNumber(q.f_vat, 0, 0, 15),
-        fCarbon: toNumber(q.f_carbon, 0, 0, 300),
-        fWealth: toNumber(q.f_wealth, 0, 0, 10),
-        fFtt: toNumber(q.f_ftt, 0, 0, 2),
-        fAutomation: toNumber(q.f_automation, 0, 0, 20),
-        fRedirect: toNumber(q.f_redirect, 0, 0, 100),
+        // Bounds mirror FUNDING_SLIDERS in views/calculator.ts — keep in sync
+        fIncomeTax: toNumber(q.f_income, 0, 0, 15),
+        fVat: toNumber(q.f_vat, 0, 0, 10),
+        fCarbon: toNumber(q.f_carbon, 0, 0, 200),
+        fWealth: toNumber(q.f_wealth, 0, 0, 5),
+        fFtt: toNumber(q.f_ftt, 0, 0, 1),
+        fAutomation: toNumber(q.f_automation, 0, 0, 15),
+        fRedirect: toNumber(q.f_redirect, 0, 0, 80),
       };
 
       let result: CalculatorResult | undefined;
