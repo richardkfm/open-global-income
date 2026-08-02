@@ -51,24 +51,24 @@ Open Global Income is a stack. Each layer builds on the one below it. The lower 
 └─────────────────────────────────────────────────┘
 ```
 
-### ✅ Built (v0.2.4)
+### ✅ Built (v0.2.5)
 
 **The API is the product.** Everything below is exposed through a REST API with OpenAPI docs, a generated TypeScript SDK, and webhook events — not locked behind a UI.
 
 | Layer | What it does | Phase |
 |-------|-------------|-------|
 | **Data** | 49 countries with all 17 macro-economic indicators fully populated (World Bank, ILO, IMF); sub-national data for Kenya (47 counties), Germany (16 Bundesländer), France (13 regions), Netherlands (12 provinces) — 88 regions total | 14, 17 |
-| **Calculation** | Entitlement formulas (v1 active, v2 preview), scoring, country comparison, regional COL adjustments; a locally-calibrated adequacy estimate reported alongside the fixed $210 global anchor (informational — never fed into the entitlement) | 1–10, 17, 25 |
+| **Calculation** | Entitlement formulas (v1 active, v2 preview), scoring, country comparison, regional COL adjustments; a locally-calibrated adequacy estimate reported alongside the fixed $210 global anchor (informational — never fed into the entitlement) | 1–10, 17, 28 |
 | **Simulation** | Budget modeling with targeting presets and programmable rules, multi-country comparison, regional simulation, saved scenarios | 11, 17, 22 |
 | **Disbursement** | Non-custodial payment rails — Solana USDC, EVM USDC, M-Pesa B2C (Daraja instruction batch), SEPA Credit Transfer (ISO 20022 pain.001 + Wise skeleton) — with approval workflow and audit trail | 12 |
 | **Recipients** | Enrollment, identity verification, cross-program duplicate detection — no raw identity data stored | 19 |
-| **Identity** | Four pluggable, non-custodial verification connectors (national ID / MOSIP-Verhoeff, mobile-money MSISDN, wallet EVM/Solana, NGO community attestation); `POST /v1/recipients/:id/verify` runs a claim through a provider and stores only the derived hash + routing ref | 24 |
+| **Identity** | Four pluggable, non-custodial verification connectors (national ID / MOSIP-Verhoeff, mobile-money MSISDN, wallet EVM/Solana, NGO community attestation); `POST /v1/recipients/:id/verify` runs a claim through a provider and stores only the derived hash + routing ref | 26 |
 | **Pilots** | Lifecycle management (planning → active → completed), programmable targeting rules, variance analysis, structured donor reports | 13, 22 |
 | **Audit Exports** | Compliance-grade signed export per pilot — methodology, recipient aggregate stats, full disbursement log, SHA-256 integrity hash | 21 |
 | **Targeting** | Programmable `TargetingRules` object: age range, urban/rural, income ceiling, identity provider filter, recency exclusion, region filter; `applyRulesToRecipients` for disbursement batch generation with per-rule filtering stats | 22 |
-| **Funding** | 7 domestic funding mechanisms (income tax, VAT, carbon tax, wealth tax, FTT, automation tax, redirect social spending) with informality, avoidance, and demand-response adjustments; fiscal context analysis; an 8th mechanism — a labeled international solidarity transfer — covers the residual when the recommended mix still can't close the cost domestically | 15, 25 |
+| **Funding** | 7 domestic funding mechanisms (income tax, VAT, carbon tax, wealth tax, FTT, automation tax, redirect social spending) with informality, avoidance, and demand-response adjustments; fiscal context analysis; an 8th mechanism — a labeled international solidarity transfer — covers the residual when the recommended mix still can't close the cost domestically | 15, 28 |
 | **Impact** | Poverty reduction, purchasing power, social coverage, GDP stimulus estimates — with exportable policy briefs | 16 |
-| **Public site** | Advocacy-facing web UI at `/` — country fact sheets with copy-ready citations, cost & funding calculator with shareable scenario URLs, country comparison, methodology, dataset downloads | 25 |
+| **Public site** | Advocacy-facing web UI at `/` — country fact sheets with copy-ready citations, cost & funding calculator with shareable scenario URLs, country comparison, methodology, dataset downloads | 27 |
 
 The funding and impact layers (Phases 14–16) are not a departure from the API — they are the **demand-side tools** that make the API worth building. A calculation engine answers "how much per person?" but nobody funds a program based on that alone. Governments need to see where the money comes from. Donors need to see what happens to poverty. NGOs need a policy brief they can attach to a grant proposal. These layers turn the API into a tool that **sells basic income to policymakers**.
 
@@ -484,6 +484,8 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup, code style, test
 See [GOVERNANCE.md](./GOVERNANCE.md) for the decision-making process, API stability declaration, and versioning policy.
 
 ## 📋 Current Status
+
+**Version 0.2.5** — Continuous integration, and a fix to the phase numbering. GitHub Actions now runs `npm ci`, `npm run typecheck`, and `npm test` on every pull request and on pushes to `main` (`.github/workflows/ci.yml`) — the docs had described CI for several releases, but no workflow file was ever committed, so pull requests showed zero checks. Lint and format checks stay manual for now: both fail on pre-existing issues, and clearing that is its own change. Separately, the identity connectors and public site had been labelled Phases 24 and 25 here while `ROADMAP.md` reserves those numbers for the unbuilt Scenario Versioning and Multi-tenancy phases; the shipped work is renumbered to Phases 26–28 and documented in the roadmap. 730 tests across 39 suites.
 
 **Version 0.2.4** — Implements the first phases of [INCOME_FLOOR_PROPOSED_ANSWERS.md](./INCOME_FLOOR_PROPOSED_ANSWERS.md): a **local adequacy estimate** now appears next to the $210 PPP global anchor everywhere it's shown (calc API, simulation output, fact sheets, admin dashboard) — informational only, derived from the existing country-appropriate poverty line, never fed into the entitlement itself; a one-click "use local adequacy estimate" override on the public calculator; and an eighth, explicitly-labeled **international solidarity transfer** funding mechanism that attributes any residual gap (after the seven domestic mechanisms hit realistic ceilings) to a modeled external transfer instead of an unlabeled shortfall. 730 tests across 39 suites.
 

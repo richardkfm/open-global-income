@@ -782,12 +782,22 @@ Phase 21 (Audit Exports) ✅ ← compliance-grade signed document per pilot
     ↓
 Phase 22 (Programmable Targeting) ✅ ← TargetingRules engine, simulate + pilot integration
     ↓
-Phase 23 (Evidence Layer) ← outcomes per cohort, cross-program benchmarks
+Phase 23 (Evidence Layer) ✅ ← outcomes per cohort, cross-program benchmarks
     ↓
-Phase 24 (Scenario Versioning) ← data-version diffing on saved simulations
+Phase 24 (Scenario Versioning) ← data-version diffing on saved simulations — PLANNED
     ↓
-Phase 25 (Multi-tenancy) ← tenant isolation, shared calculation, federation foundation
+Phase 25 (Multi-tenancy) ← tenant isolation, shared calculation, federation foundation — PLANNED
 ```
+
+Three phases shipped out of order, ahead of the still-planned 24–25, and are numbered after them:
+
+```
+Phase 26 (Identity Connectors) ✅ ← four concrete IdentityProvider implementations
+Phase 27 (Public Advocacy Site) ✅ ← no-login web UI, calculator, fact sheets
+Phase 28 (Income Floor: Adequacy & Solidarity) ✅ ← adequacy estimate + 8th funding mechanism
+```
+
+**Phase numbers are identifiers, not an ordering.** A higher number does not mean later delivery — 26–28 shipped before 24–25 were started.
 
 ---
 
@@ -1181,6 +1191,44 @@ The `GET /v1/evidence/aggregate` endpoint (Phase 23) aggregates anonymized outco
 ### 25.4 — Admin segregation
 
 A new super-admin tier can view tenant metadata (program count, disbursement volume) without accessing any tenant's actual data. Normal admin accounts are scoped to a single tenant.
+
+---
+
+## Phase 26: Identity Connectors — Complete ✅
+
+Shipped in v0.1.29–v0.1.33, ahead of the planned Phases 24–25. Phase 19 defined the `IdentityProvider` interface; this phase supplied concrete implementations.
+
+- Four non-custodial connectors in `src/identity/` — national ID (MOSIP-style, Verhoeff checksum), mobile-money MSISDN, wallet (EVM/Solana address validation), NGO community attestation
+- `POST /v1/recipients/:id/verify` runs a claim through a provider and stores only the derived hash + routing ref — never the raw identifier
+- Recipient admin console: enrol, filter, paginate, per-recipient detail with status transitions
+- Bulk CSV import/export with cross-program de-duplication (`src/core/recipient-import.ts`, `src/core/recipient-export.ts`)
+
+Still future: live-API binding (MOSIP IDA auth, World ID proofs, Daraja KYC) behind the same non-custodial contract.
+
+---
+
+## Phase 27: Public Advocacy Site — Complete ✅
+
+Shipped in v0.2.0–v0.2.3. The first surface aimed at people who will never call the API.
+
+- No-login web UI at `/` (`src/web/`) — country fact sheets with copy-ready citations, cost & funding calculator with fully shareable scenario URLs, country comparison, methodology page whose numbers are imported from the actual code constants, CSV/JSON dataset downloads
+- Live taxation sliders on the public calculator (htmx fragment swap, URL kept in sync, plain-GET fallback without JavaScript)
+- `calculateRecommendedFundingMix` — a per-country funding mix sized to each country's own economic profile, replacing the old fixed-rate package
+- Rotating wireframe globe on the landing hero (dependency-free canvas)
+- Disable with `ENABLE_WEB=false`
+
+---
+
+## Phase 28: Income Floor — Adequacy & Solidarity — Complete ✅
+
+Shipped in v0.2.4. Implements Phases 1, 2, and 4 of [INCOME_FLOOR_PROPOSED_ANSWERS.md](./INCOME_FLOOR_PROPOSED_ANSWERS.md), which settled the dual-track design: the $210 PPP anchor remains the sole entitlement anchor, and adequacy is reported beside it rather than substituted for it.
+
+- Local adequacy estimate (`src/core/adequacy.ts`) shown next to the anchor on calc responses, simulation output, fact sheets, and the admin country dashboard — informational only, never feeding the need score, default entitlement, or disbursement math
+- "Use local adequacy estimate" one-click override on the public calculator, wired to the existing `floorOverride`
+- Eighth funding mechanism — `international_solidarity_transfer` — attributes the post-cap residual gap to a labeled external transfer instead of an unlabeled shortfall
+- Methodology page gains a Balassa–Samuelson caveat on what the PPP conversion factor actually equalizes
+
+Open from that plan: Phase 3 (household size, reporting only), Phase 5 (donor-side solidarity pool, `src/core/solidarity.ts`), Phase 6 (gated ruleset v3 preview).
 
 ---
 

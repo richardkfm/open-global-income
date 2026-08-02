@@ -197,3 +197,5 @@ Before submitting a PR, confirm:
 - [ ] `CHANGELOG.md` is updated under `[Unreleased]`
 - [ ] Documentation is updated if the change affects public API or architecture
 - [ ] Commit messages are clear and describe *why* the change was made
+
+CI (`.github/workflows/ci.yml`) re-runs `npm run typecheck` and `npm test` on every pull request and on pushes to `main`, so the first two boxes are verified automatically — but run them locally first rather than using CI as the feedback loop. `npm run lint` and `npm run format:check` are not yet gated: both fail on pre-existing issues across the codebase, and fixing that is its own change.
