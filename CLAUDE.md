@@ -54,8 +54,8 @@ Open Global Income is a stack. Each layer builds on the one below it. The lower 
 
 | Layer | Question it answers | Status |
 |-------|-------------------|--------|
-| **Data** | What are the economic facts? | Done — 49 countries, World Bank 2023 + ILO + IMF; sub-national data for Kenya (47 counties) |
-| **Calculation** | How much per person? How urgent is the need? | Done — Ruleset v1 active, v2 preview; regional COL adjustments |
+| **Data** | What are the economic facts? | Done — 49 countries, World Bank 2023 + ILO + IMF; sub-national data for Kenya (47 counties), Germany (16 Bundesländer), France (13 regions), Netherlands (12 provinces) — 88 regions |
+| **Calculation** | How much per person? How urgent is the need? | Done — Ruleset v1 active, v2 preview; regional COL adjustments; local adequacy estimate reported alongside the $210 anchor (informational only) |
 | **Simulation** | What will it cost to cover X% of the population? | Done — Phase 11; national + regional simulation |
 | **Distribution** | How does money reach people? | Done — Phase 12–13; Solana & EVM generate real unsigned txns; M-Pesa prepares a Daraja B2C instruction batch and SEPA an ISO 20022 pain.001 + Wise skeleton (non-custodial — operator executes; OGI stores no PII) |
 | **Evidence** | Is it working? Can we prove it? | Done — Phase 23; outcome recording, recipient/control cohorts, cross-program aggregates, CSV/JSON export. No randomization / significance testing / survey delivery yet |
@@ -65,7 +65,7 @@ Each layer is independently useful. A government can use just Data + Calculation
 
 ---
 
-## What's Built (v0.1.29)
+## What's Built (v0.2.4)
 
 The platform covers the full workflow from "how much per person?" through "where does the money come from?" to "what happens to poverty?" — with regional precision. Calculation, simulation, funding, and impact are production-ready. The distribution layer is non-custodial across all rails: crypto providers emit unsigned transactions, while the M-Pesa and SEPA connectors emit operator-executable instructions in the rails' native formats (Daraja B2C / ISO 20022 pain.001 + Wise) — OGI never moves funds, stores no recipient PII, and delegates identity/KYC to the executing provider. The recipient registry, evidence layer, and four concrete `IdentityProvider` connectors are built; experimental-design tooling is not.
 
@@ -109,10 +109,18 @@ The platform covers the full workflow from "how much per person?" through "where
 - 4 new API endpoints: `GET /regions`, `GET /regions/:id`, `GET /calc/regional`, `POST /simulate/regional`
 - Admin region list and detail pages with national vs. regional entitlement comparison
 
+**Phase 18 — Western Europe Disbursement & EU Regional Data** ✅
+- SEPA Credit Transfer provider — ISO 20022 pain.001 instruction + Wise Payouts skeleton, PPP-USD → EUR conversion, end-to-end reference generation
+- 41 EU regions added to `regions.json`: Germany (16 Bundesländer, Destatis), France (13 regions, INSEE), Netherlands (12 provinces, CBS) — no code changes needed
+
 **Phase 19 — Recipients & Enrollment** ✅
 - Recipient registry with cross-program duplicate detection via SHA-256 account hash
 - pending → verified → suspended lifecycle; no raw identity data stored (verified claims + non-reversible routing ref only)
 - `IdentityProvider` interface defined, with four concrete non-custodial connectors (Phase 24): national ID (MOSIP/Verhoeff), mobile-money MSISDN, wallet (EVM/Solana), NGO community attestation — `src/identity/`. `POST /v1/recipients/:id/verify` runs a claim through a provider and stores only the derived hash + routing ref
+
+**Phase 20 — Inbound Webhooks & Payment Confirmations** ✅
+- `POST /v1/webhooks/inbound/:provider` — providers implement `parseCallback()`; HMAC-SHA256 verified against the raw body before deserialization, with a replay timestamp window
+- Confirmed callbacks transition disbursement status, write a log entry, and fire the outbound `disbursement.confirmed` / `disbursement.failed` event
 
 **Phase 21 — Audit Exports** ✅
 - Compliance-grade per-pilot export: methodology, recipient aggregate stats, full disbursement log, SHA-256 integrity hash
@@ -126,7 +134,22 @@ The platform covers the full workflow from "how much per person?" through "where
 - Cross-program anonymized aggregates (median, p25, p75) and CSV/JSON research export
 - Not yet: randomized treatment assignment, statistical significance testing, confidence intervals, survey delivery
 
-**603 tests** across 32 suites. Typecheck clean. CI green.
+**Identity connectors** ✅ (v0.1.x)
+- Four concrete non-custodial `IdentityProvider` implementations in `src/identity/`: national ID (MOSIP/Verhoeff), mobile-money MSISDN, wallet (EVM/Solana), NGO community attestation
+- Recipient admin console with bulk CSV import/export (`src/core/recipient-import.ts`, `src/core/recipient-export.ts`)
+
+**Public advocacy site** ✅ (v0.2.0–v0.2.3, `src/web/`)
+- No-login web UI at `/` for journalists, researchers, and policy makers: country fact sheets with copy-ready citations, cost & funding calculator with shareable scenario URLs, country comparison, methodology page whose numbers are imported from the actual code constants, CSV/JSON dataset downloads
+- Live taxation sliders on the public calculator; per-country recommended funding mix (`calculateRecommendedFundingMix`) sized to each country's own economic profile rather than fixed rates
+- Rotating wireframe globe on the landing hero (dependency-free canvas, `public/js/globe.js`)
+- Disable with `ENABLE_WEB=false`
+
+**Income floor: adequacy & solidarity** ✅ (v0.2.4)
+- Local adequacy estimate (`src/core/adequacy.ts`) — a locally-calibrated figure shown next to the fixed $210 PPP anchor on calc responses, simulations, fact sheets, and the admin dashboard. Informational only: never feeds the need score, default entitlement, or disbursement math
+- Eighth funding mechanism — `international_solidarity_transfer` attributes the residual gap (after the seven domestic mechanisms hit realistic ceilings) to a labeled external transfer instead of an unlabeled shortfall
+- Implements Phases 1, 2, and 4 of [INCOME_FLOOR_PROPOSED_ANSWERS.md](./INCOME_FLOOR_PROPOSED_ANSWERS.md); Phases 3, 5, and 6 remain open
+
+**730 tests** across 39 suites. Typecheck clean. Checks are run locally (`npm test && npm run typecheck`) — no CI workflow is configured in this repo yet.
 
 ---
 
@@ -134,11 +157,19 @@ The platform covers the full workflow from "how much per person?" through "where
 
 ### More Countries (Sub-national)
 
-The region data format and loader are country-agnostic. Each country needs a curated entry in `src/data/regions.json` with cost-of-living indices sourced from national statistics bureaus. Priority countries:
+Sub-national data covers Kenya (47 counties), Germany (16 Bundesländer), France (13 regions), and the Netherlands (12 provinces) — 88 regions. The region data format and loader are country-agnostic. Each new country needs a curated entry in `src/data/regions.json` with cost-of-living indices sourced from national statistics bureaus. Priority countries:
 
 - Tanzania, Uganda, Mozambique (East Africa pilots)
 - Ghana, Nigeria (West Africa scale)
 - India (largest potential beneficiary population)
+
+### Income Floor — remaining phases
+
+[INCOME_FLOOR_PROPOSED_ANSWERS.md](./INCOME_FLOOR_PROPOSED_ANSWERS.md) settled the dual-track design (the $210 PPP anchor stays the sole entitlement anchor; adequacy is reported alongside it, never substituted for it). Phases 1, 2, and 4 shipped in v0.2.4. Still open:
+
+- **Phase 3 — Household size (reporting only)** — add `avgHouseholdSize` to `CountryStats` from UN DESA, an OECD-modified equivalence-scale helper, and an "effective per-person adequacy in an average household" figure. The curation of 49 values is the slow part
+- **Phase 5 — Solidarity pool, donor view** — `src/core/solidarity.ts` sizing a global or regional pool with a pluggable GNI-proportional allocation key. The first concrete Federation-layer artifact
+- **Phase 6 — Ruleset v3 preview (gated, not committed)** — paying per-adult-equivalent rather than per-person, only if the evidence layer supports it, and only via the normal ruleset registry process
 
 ### Evidence Layer — built (Phase 23), with rigor gaps remaining
 
@@ -259,9 +290,9 @@ Track where money goes. Verify it reaches recipients. Compare program efficiency
 - **API:** Fastify with OpenAPI/Swagger at `/docs`
 - **Database:** SQLite (default) / PostgreSQL (production)
 - **Admin UI:** Server-rendered HTML + htmx (no SPA)
-- **Testing:** Vitest — 603 tests across 32 suites
+- **Testing:** Vitest — 730 tests across 39 suites
 - **Metrics:** Prometheus via prom-client at `/metrics`
-- **CI:** GitHub Actions (typecheck + test on every push)
+- **CI:** none configured — `.github/workflows/` does not exist. Run `npm test` and `npm run typecheck` locally before pushing
 
 ### Commands
 
@@ -284,11 +315,13 @@ npm run db:migrate   # Run PostgreSQL migrations
 
 ```
 src/
-├── core/        Pure domain logic — types, rules, simulations, funding, impact, regions (NO I/O)
+├── core/        Pure domain logic — types, rules, simulations, funding, impact, regions, poverty, adequacy, targeting (NO I/O)
 ├── data/        Data loading, World Bank/ILO/IMF snapshots, countries.json, regions.json
 ├── api/         Fastify routes, middleware, OpenAPI
 ├── db/          SQLite + PostgreSQL persistence
 ├── admin/       Server-rendered admin UI (htmx)
+├── web/         Public no-login advocacy site — fact sheets, calculator, methodology
+├── i18n/        Translation strings for the public site
 ├── adapters/    Chain/currency adapters (Solana, EVM)
 ├── disbursements/ Payment providers (Solana USDC, EVM USDC, M-Pesa B2C, SEPA)
 ├── identity/    Identity verification connectors (national ID, mobile-money, wallet, community)
@@ -303,12 +336,15 @@ src/
 | `src/core/rulesets.ts` | Registry of all formula versions (v1 active, v2 preview) |
 | `src/core/constants.ts` | Named constants: income floor ($210), weights |
 | `src/core/simulations.ts` | Budget simulation math — pure function |
-| `src/core/funding.ts` | 7 funding mechanism calculators — pure functions |
+| `src/core/funding.ts` | 8 funding mechanism calculators + recommended mix — pure functions |
 | `src/core/impact.ts` | 4-dimension economic impact analysis — pure functions |
 | `src/core/regions.ts` | Regional COL adjustment via "adjusted Country" pattern |
+| `src/core/poverty.ts` | Country-appropriate poverty-line ladder — pure functions |
+| `src/core/adequacy.ts` | Local adequacy estimate shown beside the $210 anchor — pure functions |
 | `src/data/countries.json` | World Bank snapshot — 49 countries |
-| `src/data/regions.json` | Sub-national data — Kenya 47 counties |
+| `src/data/regions.json` | Sub-national data — 88 regions across KE, DE, FR, NL |
 | `src/api/server.ts` | Fastify server factory |
+| `src/web/routes.ts` | Public advocacy site routes |
 | `src/db/database.ts` | SQLite schema and connection |
 | `src/adapters/types.ts` | `ChainAdapter<TConfig>` interface |
 
