@@ -65,7 +65,7 @@ Each layer is independently useful. A government can use just Data + Calculation
 
 ---
 
-## What's Built (v0.2.4)
+## What's Built (v0.2.5)
 
 The platform covers the full workflow from "how much per person?" through "where does the money come from?" to "what happens to poverty?" — with regional precision. Calculation, simulation, funding, and impact are production-ready. The distribution layer is non-custodial across all rails: crypto providers emit unsigned transactions, while the M-Pesa and SEPA connectors emit operator-executable instructions in the rails' native formats (Daraja B2C / ISO 20022 pain.001 + Wise) — OGI never moves funds, stores no recipient PII, and delegates identity/KYC to the executing provider. The recipient registry, evidence layer, and four concrete `IdentityProvider` connectors are built; experimental-design tooling is not.
 
@@ -116,7 +116,7 @@ The platform covers the full workflow from "how much per person?" through "where
 **Phase 19 — Recipients & Enrollment** ✅
 - Recipient registry with cross-program duplicate detection via SHA-256 account hash
 - pending → verified → suspended lifecycle; no raw identity data stored (verified claims + non-reversible routing ref only)
-- `IdentityProvider` interface defined, with four concrete non-custodial connectors (Phase 24): national ID (MOSIP/Verhoeff), mobile-money MSISDN, wallet (EVM/Solana), NGO community attestation — `src/identity/`. `POST /v1/recipients/:id/verify` runs a claim through a provider and stores only the derived hash + routing ref
+- `IdentityProvider` interface defined, with four concrete non-custodial connectors (Phase 26): national ID (MOSIP/Verhoeff), mobile-money MSISDN, wallet (EVM/Solana), NGO community attestation — `src/identity/`. `POST /v1/recipients/:id/verify` runs a claim through a provider and stores only the derived hash + routing ref
 
 **Phase 20 — Inbound Webhooks & Payment Confirmations** ✅
 - `POST /v1/webhooks/inbound/:provider` — providers implement `parseCallback()`; HMAC-SHA256 verified against the raw body before deserialization, with a replay timestamp window
@@ -134,22 +134,22 @@ The platform covers the full workflow from "how much per person?" through "where
 - Cross-program anonymized aggregates (median, p25, p75) and CSV/JSON research export
 - Not yet: randomized treatment assignment, statistical significance testing, confidence intervals, survey delivery
 
-**Identity connectors** ✅ (v0.1.x)
+**Phase 26 — Identity Connectors** ✅ (shipped v0.1.29–v0.1.33)
 - Four concrete non-custodial `IdentityProvider` implementations in `src/identity/`: national ID (MOSIP/Verhoeff), mobile-money MSISDN, wallet (EVM/Solana), NGO community attestation
 - Recipient admin console with bulk CSV import/export (`src/core/recipient-import.ts`, `src/core/recipient-export.ts`)
 
-**Public advocacy site** ✅ (v0.2.0–v0.2.3, `src/web/`)
+**Phase 27 — Public Advocacy Site** ✅ (shipped v0.2.0–v0.2.3, `src/web/`)
 - No-login web UI at `/` for journalists, researchers, and policy makers: country fact sheets with copy-ready citations, cost & funding calculator with shareable scenario URLs, country comparison, methodology page whose numbers are imported from the actual code constants, CSV/JSON dataset downloads
 - Live taxation sliders on the public calculator; per-country recommended funding mix (`calculateRecommendedFundingMix`) sized to each country's own economic profile rather than fixed rates
 - Rotating wireframe globe on the landing hero (dependency-free canvas, `public/js/globe.js`)
 - Disable with `ENABLE_WEB=false`
 
-**Income floor: adequacy & solidarity** ✅ (v0.2.4)
+**Phase 28 — Income Floor: Adequacy & Solidarity** ✅ (shipped v0.2.4)
 - Local adequacy estimate (`src/core/adequacy.ts`) — a locally-calibrated figure shown next to the fixed $210 PPP anchor on calc responses, simulations, fact sheets, and the admin dashboard. Informational only: never feeds the need score, default entitlement, or disbursement math
 - Eighth funding mechanism — `international_solidarity_transfer` attributes the residual gap (after the seven domestic mechanisms hit realistic ceilings) to a labeled external transfer instead of an unlabeled shortfall
 - Implements Phases 1, 2, and 4 of [INCOME_FLOOR_PROPOSED_ANSWERS.md](./INCOME_FLOOR_PROPOSED_ANSWERS.md); Phases 3, 5, and 6 remain open
 
-**730 tests** across 39 suites. Typecheck clean. Checks are run locally (`npm test && npm run typecheck`) — no CI workflow is configured in this repo yet.
+**730 tests** across 39 suites. Typecheck clean. CI runs typecheck + test on every pull request and on pushes to `main` (`.github/workflows/ci.yml`).
 
 ---
 
@@ -292,7 +292,7 @@ Track where money goes. Verify it reaches recipients. Compare program efficiency
 - **Admin UI:** Server-rendered HTML + htmx (no SPA)
 - **Testing:** Vitest — 730 tests across 39 suites
 - **Metrics:** Prometheus via prom-client at `/metrics`
-- **CI:** none configured — `.github/workflows/` does not exist. Run `npm test` and `npm run typecheck` locally before pushing
+- **CI:** GitHub Actions (`.github/workflows/ci.yml`) — `npm ci`, `npm run typecheck`, `npm test` on every pull request and on pushes to `main`. `npm run lint` and `npm run format:check` are **not** gated yet: both currently fail on pre-existing issues, so they are run manually until that debt is cleared
 
 ### Commands
 

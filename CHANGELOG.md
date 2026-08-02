@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.5] - 2026-08-02
+
+### Added
+- **Continuous integration** (`.github/workflows/ci.yml`) — GitHub Actions runs `npm ci`, `npm run typecheck`, and `npm test` on every pull request and on pushes to `main`, on the Node version pinned in `.nvmrc`, with in-progress runs cancelled when a branch is pushed again. The docs had claimed CI existed since well before this; no workflow file was ever committed, which is why pull requests showed zero checks. `npm run lint` and `npm run format:check` are deliberately **not** gated yet — both fail on pre-existing issues (25 ESLint errors; 107 files unformatted) and clearing that debt is a separate change.
+- **Phases 26–28 documented in `ROADMAP.md`** — the identity connectors, the public advocacy site, and the income-floor adequacy/solidarity work shipped without roadmap entries. Each now has one, marked complete, with the still-open items named.
+
+### Changed
+- **Phase numbering collision resolved.** `README.md` had been labelling the identity connectors "Phase 24" and the public site "Phase 25", while `ROADMAP.md` uses those numbers for the still-unbuilt Scenario Versioning and Multi-tenancy phases. The shipped work is renumbered to Phases 26 (identity), 27 (public site), and 28 (adequacy & solidarity) across `README.md`, `CLAUDE.md`, and `ROADMAP.md`; the planned 24–25 keep their numbers and are now marked `PLANNED`. The roadmap's dependency chain states explicitly that phase numbers are identifiers, not an ordering — 26–28 shipped before 24–25 were started.
+- `CONTRIBUTING.md` pull-request checklist notes which boxes CI now verifies automatically, and which checks remain manual.
+
 ## [0.2.4] - 2026-07-02
 
 Implements Phases 1, 2 and 4 of [INCOME_FLOOR_PROPOSED_ANSWERS.md](./INCOME_FLOOR_PROPOSED_ANSWERS.md) — the plan proposed for the open questions in [INCOME_FLOOR_OPEN_QUESTIONS.md](./INCOME_FLOOR_OPEN_QUESTIONS.md). Phases 3 (household-size reporting), 5 (donor-side solidarity pool) and 6 (a possible ruleset v3) remain future work.
