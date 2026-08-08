@@ -41,7 +41,7 @@ Find Kenya in the response:
 }
 ```
 
-49 countries are supported across all four World Bank income groups. If a country is missing, it can be added by editing `src/data/worldbank/config.json` and running `npm run data:update`.
+49 countries are supported across all four World Bank income groups. If a country is missing, run `npm run data:update` to refresh from the World Bank API — the country selection lives in `src/data/worldbank/config.json` (`countries.mode`, currently `"all"`).
 
 For full economic data, use the country detail endpoint:
 

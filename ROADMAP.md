@@ -59,7 +59,9 @@ Return a full cost breakdown:
 - `recipientCount = population × coverage`
 - `monthlyTotal = recipientCount × localCurrencyPerMonth`
 - `annualTotal = monthlyTotal × durationMonths`
-- `asPercentOfGdp = annualPppUsd / (gdpPerCapitaUsd × population) × 100`
+- `asPercentOfGdp = annualPppUsd / (gdpPerCapitaPppUsd × population) × 100`
+
+> **Superseded by v0.1.34.** As originally written, this phase divided a PPP-denominated cost by *nominal* GDP (`gdpPerCapitaUsd × population`), which inflated the headline for low-income countries by roughly the PPP gap. Numerator and denominator now share the PPP unit, and the worked example above is stale as a result: Kenya at 20% coverage is **7.71%** of GDP against the current dataset, not the 24.1% shown. The recipient count and per-person entitlement in the example still match; the local-currency totals drift in the last few digits with each data refresh. Treat the response shape as the contract and the numbers as illustrative.
 
 ### 11.2 — Targeting presets
 

@@ -391,7 +391,7 @@ function renderBriefAsText(
   lines.push('');
   lines.push(divider);
   lines.push('');
-  lines.push('Open Global Income — https://github.com/alcoolio/open-global-income');
+  lines.push('Open Global Income — https://github.com/richardkfm/open-global-income');
   lines.push(`IMPORTANT: These are modeled estimates, not guarantees. ` +
     `See caveats above. All assumptions are listed explicitly above.`);
   lines.push(divider);

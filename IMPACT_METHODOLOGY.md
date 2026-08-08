@@ -26,13 +26,27 @@ calculateImpactAnalysis(country, simulation, params, dataVersion)
 
 ## 1. Poverty Reduction
 
-**Question:** How many people does this program lift above the extreme poverty line?
+**Question:** How many people does this program lift above the **country-appropriate** poverty line?
+
+Earlier versions of this model applied the $2.15/day global extreme line to every country, which understates poverty badly in richer ones — $2.15/day in Germany is not a meaningful threshold. The line is now selected per country by the ladder in `src/core/poverty.ts`, and the extreme-line headcount is reported alongside as `extremePoorGlobalBaseline` so cross-country comparison at the global benchmark is still possible.
+
+### Line selection
+
+| Income group | Line | Basis |
+|--------------|------|-------|
+| HIC | 60% of median equivalised income | OECD / EU at-risk-of-poverty rate |
+| UMC | $6.85/day (2017 PPP) | World Bank `SI.POV.UMIC` |
+| LMC | $3.65/day (2017 PPP) | World Bank `SI.POV.LMIC` |
+| LIC | $2.15/day (2017 PPP) | World Bank `SI.POV.DDAY` |
+
+A national poverty line (`SI.POV.NAHC`) is preferred where available. Every result carries the resolved `povertyLineBasis`, `povertyLineLabel` and `povertyLineSource` so the choice is auditable rather than implicit.
 
 ### Inputs
 
 | Field | Source |
 |-------|--------|
-| `povertyHeadcountRatio` | World Bank PovcalNet — % of population below $2.15/day (2017 PPP) |
+| headcount ratio at the resolved line | World Bank (`SI.POV.*`), selected by income group |
+| `povertyHeadcountRatio` | World Bank — % below $2.15/day (2017 PPP); reported as the secondary global baseline |
 | `population` | World Bank |
 | `recipientCount` | Budget simulation output |
 | `floorPppUsd` | Entitlement floor ($210/month by default) |
@@ -40,33 +54,47 @@ calculateImpactAnalysis(country, simulation, params, dataVersion)
 ### Formula
 
 ```
-povertyLine = $2.15/day × 30 days = $64.50 PPP-USD/month
+povertyLine = resolveCountryPovertyLine(country).monthlyPppUsd
 
-extremePoor = (povertyHeadcountRatio / 100) × population
+poor = (headcountRatioAtLine / 100) × population
 
-Case 1: transfer ≥ poverty line (e.g. $210 ≥ $64.50)
-  fractionOfPoorReached = min(1, recipientCount / extremePoor)
-  estimatedLifted = extremePoor × fractionOfPoorReached
+Case 1: transfer ≥ poverty line
+  fractionOfPoorReached = min(1, recipientCount / poor)
+  estimatedLifted = poor × fractionOfPoorReached
 
 Case 2: transfer < poverty line
   fractionLifted     = transfer / povertyLine
-    (assumes incomes of the extreme poor are uniformly distributed
+    (assumes incomes of the poor are uniformly distributed
      between $0 and the poverty line)
-  fractionOfPoorReached = min(1, recipientCount / extremePoor)
-  estimatedLifted = extremePoor × fractionOfPoorReached × fractionLifted
+  fractionOfPoorReached = min(1, recipientCount / poor)
+  estimatedLifted = poor × fractionOfPoorReached × fractionLifted
 ```
+
+Case 2 applies wherever the line exceeds the anchor. At $210/month the anchor clears the LIC ($64.50), LMC ($109.50) and UMC ($205.50) lines, so those resolve to Case 1; a HIC 60%-of-median line is far higher, so high-income countries land in Case 2 and see partial lifts.
+
+### ⚠️ Current data limitation
+
+The ladder resolves the *line* correctly for every country, but the **headcount ratio at that line is only available for LIC countries** in the shipped dataset. `relativePovertyHeadcountRatioPercent` (HIC), `povertyHeadcountRatio685Percent` (UMC) and `povertyHeadcountRatio365Percent` (LMC) are defined on `CountryStats` and read by `resolveCountryPovertyLine`, but are populated for **0 of 49 countries**; only `povertyHeadcountRatio` (the $2.15/day series) is present, for 48 of 49.
+
+In practice this means:
+
+- **10 LIC countries** produce a country-appropriate poverty-reduction estimate.
+- **The other 39** resolve to `dataQuality: 'low'` with `headcountRatioPercent: null`, and the API withholds the primary estimate behind an explicit warning rather than reporting a misleading zero.
+- Public pages fall back to the $2.15/day extreme headcount, **clearly labelled as the extreme line**, so a figure is still shown.
+
+Closing this gap is a data-import task, not a model change: the three `SI.POV.*` series need adding to `src/data/worldbank/config.json` and a refresh run.
 
 ### Key Assumptions
 
-1. **Targeting assumption:** For `bottom_quintile` targeting, extreme poor are assumed to be concentrated in the lowest income group and reached first. For universal targeting, extreme poor are distributed proportionally.
+1. **Targeting assumption:** For `bottom_quintile` targeting, the poor are assumed to be concentrated in the lowest income group and reached first. For universal targeting, they are distributed proportionally.
 2. **Behavioral assumption:** No behavioral response — labor supply, savings, migration, and price effects are not modeled.
 3. **Static model:** This is a static income comparison, not a general equilibrium model.
-4. **Data vintage:** Most recent available year from World Bank PovcalNet (typically 2018–2022 by country).
+4. **Data vintage:** Most recent available year from the World Bank (typically 2018–2022 by country).
 
 ### Data Quality
 
-- `high` — `povertyHeadcountRatio` available
-- `low` — data missing; estimate returns zero
+- `high` — a headcount ratio exists for the resolved line
+- `low` — no matching headcount ratio for that line; the estimate is withheld with an explicit warning rather than reported as zero
 
 ---
 
