@@ -19,7 +19,9 @@ Thank you for your interest in contributing! This project is open to contributio
 
 ## Code of conduct
 
-Please read and follow the [Code of Conduct](./CODE_OF_CONDUCT.md) before participating.
+Be respectful and constructive. Assume good faith, critique the work rather than the person, and keep discussion focused on the technical and methodological merits. Harassment of any kind is not tolerated. Maintainers may edit, lock, or remove contributions that do not meet this standard, and may block repeat offenders.
+
+Report concerns privately to the maintainers.
 
 ---
 
@@ -31,7 +33,7 @@ Please read and follow the [Code of Conduct](./CODE_OF_CONDUCT.md) before partic
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/alcoolio/open-global-income.git
+git clone https://github.com/richardkfm/open-global-income.git
 cd open-global-income
 
 # 2. Install dependencies
@@ -66,10 +68,17 @@ curl "http://localhost:3333/health"
 
 ```
 src/
-├── core/       Pure domain logic — no I/O, no side effects
-├── data/       World Bank dataset and loader
-├── api/        Fastify HTTP server and routes
-└── adapters/   Optional chain/currency adapters
+├── core/          Pure domain logic — no I/O, no side effects
+├── data/          Country/region datasets, World Bank + ILO + IMF importers
+├── api/           Fastify HTTP server and routes
+├── db/            SQLite persistence and PostgreSQL migrations
+├── admin/         Server-rendered admin UI (htmx)
+├── web/           Public advocacy site at /
+├── i18n/          Translation strings for the public site
+├── adapters/      Optional chain/currency adapters
+├── disbursements/ Non-custodial payment providers
+├── identity/      Identity verification connectors
+└── webhooks/      Outbound event dispatch
 ```
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for full details.
@@ -105,7 +114,7 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for full details.
 - **Pure functions** in `src/core/` — no side effects, no external I/O
 - **Comments:** Add comments only where the logic is not self-evident. Prefer clear naming over comments.
 
-Formatting is not currently enforced by a linter, but please follow the style of surrounding code.
+ESLint (`eslint.config.js`) and Prettier (`.prettierrc`) are both configured — `npm run lint` and `npm run format:check` run them. Neither is gated in CI yet, because both currently fail on pre-existing issues across the codebase; until that debt is cleared, follow the style of the surrounding code and don't reformat files you aren't otherwise touching.
 
 ---
 
@@ -139,6 +148,7 @@ Country data lives in `src/data/countries.json`. Each entry must have:
   "name": "Country Name",
   "stats": {
     "gdpPerCapitaUsd": 0,
+    "gdpPerCapitaPppUsd": 0,
     "gniPerCapitaUsd": 0,
     "pppConversionFactor": 1.0,
     "giniIndex": null,
@@ -148,11 +158,15 @@ Country data lives in `src/data/countries.json`. Each entry must have:
 }
 ```
 
-**Data sources:** Use World Bank Open Data indicators listed in `src/data/worldbank/README.md`. Prefer the most recent available year (typically the year before the current `dataVersion`).
+`gdpPerCapitaPppUsd` is required — it is the denominator for every "% of GDP" figure in the simulation, funding, and impact layers, which are all PPP-denominated. Omitting it silently distorts those figures. The remaining fiscal, labour, and social-protection fields are optional; the model degrades explicitly when they are absent rather than imputing.
+
+**Data sources:** Use the World Bank Open Data indicators listed in `src/data/worldbank/config.json` (documented in `src/data/worldbank/README.md`) and the ILO indicators in `src/data/ilo/config.json`. Prefer the most recent available year (typically the year before the current `dataVersion`).
+
+Prefer refreshing through the importers (`npm run data:update`) over editing `countries.json` by hand — hand edits are how the committed snapshot came to hold seeded estimates rather than fetched values.
 
 When you refresh the dataset:
 1. Update all countries with the latest available data.
-2. Bump `dataVersion` in `src/data/loader.ts` (e.g. `"worldbank-2024"`).
+2. Bump `dataVersion` in `src/data/countries.json` (e.g. `"worldbank-2024"`); `src/data/loader.ts` reads it from there.
 3. Re-run tests — snapshot values in `rules.test.ts` may need updating if real countries changed.
 4. Document the refresh in `CHANGELOG.md`.
 
@@ -160,14 +174,14 @@ When you refresh the dataset:
 
 ## Proposing a new ruleset version
 
-The formula in `src/core/rules.ts` implements **Ruleset v1**. If you want to change the formula:
+`src/core/rules.ts` holds the formula implementations and `src/core/rulesets.ts` is the registry that declares each version's status (`active` / `preview` / `deprecated`). v1 is active; v2 is registered as a preview. To propose a change:
 
 1. **Open an issue first** — describe the motivation, the proposed formula changes, and any data requirements.
-2. After discussion and approval, implement the new ruleset in a new file, e.g. `src/core/rules-v2.ts`.
-3. **Do not modify** `src/core/rules.ts` or change `RULESET_VERSION` to something that would silently alter existing results.
-4. The new ruleset should be opt-in until it is ready to replace v1.
-5. Document the new ruleset in a `RULESET_V2.md` file with the same structure as [RULESET_V1.md](./RULESET_V1.md).
-6. Update the API to expose the new ruleset alongside the old one.
+2. After discussion and approval, add the new constants to `src/core/constants.ts` and the new formula as a **new exported function** in `src/core/rules.ts` alongside the existing ones.
+3. Register it in `src/core/rulesets.ts` with status `preview`. **Never** change an existing version's formula or repoint `RULESET_VERSION` in a way that silently alters results already published under that version — every response carries `rulesetVersion` precisely so consumers can trust it.
+4. A new ruleset stays `preview` (queryable via `GET /v1/income/rulesets/:version`, not used for default calculations) until it is promoted deliberately.
+5. Write tests covering all four income groups.
+6. Document it in a `RULESET_VX.md` file with the same structure as [RULESET_V1.md](./RULESET_V1.md).
 
 See [RULESET_V1.md](./RULESET_V1.md) for the expected documentation format.
 

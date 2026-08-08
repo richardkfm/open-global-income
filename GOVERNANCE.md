@@ -91,11 +91,15 @@ or
 ## Data Sources
 
 ### Current
-- **World Bank** — GDP, GNI, PPP, Gini, population data
+- **World Bank** — 18 indicators: GDP and GNI per capita, GDP per capita PPP, PPP conversion factor, Gini, population, tax revenue, social-protection spending, inflation, labour force, unemployment, government debt, social contributions, poverty headcount, GDP growth, health and education expenditure, urbanization
+- **ILO** — 4 social-protection indicators: overall coverage, expenditure (ILO basis), pension coverage, child-benefit coverage
+
+### Wired but not yet populated
+- **IMF** — the importer (`src/data/imf/`) and the `stats.taxBreakdown` field exist; no country carries a value yet
 
 ### Planned
-- **IMF** — World Economic Outlook, exchange rate data
-- **UNDP** — Human Development Index (HDI)
+- **UNDP** — Human Development Index (HDI), required before Ruleset v2 can move from published specification to implementation
+- **UN DESA** — average household size, for the household-size reporting phase
 
 ## Security
 

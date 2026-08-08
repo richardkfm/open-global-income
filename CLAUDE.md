@@ -54,8 +54,8 @@ Open Global Income is a stack. Each layer builds on the one below it. The lower 
 
 | Layer | Question it answers | Status |
 |-------|-------------------|--------|
-| **Data** | What are the economic facts? | Done — 49 countries, World Bank 2023 + ILO + IMF; sub-national data for Kenya (47 counties), Germany (16 Bundesländer), France (13 regions), Netherlands (12 provinces) — 88 regions |
-| **Calculation** | How much per person? How urgent is the need? | Done — Ruleset v1 active, v2 preview; regional COL adjustments; local adequacy estimate reported alongside the $210 anchor (informational only) |
+| **Data** | What are the economic facts? | Done — 49 countries, 18 World Bank indicators + 4 ILO social-protection indicators (IMF tax breakdown wired but unpopulated); sub-national data for Kenya (47 counties), Germany (16 Bundesländer), France (13 regions), Netherlands (12 provinces) — 88 regions |
+| **Calculation** | How much per person? How urgent is the need? | Done — Ruleset v1 active (v2 is a registry-published spec, not yet implemented — needs a UNDP HDI source); regional COL adjustments; local adequacy estimate reported alongside the $210 anchor (informational only) |
 | **Simulation** | What will it cost to cover X% of the population? | Done — Phase 11; national + regional simulation |
 | **Distribution** | How does money reach people? | Done — Phase 12–13; Solana & EVM generate real unsigned txns; M-Pesa prepares a Daraja B2C instruction batch and SEPA an ISO 20022 pain.001 + Wise skeleton (non-custodial — operator executes; OGI stores no PII) |
 | **Evidence** | Is it working? Can we prove it? | Done — Phase 23; outcome recording, recipient/control cohorts, cross-program aggregates, CSV/JSON export. No randomization / significance testing / survey delivery yet |
@@ -65,7 +65,7 @@ Each layer is independently useful. A government can use just Data + Calculation
 
 ---
 
-## What's Built (v0.2.5)
+## What's Built (v0.2.6)
 
 The platform covers the full workflow from "how much per person?" through "where does the money come from?" to "what happens to poverty?" — with regional precision. Calculation, simulation, funding, and impact are production-ready. The distribution layer is non-custodial across all rails: crypto providers emit unsigned transactions, while the M-Pesa and SEPA connectors emit operator-executable instructions in the rails' native formats (Daraja B2C / ISO 20022 pain.001 + Wise) — OGI never moves funds, stores no recipient PII, and delegates identity/KYC to the executing provider. The recipient registry, evidence layer, and four concrete `IdentityProvider` connectors are built; experimental-design tooling is not.
 
@@ -79,7 +79,7 @@ The platform covers the full workflow from "how much per person?" through "where
 - Provider interface — pluggable payment rails (crypto, mobile money, bank)
 - Solana USDC & EVM providers — non-custodial, generates unsigned transactions
 - M-Pesa B2C & SEPA connectors — non-custodial; prepare a Daraja B2C instruction batch / ISO 20022 pain.001 + Wise skeleton for the operator to execute
-- Approval workflow — draft → approved → submitted → completed
+- Approval workflow — `draft` → `approved` → `processing` → `completed` (or `failed`); `submitted` is a log event, not a status
 - Full audit trail on every disbursement
 
 **Phase 13 — Pilot Dashboard** ✅
@@ -89,9 +89,10 @@ The platform covers the full workflow from "how much per person?" through "where
 - Admin UI with timeline, summary cards, and variance analysis
 
 **Phase 14 — Macro-Economic Data Expansion** ✅
-- 17+ indicators per country from World Bank, ILO, and IMF
+- 22 indicators per country: 18 from the World Bank (`src/data/worldbank/config.json`) + 4 ILO social-protection indicators
 - Fiscal, social, labor, and expenditure data
 - Admin country dashboards with data completeness indicators
+- Caveats: the committed `countries.json` holds manually seeded estimates, not live API values — run `npm run data:update` before citing figures. Gini is missing for 2 countries and Afghanistan is missing 13 of the 22. The IMF importer (`src/data/imf/`) and the `stats.taxBreakdown` field exist but no country carries a value yet
 
 **Phase 15 — Funding & Fiscal Simulation** ✅
 - 7 funding mechanism calculators (income tax, VAT, carbon tax, wealth tax, FTT, automation tax, redirect)
@@ -333,7 +334,7 @@ src/
 | File | What it does |
 |------|-------------|
 | `src/core/rules.ts` | The entitlement formula — pure function, no side effects |
-| `src/core/rulesets.ts` | Registry of all formula versions (v1 active, v2 preview) |
+| `src/core/rulesets.ts` | Registry of all formula versions — v1 (active, implemented), v2 (preview, spec only), stub v0 (deprecated) |
 | `src/core/constants.ts` | Named constants: income floor ($210), weights |
 | `src/core/simulations.ts` | Budget simulation math — pure function |
 | `src/core/funding.ts` | 8 funding mechanism calculators + recommended mix — pure functions |
@@ -341,7 +342,7 @@ src/
 | `src/core/regions.ts` | Regional COL adjustment via "adjusted Country" pattern |
 | `src/core/poverty.ts` | Country-appropriate poverty-line ladder — pure functions |
 | `src/core/adequacy.ts` | Local adequacy estimate shown beside the $210 anchor — pure functions |
-| `src/data/countries.json` | World Bank snapshot — 49 countries |
+| `src/data/countries.json` | Country snapshot — 49 countries, World Bank + ILO indicators |
 | `src/data/regions.json` | Sub-national data — 88 regions across KE, DE, FR, NL |
 | `src/api/server.ts` | Fastify server factory |
 | `src/web/routes.ts` | Public advocacy site routes |
@@ -358,7 +359,9 @@ All API responses follow:
 
 ### Adding a Country
 
-Edit `src/data/worldbank/config.json`, run `npm run data:update`. The importer fetches from the World Bank API, validates, and writes to `countries.json`.
+Run `npm run data:update`. The importer fetches from the World Bank API, validates, and writes to `countries.json`.
+
+Which countries it fetches is controlled by `countries.mode` in `src/data/worldbank/config.json`. It currently sits at `"all"`, so a refresh pulls every country the API serves (190+) minus the `exclude` list — no edit is needed to add one, but the resulting snapshot will be much larger than the 49 committed today. Set `mode: "explicit"` and list ISO 3166-1 alpha-2 codes in `codes` to keep the dataset curated.
 
 ### Adding Regions for a Country
 
@@ -376,9 +379,9 @@ No code changes needed — the loader picks up new entries automatically. Write 
 ### Adding a Ruleset
 
 1. Define constants in `src/core/constants.ts`
-2. Implement the formula in `src/core/rules.ts`
-3. Register in `src/core/rulesets.ts` with status (active/preview/deprecated)
-4. Write tests covering all income groups
+2. Implement the formula as a new exported function in `src/core/rules.ts` — never alter an existing version's behaviour
+3. Register in `src/core/rulesets.ts` (`RulesetInfo`: `active: boolean`, plus the formula string and parameter map; preview/deprecated status is carried in the name)
+4. Write tests covering all four income groups
 5. Document in a `RULESET_VX.md` file
 
 ### Commit Style

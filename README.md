@@ -21,7 +21,7 @@
 
 Like what OpenStreetMap did for geographic data, or what SMTP did for email: a shared standard that makes every program built on top of it cheaper, faster, and more trustworthy than if they built alone.
 
-[Vision](#-vision) · [Who It's For](#-who-its-for) · [Principles](#-principles) · [Quickstart](#-quickstart) · [API](#-api) · [Public Site](#-public-site) · [Admin UI](#-admin-ui) · [Rulesets](#-rulesets) · [Chain Adapters](#-chain-adapters) · [Disbursements](#-disbursement-providers) · [Webhooks](#-webhooks) · [SDK](#-typescript-sdk) · [Database](#-database) · [Auth](#-authentication) · [Config](#%EF%B8%8F-environment-variables) · [Contributing](#-contributing) · [Governance](#-governance)
+[Vision](#-vision) · [Who It's For](#-who-its-for) · [Principles](#-principles) · [Data](#-data-provenance) · [Quickstart](#-quickstart) · [API](#-api) · [Public Site](#-public-site) · [Admin UI](#-admin-ui) · [Rulesets](#-rulesets) · [Chain Adapters](#-chain-adapters) · [Disbursements](#-disbursement-providers) · [Webhooks](#-webhooks) · [SDK](#-typescript-sdk) · [Database](#-database) · [Auth](#-authentication) · [Config](#%EF%B8%8F-environment-variables) · [Contributing](#-contributing) · [Governance](#-governance)
 
 ---
 
@@ -51,14 +51,14 @@ Open Global Income is a stack. Each layer builds on the one below it. The lower 
 └─────────────────────────────────────────────────┘
 ```
 
-### ✅ Built (v0.2.5)
+### ✅ Built (v0.2.6)
 
 **The API is the product.** Everything below is exposed through a REST API with OpenAPI docs, a generated TypeScript SDK, and webhook events — not locked behind a UI.
 
 | Layer | What it does | Phase |
 |-------|-------------|-------|
-| **Data** | 49 countries with all 17 macro-economic indicators fully populated (World Bank, ILO, IMF); sub-national data for Kenya (47 counties), Germany (16 Bundesländer), France (13 regions), Netherlands (12 provinces) — 88 regions total | 14, 17 |
-| **Calculation** | Entitlement formulas (v1 active, v2 preview), scoring, country comparison, regional COL adjustments; a locally-calibrated adequacy estimate reported alongside the fixed $210 global anchor (informational — never fed into the entitlement) | 1–10, 17, 28 |
+| **Data** | 49 countries — 18 World Bank macro-economic indicators plus 4 ILO social-protection indicators per country ([caveats](#-data-provenance)); sub-national data for Kenya (47 counties), Germany (16 Bundesländer), France (13 regions), Netherlands (12 provinces) — 88 regions total | 14, 17 |
+| **Calculation** | The v1 entitlement formula (v2 is a [published specification, not an implementation](#ruleset-v2-preview--specification-only)), scoring, country comparison, regional COL adjustments; a locally-calibrated adequacy estimate reported alongside the fixed $210 global anchor (informational — never fed into the entitlement) | 1–10, 17, 28 |
 | **Simulation** | Budget modeling with targeting presets and programmable rules, multi-country comparison, regional simulation, saved scenarios | 11, 17, 22 |
 | **Disbursement** | Non-custodial payment rails — Solana USDC, EVM USDC, M-Pesa B2C (Daraja instruction batch), SEPA Credit Transfer (ISO 20022 pain.001 + Wise skeleton) — with approval workflow and audit trail | 12 |
 | **Recipients** | Enrollment, identity verification, cross-program duplicate detection — no raw identity data stored | 19 |
@@ -78,15 +78,19 @@ Secure admin UI with login, approval workflows, and audit trails — plus a publ
 
 ### Phase 23: Evidence Layer ✅
 
-- `POST /v1/pilots/:id/outcomes` — record recipient or control cohort measurements (employment, income, food security, school attendance, poverty, health, savings)
-- `GET /v1/pilots/:id/outcomes/compare` — pre/post comparison with numeric deltas and projected vs. actual from linked impact analysis
-- `GET /v1/evidence/aggregate` — anonymized, cross-program benchmark statistics (median, p25, p75 per indicator) — filterable by country, income group, coverage
-- `GET /v1/evidence/export` — CSV or JSON research export for academic partners
+- Record recipient- or control-cohort measurements per pilot (employment, income, food security, school attendance, poverty, health, savings)
+- Pre/post comparison with numeric deltas, and projected vs. actual against the linked impact analysis
+- Anonymized cross-program benchmark statistics (median, p25, p75 per indicator), filterable by country, income group, and coverage
+- CSV or JSON research export for academic partners
 - Admin evidence page per pilot: record form, comparison table, full measurement history
+
+Endpoints are listed under [Evidence](#evidence) below. **Not** included: randomized treatment assignment, statistical significance testing, confidence intervals, or survey delivery — measurements are fed in through the API. See [Next](#-next) for what a research-grade design still needs.
 
 ### 🔜 Next
 
 - **More countries** — sub-national data now covers Kenya (47 counties), Germany (16 Bundesländer), France (13 regions), and Netherlands (12 provinces). Next priority: Tanzania, Uganda, Ghana, Nigeria, India. The region data format and loader are country-agnostic; each country needs a curated `regions.json` entry with cost-of-living indices sourced from national statistics bureaus.
+- **Research-grade evidence** — the recording, comparison, aggregation and export framework shipped in Phase 23. Randomized treatment assignment, control-group power analysis, significance testing and confidence intervals have not been built, and there is no survey-delivery mechanism — outcome data is fed in through the API. Export is CSV/JSON only (no Parquet/SPSS).
+- **Income floor, remaining phases** — Phases 1, 2 and 4 of [INCOME_FLOOR_PROPOSED_ANSWERS.md](./INCOME_FLOOR_PROPOSED_ANSWERS.md) shipped in v0.2.4. Still open: household-size reporting (Phase 3), a donor-side solidarity pool (Phase 5), and a gated ruleset v3 preview paying per adult-equivalent (Phase 6).
 
 ### 🌐 Future
 
@@ -120,6 +124,22 @@ See [CLAUDE.md](./CLAUDE.md) for the full vision. See [ROADMAP.md](./ROADMAP.md)
 
 ---
 
+## 📊 Data Provenance
+
+Transparency cuts both ways, so the current state of the shipped dataset is stated plainly here.
+
+`src/data/countries.json` carries 49 countries under `dataVersion: worldbank-2023`. Per country it holds **18 World Bank macro-economic indicators** (GDP and GNI per capita, GDP per capita PPP, PPP conversion factor, Gini, population, tax revenue, social-protection spending, inflation, labour-force participation, unemployment, government debt, social contributions, poverty headcount, GDP growth, health and education expenditure, urbanization) and **4 ILO social-protection indicators** (overall coverage, ILO-basis expenditure, pension coverage, child-benefit coverage).
+
+Three caveats matter if you are citing these figures:
+
+- **The committed snapshot is seeded, not fetched.** The values shipped in the repository are manually seeded estimates based on published indicator ranges — the file says so in its own `source` field. Run `npm run data:update` to replace them with live World Bank / ILO API data before using the numbers for anything that matters. Everything downstream (entitlements, simulations, funding, impact) is only as good as this snapshot.
+- **Coverage is near-complete, not complete.** Gini is absent for Singapore and Afghanistan; Singapore additionally lacks poverty headcount and child-benefit coverage, and Afghanistan is missing 13 of the 22 indicators (the fiscal, expenditure, and social-protection series not published for it). Every other country carries all 22. The API returns `null` for absent fields rather than imputing, and the calculation model degrades explicitly (e.g. the Gini penalty is skipped when Gini is unavailable).
+- **Some defined fields carry no data at all.** `stats.taxBreakdown` (IMF) is empty for every country — the importer in `src/data/imf/` exists but has not been run into the snapshot (`"IMF fiscal breakdown: not available"` in its own completeness report). The same is true of the tiered poverty headcounts `relativePovertyHeadcountRatioPercent`, `povertyHeadcountRatio685Percent` and `povertyHeadcountRatio365Percent`, which the impact model reads but which are populated for 0 of 49 countries — see the [poverty-reduction caveat](#economic-impact).
+
+`GET /v1/income/countries/:code` returns per-field values as stored, and the admin country dashboards show a data-completeness indicator per country.
+
+---
+
 ## 🚀 Quickstart
 
 ### Clone & run locally
@@ -145,7 +165,7 @@ curl http://localhost:3333/v1/income/calc?country=KE
 ### Docker
 
 ```bash
-git clone https://github.com/alcoolio/open-global-income.git
+git clone https://github.com/richardkfm/open-global-income.git
 cd open-global-income
 cp .env.example .env          # fill in ADMIN_USERNAME and ADMIN_PASSWORD
 docker compose up --build
@@ -207,21 +227,31 @@ npm run db:migrate   # Run PostgreSQL migrations
 
 ## ⚙️ Environment Variables
 
+Every variable the application reads is declared in `src/config.ts` and mirrored in `.env.example`.
+
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PORT` | `3333` | Server port |
+| `HOST` | `0.0.0.0` | Bind address |
 | `LOG_LEVEL` | `info` | Pino log level |
-| `CORS_ORIGIN` | `*` | Allowed CORS origins |
-| `RATE_LIMIT_MAX` | `100` | Max requests per window |
+| `CORS_ORIGIN` | `*` | Allowed CORS origin |
+| `CORS_METHODS` | `GET,POST,OPTIONS` | Allowed CORS methods |
+| `RATE_LIMIT_MAX` | `100` | Max requests per window per IP |
 | `RATE_LIMIT_WINDOW_MS` | `60000` | Rate limit window (ms) |
-| `API_KEY_REQUIRED` | — | Set to `true` to require API keys |
-| `ENABLE_ADMIN` | — | Set to `true` to enable admin UI |
+| `BATCH_MAX_ITEMS` | `50` | Max items accepted by `POST /v1/income/batch` |
+| `API_KEY_REQUIRED` | `false` | Set to `true` to require an `X-Api-Key` header on every request |
+| `ENABLE_ADMIN` | `true` | Set to `false` to disable the admin UI at `/admin` |
 | `ENABLE_WEB` | `true` | Set to `false` to disable the public site at `/` |
-| `ADMIN_USERNAME` | `admin` | Admin UI login username |
-| `ADMIN_PASSWORD` | `admin` | Admin UI login password |
-| `ENABLE_METRICS` | `true` | Set to `false` to disable Prometheus |
+| `ENABLE_METRICS` | `true` | Set to `false` to disable Prometheus `/metrics` |
+| `ENABLE_AUDIT_LOG` | `true` | Set to `false` to stop recording requests in `audit_log` |
+| `ADMIN_USERNAME` | `admin` | Admin UI login username, seeded on first boot |
+| `ADMIN_PASSWORD` | `admin` | Admin UI login password, seeded on first boot — **change in production** |
 | `DB_BACKEND` | `sqlite` | Database backend (`sqlite` or `postgres`) |
-| `DATABASE_URL` | — | PostgreSQL connection string |
+| `DB_PATH` | `./data/ogi.sqlite` | SQLite file path (ignored when `DB_BACKEND=postgres`) |
+| `DATABASE_URL` | — | PostgreSQL connection string — required when `DB_BACKEND=postgres` |
+| `DB_SSL` | `true` | Set to `false` to disable SSL on the PostgreSQL connection |
+
+Note that the four `ENABLE_*` flags and `DB_SSL` are **opt-out**: each is on unless explicitly set to the string `false`.
 
 ---
 
@@ -275,6 +305,22 @@ All responses follow a consistent shape:
 | `POST` | `/v1/disbursements/:id/submit` | Submit to payment provider |
 | `GET` | `/v1/disbursements/:id` | Get status and audit log |
 | `GET` | `/v1/disbursements` | List all disbursements (paginated) |
+| `POST` | `/v1/webhooks/inbound/:provider` | Inbound payment confirmation callback (HMAC-verified) |
+
+Disbursement status moves `draft` → `approved` → `processing` → `completed`, or `failed` at any point after approval.
+
+### Recipients & Identity
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/v1/recipients` | Enrol a recipient (status: `pending`) |
+| `GET` | `/v1/recipients` | List the registry (paginated, filterable) |
+| `GET` | `/v1/recipients/:id` | Get a single recipient |
+| `PATCH` | `/v1/recipients/:id` | Update a recipient / transition status |
+| `POST` | `/v1/recipients/:id/verify` | Run a claim through an identity provider and mark `verified` |
+| `POST` | `/v1/recipients/check-duplicate` | Cross-program duplicate check on an account hash |
+| `GET` | `/v1/recipients/export` | Export the registry as CSV (default) or JSON (`?format=json`) |
+| `GET` | `/v1/identity/providers` | List the available identity connectors |
 
 ### Funding & Fiscal Simulation
 
@@ -301,7 +347,7 @@ All responses follow a consistent shape:
 | `DELETE` | `/v1/impact-analyses/:id` | Delete a saved analysis |
 
 **Four impact dimensions — every assumption explicitly listed:**
-- **Poverty reduction** — how many people lifted above the $2.15/day extreme poverty line
+- **Poverty reduction** — how many people are lifted above the **country-appropriate** poverty line, picked by the ladder in `src/core/poverty.ts` (HIC → 60% of median income; otherwise the World Bank $6.85/day UMC, $3.65/day LMC, or $2.15/day LIC line), with the $2.15/day extreme line reported alongside as a secondary figure. **Caveat:** the headcount ratio at the resolved line is currently only in the dataset for LIC countries, so the other 39 fall back to the clearly-labelled extreme-line figure — see [IMPACT_METHODOLOGY.md](./IMPACT_METHODOLOGY.md#-current-data-limitation)
 - **Purchasing power** — % income increase for the bottom quintile (Lorenz curve model)
 - **Social coverage** — people currently uncovered by social protection, newly reached
 - **GDP stimulus** — Keynesian fiscal multiplier calibrated by income group (LIC=2.3×, LMC=1.9×, UMC=1.5×, HIC=1.1×)
@@ -318,6 +364,17 @@ See [IMPACT_METHODOLOGY.md](./IMPACT_METHODOLOGY.md) for full model documentatio
 | `PATCH` | `/v1/pilots/:id` | Update status, dates, description |
 | `POST` | `/v1/pilots/:id/disbursements` | Link a disbursement to a pilot |
 | `GET` | `/v1/pilots/:id/report` | Generate structured donor report |
+| `GET` | `/v1/pilots/:id/audit-export` | Compliance-grade audit export with SHA-256 integrity hash |
+
+### Evidence
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/v1/pilots/:id/outcomes` | Record a recipient- or control-cohort measurement |
+| `GET` | `/v1/pilots/:id/outcomes` | List a pilot's measurements |
+| `GET` | `/v1/pilots/:id/outcomes/compare` | Pre/post comparison and projected vs. actual |
+| `GET` | `/v1/evidence/aggregate` | Anonymized cross-program benchmarks (median, p25, p75) |
+| `GET` | `/v1/evidence/export` | CSV or JSON research export |
 
 ### Metrics
 
@@ -360,9 +417,17 @@ score           = clamp(incomeRatio + giniPenalty, 0, 1)
 
 See [RULESET_V1.md](./RULESET_V1.md) for the full specification.
 
-### Ruleset v2 (preview)
+### Ruleset v2 (preview — specification only)
 
-Extends v1 with HDI and urbanization factors. Not yet active. See `GET /v1/income/rulesets/v2`.
+Extends v1 with HDI and urbanization factors:
+
+```
+hdiAdjustment = (1 - hdi) × 0.10
+urbanPenalty  = (1 - urbanizationRate) × 0.05
+score         = clamp(incomeRatio + giniPenalty + hdiAdjustment + urbanPenalty, 0, 1)
+```
+
+v2 is **published, not implemented.** It exists as an entry in the ruleset registry (`src/core/rulesets.ts`) so the proposed formula and its parameters are queryable and reviewable via `GET /v1/income/rulesets/v2` — there is no `calculateEntitlement` variant behind it, and `hdi` is not yet a field on `CountryStats`. Implementing it requires a UNDP HDI data source first. Every calculation the API performs today is v1.
 
 ---
 
@@ -381,7 +446,7 @@ A public, no-login web UI at `/` built for the people making the case for basic 
 
 ## 🖥️ Admin UI
 
-Server-rendered dashboard using htmx (no SPA). Enable with `ENABLE_ADMIN=true`.
+Server-rendered dashboard using htmx (no SPA). Mounted by default; disable with `ENABLE_ADMIN=false`.
 
 **Login:** Default credentials are username `admin` / password `admin` (both configurable via `ADMIN_USERNAME` and `ADMIN_PASSWORD` env vars).
 
@@ -389,11 +454,16 @@ Server-rendered dashboard using htmx (no SPA). Enable with `ENABLE_ADMIN=true`.
 - **API Key Management** — create and revoke keys with tier selection
 - **Audit Log** — recent API requests with live-refresh
 - **Simulate** — budget simulations with live cost preview, comparison, save/delete
-- **Funding** — interactive scenario builder with slider controls for 6 funding mechanisms, stacked bar chart, fiscal context panel, and assumption transparency
+- **Compare** — side-by-side country comparison on identical parameters
+- **Funding** — interactive scenario builder with slider controls for all seven domestic funding mechanisms, stacked bar chart, fiscal context panel, and assumption transparency
 - **Impact** — economic impact analyzer with poverty reduction, purchasing power, social coverage, and GDP stimulus estimates; tabbed breakdown, policy brief export
-- **Pilots** — create and manage pilots, link disbursements, track status, view variance
+- **Pilots** — create and manage pilots, link disbursements, track status, view variance, generate the audit export
+- **Programs** — assemble and print a program summary from a saved simulation
+- **Evidence** — record outcome measurements per pilot and view the cross-program aggregate benchmarks
+- **Identity & Recipients** — connector catalog with a verify form, plus a full recipient registry console: enrol, filter, paginate, per-recipient detail with status transitions, bulk CSV import and CSV export
 - **Countries** — economic dashboards with data completeness indicators
 - **Regions** — sub-national data browser with COL index badges, entitlement comparison (national vs. regional)
+- **Data Sources** — registry of configured import sources with refresh and edit controls
 
 Access at `http://localhost:3333/admin/login`. Sessions are secure (HttpOnly cookies, PBKDF2-hashed passwords) with brute-force protection (15-minute lockout after 5 failed attempts).
 
@@ -425,9 +495,11 @@ Non-custodial — calculates and prepares payment instructions, never holds or m
 
 ## 🔔 Webhooks
 
-Subscribe to events and receive HMAC-SHA256 signed payloads:
+**Outbound** — subscribe to events and receive HMAC-SHA256 signed payloads. The 18 event types (`WebhookEvent` in `src/webhooks/types.ts`):
 
-`entitlement.calculated` · `user.created` · `api_key.created` · `api_key.revoked` · `data.updated` · `simulation.created` · `disbursement.created` · `disbursement.approved` · `disbursement.completed` · `disbursement.failed` · `pilot.created` · `pilot.status_changed` · `pilot.report_generated` · `funding_scenario.created` · `impact_analysis.created`
+`entitlement.calculated` · `user.created` · `api_key.created` · `api_key.revoked` · `data.updated` · `simulation.created` · `disbursement.created` · `disbursement.approved` · `disbursement.completed` · `disbursement.confirmed` · `disbursement.failed` · `pilot.created` · `pilot.status_changed` · `pilot.report_generated` · `pilot.audit_export_generated` · `pilot.outcome_recorded` · `funding_scenario.created` · `impact_analysis.created`
+
+**Inbound** — `POST /v1/webhooks/inbound/:provider` accepts payment confirmations from a disbursement provider. The provider's `parseCallback()` implementation verifies an HMAC-SHA256 signature against the raw body *before* deserialization, with a replay timestamp window. A confirmed callback transitions the disbursement's status, writes a log entry, and fires the outbound `disbursement.confirmed` / `disbursement.failed` event.
 
 See `src/webhooks/` for the dispatcher and type definitions.
 
@@ -459,16 +531,21 @@ Set `DB_BACKEND=postgres` and `DATABASE_URL` to switch backends.
 
 ```
 src/
-├── core/        Pure domain logic (types, rules engine) — zero framework deps
-├── data/        Data loading, normalization, World Bank source docs
-├── api/         HTTP layer (Fastify), middleware (auth, audit, metrics)
-├── db/          SQLite persistence, PostgreSQL migrations
-├── admin/       Server-rendered admin UI (htmx)
-├── web/         Public advocacy site at / (fact sheets, calculator, methodology)
-├── adapters/    Chain/currency adapters (Solana, EVM)
-└── webhooks/    Event dispatch with HMAC-SHA256 signatures
-scripts/         SDK generation, tooling
-sdk/             Generated TypeScript client SDK
+├── core/          Pure domain logic — types, rules, simulations, funding, impact,
+│                  regions, poverty, adequacy, targeting. No I/O, zero framework deps
+├── data/          Data loading, World Bank/ILO/IMF importers, countries.json, regions.json
+├── api/           HTTP layer (Fastify), middleware (auth, audit, metrics), OpenAPI
+├── db/            SQLite persistence, PostgreSQL migrations
+├── admin/         Server-rendered admin UI (htmx)
+├── web/           Public advocacy site at / (fact sheets, calculator, methodology)
+├── i18n/          Translation strings for the public site
+├── adapters/      Chain/currency adapters (Solana, EVM)
+├── disbursements/ Payment providers (Solana USDC, EVM USDC, M-Pesa B2C, SEPA)
+├── identity/      Identity verification connectors (national ID, mobile, wallet, community)
+└── webhooks/      Event dispatch with HMAC-SHA256 signatures
+public/            Static assets for the public site and admin UI
+scripts/           SDK generation, tooling
+sdk/               Generated TypeScript client SDK
 ```
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for dependency rules and design decisions.
@@ -484,6 +561,8 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup, code style, test
 See [GOVERNANCE.md](./GOVERNANCE.md) for the decision-making process, API stability declaration, and versioning policy.
 
 ## 📋 Current Status
+
+**Version 0.2.6** — Documentation audit against the code, across `README.md`, `CLAUDE.md`, `CONTRIBUTING.md`, `ARCHITECTURE.md`, `IMPACT_METHODOLOGY.md`, `GOVERNANCE.md`, `GOVERNMENT_READINESS.md`, `ROADMAP.md`, `USECASE.md` and `.env.example`. The dataset is now described as it actually is — 18 World Bank + 4 ILO indicators, a manually seeded rather than fetched snapshot, two countries with gaps, and several defined fields carrying no data — in a new **Data Provenance** section, instead of "all 17 indicators fully populated". Ruleset v2 is identified as a published specification with no implementation behind it. The poverty-reduction dimension is documented against the country-appropriate ladder it actually uses, along with the previously unstated fact that only LIC countries have a headcount at their resolved line, so the other 39 fall back to the labelled $2.15/day figure. The environment-variable table matches `src/config.ts` (notably: `ENABLE_ADMIN` is on by default, not opt-in), the endpoint tables gained the recipient, identity, evidence, audit-export and inbound-webhook routes that shipped undocumented, and the webhook list gained three missing event types. One source line changed: `POST /v1/impact/brief` was printing a nonexistent repository URL into every exported policy brief. 730 tests across 39 suites.
 
 **Version 0.2.5** — Continuous integration, and a fix to the phase numbering. GitHub Actions now runs `npm ci`, `npm run typecheck`, and `npm test` on every pull request and on pushes to `main` (`.github/workflows/ci.yml`) — the docs had described CI for several releases, but no workflow file was ever committed, so pull requests showed zero checks. Lint and format checks stay manual for now: both fail on pre-existing issues, and clearing that is its own change. Separately, the identity connectors and public site had been labelled Phases 24 and 25 here while `ROADMAP.md` reserves those numbers for the unbuilt Scenario Versioning and Multi-tenancy phases; the shipped work is renumbered to Phases 26–28 and documented in the roadmap. 730 tests across 39 suites.
 

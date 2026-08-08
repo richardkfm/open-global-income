@@ -6,7 +6,7 @@ basic income experiment — and what can't it do yet?**
 This document is written from the perspective of a government program team
 tasked with designing, funding, launching, paying, and evaluating a
 large-scale basic income (UBI) pilot. It maps each stage of that real-world
-workflow to what OGI delivers today (v0.1.33, 671 tests / 37 suites), and
+workflow to what OGI delivers today (v0.2.6, 730 tests / 39 suites), and
 states plainly where the platform is **ready**, **partially ready**, or **not
 yet able to deliver**.
 
@@ -27,8 +27,8 @@ authoritative KYC, and research-grade experimental measurement.
 |---|------------------------------------------|-------------|---------|
 | 1 | **Feasibility** — where, and how much per person? | Data + Calculation: 49 countries, regional cost-of-living (`/v1/income/calc`, `/v1/income/calc/regional`) | ✅ Ready |
 | 2 | **Budget projection** — what will it cost? | Simulation: coverage %, targeting, duration; single, multi-country compare, regional | ✅ Ready |
-| 3 | **Funding** — how do we pay for it? | 7 mechanism calculators + fiscal-context analysis | ⚠️ Works; assumptions optimistic, no uncertainty ranges |
-| 4 | **Impact** — what will it achieve? | 4-dimension model + policy brief with citations | ⚠️ Transparent, but deterministic point estimates only |
+| 3 | **Funding** — how do we pay for it? | 7 domestic mechanism calculators + a labelled international solidarity transfer for the residual + fiscal-context analysis | ⚠️ Works; assumptions optimistic, no uncertainty ranges |
+| 4 | **Impact** — what will it achieve? | 4-dimension model + policy brief with citations | ⚠️ Deterministic point estimates only; the country-appropriate poverty headcount is missing for all but LIC countries, so 39 of 49 fall back to the $2.15/day line |
 | 5 | **Buy-in** — convince treasury / ministers / donors | Print-ready Program Briefs stitching sim + funding + impact | ✅ Ready |
 | 6 | **Stand up the pilot** | Pilot lifecycle, targeting rules, actual-vs-projected variance | ⚠️ Single sim per pilot; no multi-region roll-up |
 | 7 | **Enroll & verify people** | Recipient registry + cross-program dedup; four non-custodial `IdentityProvider` connectors (national-ID, mobile-KYC, wallet, community) + admin enrollment/verify UI + bulk CSV import | ⚠️ Built; authoritative KYC delegated to the operator's verifier |
