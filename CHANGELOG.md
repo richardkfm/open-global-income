@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+- **README rewritten as a short landing page** (≈ 590 → ≈ 160 lines). The ASCII-art logo and the emoji stack diagram mis-aligned on GitHub (box-drawing and emoji glyph widths differ from the monospace grid); both are replaced — the logo by a vector rendering (`docs/assets/logo.svg`), the stack diagram by a table.
+- Detailed content moved, not dropped: capabilities, data provenance, rulesets, funding/impact models, public site, admin UI, providers and release history to `docs/CAPABILITIES.md`; setup, environment variables, the full API reference, auth, webhooks, SDK, database and architecture to `docs/DEVELOPER_GUIDE.md`.
+
+### Added
+- Animated README walk-through (`docs/assets/pipeline.svg`) of one Kenya study through Data → Calculation → Simulation → Distribution → Evidence, with the API call behind each step. Pure CSS animation, static under `prefers-reduced-motion`.
+- `scripts/generate-readme-assets.mjs` regenerates both SVGs.
+- `src/api/readme-scenario.test.ts` re-derives the animation's Kenya figures through the same API calls, so the image fails CI rather than drifting from the code.
+- A "What it takes next" plan in the README: needs, current state and next steps for researchers, NGOs, governments and journalists, with a now / next / later sequencing.
+
 ## [0.2.6] - 2026-08-08
 
 A full audit of the public docs against the code. One line of source changed — a wrong repository URL printed into every exported policy brief; everything else is documentation.
