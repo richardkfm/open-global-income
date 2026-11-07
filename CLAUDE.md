@@ -150,7 +150,7 @@ The platform covers the full workflow from "how much per person?" through "where
 - Eighth funding mechanism — `international_solidarity_transfer` attributes the residual gap (after the seven domestic mechanisms hit realistic ceilings) to a labeled external transfer instead of an unlabeled shortfall
 - Implements Phases 1, 2, and 4 of [INCOME_FLOOR_PROPOSED_ANSWERS.md](./INCOME_FLOOR_PROPOSED_ANSWERS.md); Phases 3, 5, and 6 remain open
 
-**730 tests** across 39 suites. Typecheck clean. CI runs typecheck + test on every pull request and on pushes to `main` (`.github/workflows/ci.yml`).
+**734 tests** across 40 suites. Typecheck clean. CI runs typecheck + test on every pull request and on pushes to `main` (`.github/workflows/ci.yml`).
 
 ---
 
@@ -291,7 +291,7 @@ Track where money goes. Verify it reaches recipients. Compare program efficiency
 - **API:** Fastify with OpenAPI/Swagger at `/docs`
 - **Database:** SQLite (default) / PostgreSQL (production)
 - **Admin UI:** Server-rendered HTML + htmx (no SPA)
-- **Testing:** Vitest — 730 tests across 39 suites
+- **Testing:** Vitest — 734 tests across 40 suites
 - **Metrics:** Prometheus via prom-client at `/metrics`
 - **CI:** GitHub Actions (`.github/workflows/ci.yml`) — `npm ci`, `npm run typecheck`, `npm test` on every pull request and on pushes to `main`. `npm run lint` and `npm run format:check` are **not** gated yet: both currently fail on pre-existing issues, so they are run manually until that debt is cleared
 

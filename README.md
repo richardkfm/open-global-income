@@ -1,592 +1,160 @@
-```
-     ╔═══════════════════════════════════════════════════════╗
-     ║                                                       ║
-     ║        ██████╗  ██████╗ ██╗                           ║
-     ║       ██╔═══██╗██╔════╝ ██║                           ║
-     ║       ██║   ██║██║  ███╗██║                           ║
-     ║       ██║   ██║██║   ██║██║                           ║
-     ║       ╚██████╔╝╚██████╔╝██║                           ║
-     ║        ╚═════╝  ╚═════╝ ╚═╝                           ║
-     ║                                                       ║
-     ║   O P E N   G L O B A L   I N C O M E                 ║
-     ║                                                       ║
-     ║   Shared infrastructure for universal basic income    ║
-     ║   ─────────────────────────────────────────────────   ║
-     ║   DATA → CALCULATION → SIMULATION → DISTRIBUTION      ║
-     ║                                                       ║
-     ╚═══════════════════════════════════════════════════════╝
-```
+<p align="center">
+  <img src="docs/assets/logo.svg" alt="Open Global Income — shared infrastructure for universal basic income" width="640">
+</p>
+
+<p align="center">
+  <a href="https://github.com/richardkfm/open-global-income/actions/workflows/ci.yml"><img src="https://github.com/richardkfm/open-global-income/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT license"></a>
+</p>
 
 **The shared infrastructure layer for universal basic income** — the neutral, auditable protocol that any government, NGO, or DAO can build on to deliver income floors to people.
 
 Like what OpenStreetMap did for geographic data, or what SMTP did for email: a shared standard that makes every program built on top of it cheaper, faster, and more trustworthy than if they built alone.
 
-[Vision](#-vision) · [Who It's For](#-who-its-for) · [Principles](#-principles) · [Data](#-data-provenance) · [Quickstart](#-quickstart) · [API](#-api) · [Public Site](#-public-site) · [Admin UI](#-admin-ui) · [Rulesets](#-rulesets) · [Chain Adapters](#-chain-adapters) · [Disbursements](#-disbursement-providers) · [Webhooks](#-webhooks) · [SDK](#-typescript-sdk) · [Database](#-database) · [Auth](#-authentication) · [Config](#%EF%B8%8F-environment-variables) · [Contributing](#-contributing) · [Governance](#-governance)
+[How it works](#-how-it-works) · [The stack](#-the-stack) · [Who it's for](#-who-its-for) · [What it takes next](#-what-it-takes-next) · [Quickstart](#-quickstart) · [Docs](#-documentation)
 
 ---
 
-## 🔭 Vision
+## 🎬 How it works
 
-Open Global Income is a stack. Each layer builds on the one below it. The lower layers are useful on their own; the upper layers multiply their impact.
+<p align="center">
+  <img src="docs/assets/pipeline.svg" alt="Animated walk-through of a Kenya study: country data, a $210 PPP monthly entitlement (KES 10,368), a 20% coverage simulation costing $27.2B PPP or 7.7% of GDP, a non-custodial M-Pesa disbursement batch, and recipient-vs-control outcomes exported for research" width="100%">
+</p>
 
-```
-┌─────────────────────────────────────────────────┐
-│  🤝 FEDERATION                                 │
-│  Multi-program interop, cross-border portability│
-├─────────────────────────────────────────────────┤
-│  📊 EVIDENCE                                   │
-│  Impact measurement, outcome tracking, research │
-├─────────────────────────────────────────────────┤
-│  💸 DISTRIBUTION                               │
-│  Payment rails — crypto, mobile money, bank     │
-├─────────────────────────────────────────────────┤
-│  🧮 SIMULATION                                 │
-│  Budget modeling, targeting, cost projection    │
-├─────────────────────────────────────────────────┤
-│  ⚖️  CALCULATION                               │
-│  Entitlement formulas, scoring, rulesets        │
-├─────────────────────────────────────────────────┤
-│  📦 DATA                                       │
-│  World Bank indicators, country economics       │
-└─────────────────────────────────────────────────┘
+Every step of a basic income study — from "what are the facts?" to "is it working?" — is a plain API call. That means a researcher can script a whole scenario, a ministry can re-run it next year with new data, and a developer can pin it in a test. The Kenya figures above are real output of the committed data snapshot; [`src/api/readme-scenario.test.ts`](./src/api/readme-scenario.test.ts) re-derives them through the same calls on every CI run, so the picture cannot drift from the code. The evidence bars are illustrative.
+
+Try it yourself once the server is running ([Quickstart](#-quickstart)):
+
+```bash
+curl localhost:3333/v1/income/countries/KE                 # 1 · data
+curl "localhost:3333/v1/income/calc?country=KE"            # 2 · entitlement
+curl -X POST localhost:3333/v1/simulate \
+  -H 'content-type: application/json' \
+  -d '{"country":"KE","coverage":0.2,"targetGroup":"all","durationMonths":12,"adjustments":{"floorOverride":null,"householdSize":null}}'   # 3 · cost
 ```
 
-### ✅ Built (v0.2.6)
+---
 
-**The API is the product.** Everything below is exposed through a REST API with OpenAPI docs, a generated TypeScript SDK, and webhook events — not locked behind a UI.
+## 🧱 The stack
 
-| Layer | What it does | Phase |
-|-------|-------------|-------|
-| **Data** | 49 countries — 18 World Bank macro-economic indicators plus 4 ILO social-protection indicators per country ([caveats](#-data-provenance)); sub-national data for Kenya (47 counties), Germany (16 Bundesländer), France (13 regions), Netherlands (12 provinces) — 88 regions total | 14, 17 |
-| **Calculation** | The v1 entitlement formula (v2 is a [published specification, not an implementation](#ruleset-v2-preview--specification-only)), scoring, country comparison, regional COL adjustments; a locally-calibrated adequacy estimate reported alongside the fixed $210 global anchor (informational — never fed into the entitlement) | 1–10, 17, 28 |
-| **Simulation** | Budget modeling with targeting presets and programmable rules, multi-country comparison, regional simulation, saved scenarios | 11, 17, 22 |
-| **Disbursement** | Non-custodial payment rails — Solana USDC, EVM USDC, M-Pesa B2C (Daraja instruction batch), SEPA Credit Transfer (ISO 20022 pain.001 + Wise skeleton) — with approval workflow and audit trail | 12 |
-| **Recipients** | Enrollment, identity verification, cross-program duplicate detection — no raw identity data stored | 19 |
-| **Identity** | Four pluggable, non-custodial verification connectors (national ID / MOSIP-Verhoeff, mobile-money MSISDN, wallet EVM/Solana, NGO community attestation); `POST /v1/recipients/:id/verify` runs a claim through a provider and stores only the derived hash + routing ref | 26 |
-| **Pilots** | Lifecycle management (planning → active → completed), programmable targeting rules, variance analysis, structured donor reports | 13, 22 |
-| **Audit Exports** | Compliance-grade signed export per pilot — methodology, recipient aggregate stats, full disbursement log, SHA-256 integrity hash | 21 |
-| **Targeting** | Programmable `TargetingRules` object: age range, urban/rural, income ceiling, identity provider filter, recency exclusion, region filter; `applyRulesToRecipients` for disbursement batch generation with per-rule filtering stats | 22 |
-| **Funding** | 7 domestic funding mechanisms (income tax, VAT, carbon tax, wealth tax, FTT, automation tax, redirect social spending) with informality, avoidance, and demand-response adjustments; fiscal context analysis; an 8th mechanism — a labeled international solidarity transfer — covers the residual when the recommended mix still can't close the cost domestically | 15, 28 |
-| **Impact** | Poverty reduction, purchasing power, social coverage, GDP stimulus estimates — with exportable policy briefs | 16 |
-| **Public site** | Advocacy-facing web UI at `/` — country fact sheets with copy-ready citations, cost & funding calculator with shareable scenario URLs, country comparison, methodology, dataset downloads | 27 |
+Six layers, each independently useful; the upper ones multiply the lower ones.
 
-The funding and impact layers (Phases 14–16) are not a departure from the API — they are the **demand-side tools** that make the API worth building. A calculation engine answers "how much per person?" but nobody funds a program based on that alone. Governments need to see where the money comes from. Donors need to see what happens to poverty. NGOs need a policy brief they can attach to a grant proposal. These layers turn the API into a tool that **sells basic income to policymakers**.
+| Layer | Question it answers | Status |
+|-------|---------------------|--------|
+| 📦 **Data** | What are the economic facts? | ✅ 49 countries, 18 World Bank + 4 ILO indicators; 88 sub-national regions (KE, DE, FR, NL) — [caveats](./docs/CAPABILITIES.md#data-provenance) |
+| ⚖️ **Calculation** | How much per person? How urgent is the need? | ✅ Ruleset v1 ($210 PPP/month anchor + need score), regional cost-of-living, local adequacy estimate alongside |
+| 🧮 **Simulation** | What does it cost, and who pays? | ✅ Budget simulation, targeting, 8 funding mechanisms, 4-dimension impact model, policy briefs |
+| 💸 **Distribution** | How does money reach people? | ✅ Non-custodial: unsigned Solana/EVM txns, M-Pesa Daraja B2C batches, SEPA ISO 20022 — OGI never moves funds or stores PII |
+| 📊 **Evidence** | Is it working? Can we prove it? | 🟡 Outcome recording, recipient/control cohorts, cross-program aggregates, CSV/JSON export — no randomization or significance testing yet |
+| 🤝 **Federation** | Can programs share infrastructure across borders? | ⚪ Future |
 
-The sub-national data layer (Phase 17) brings precision where it matters most. A basic income floor in Nairobi (COL 1.35×) should not be the same local-currency amount as in rural Turkana (COL 0.68×). Regional cost-of-living indices adjust the national PPP conversion factor, and existing formulas work transparently via the "adjusted Country" pattern — zero formula changes needed.
+Plus a pilot dashboard, recipient registry with cross-program duplicate detection, four identity connectors, audit exports, webhooks, an admin UI, and a **public no-login site** at `/` with country fact sheets, a cost & funding calculator and copy-ready citations. Full detail: **[docs/CAPABILITIES.md](./docs/CAPABILITIES.md)**.
 
-Secure admin UI with login, approval workflows, and audit trails — plus a public, no-login advocacy site at `/` for journalists, researchers and policy makers. **730 tests** across 39 suites.
-
-### Phase 23: Evidence Layer ✅
-
-- Record recipient- or control-cohort measurements per pilot (employment, income, food security, school attendance, poverty, health, savings)
-- Pre/post comparison with numeric deltas, and projected vs. actual against the linked impact analysis
-- Anonymized cross-program benchmark statistics (median, p25, p75 per indicator), filterable by country, income group, and coverage
-- CSV or JSON research export for academic partners
-- Admin evidence page per pilot: record form, comparison table, full measurement history
-
-Endpoints are listed under [Evidence](#evidence) below. **Not** included: randomized treatment assignment, statistical significance testing, confidence intervals, or survey delivery — measurements are fed in through the API. See [Next](#-next) for what a research-grade design still needs.
-
-### 🔜 Next
-
-- **More countries** — sub-national data now covers Kenya (47 counties), Germany (16 Bundesländer), France (13 regions), and Netherlands (12 provinces). Next priority: Tanzania, Uganda, Ghana, Nigeria, India. The region data format and loader are country-agnostic; each country needs a curated `regions.json` entry with cost-of-living indices sourced from national statistics bureaus.
-- **Research-grade evidence** — the recording, comparison, aggregation and export framework shipped in Phase 23. Randomized treatment assignment, control-group power analysis, significance testing and confidence intervals have not been built, and there is no survey-delivery mechanism — outcome data is fed in through the API. Export is CSV/JSON only (no Parquet/SPSS).
-- **Income floor, remaining phases** — Phases 1, 2 and 4 of [INCOME_FLOOR_PROPOSED_ANSWERS.md](./INCOME_FLOOR_PROPOSED_ANSWERS.md) shipped in v0.2.4. Still open: household-size reporting (Phase 3), a donor-side solidarity pool (Phase 5), and a gated ruleset v3 preview paying per adult-equivalent (Phase 6).
-
-### 🌐 Future
-
-- **More identity connectors** — the `IdentityProvider` interface now ships with four concrete connectors (national ID, mobile-money, wallet, community attestation); future work adds live-API binding (MOSIP IDA auth, World ID proofs, Daraja KYC) behind the same non-custodial contract
-- **Fully-automated submission** (optional) — the M-Pesa and SEPA connectors currently prepare operator-executable instructions (non-custodial). A future opt-in mode could submit them server-side to Safaricom Daraja / Wise directly, given credentials and compliance approvals
-- **Multi-currency settlement** — cross-rail reconciliation with live exchange rates
-- **Federation** — multi-program interop, cross-border portability, open evidence base
-
-See [CLAUDE.md](./CLAUDE.md) for the full vision. See [ROADMAP.md](./ROADMAP.md) for technical details on completed phases.
+**Principles:** *neutral* (no blockchain or token dependency; values in PPP-USD) · *transparent* (every result carries `ruleset_version` and `data_version`) · *modular* (core domain logic has zero framework or chain imports) · *non-custodial* (prepares payment instructions, never holds funds).
 
 ---
 
-## 👥 Who It's For
+## 👥 Who it's for
 
-| Actor | How they use it |
-|-------|----------------|
-| 🏛️ **Governments** | Model costs before committing. Run pilots with built-in accountability. Generate evidence that survives political cycles. |
-| 🌱 **NGOs** | Compare candidate countries with real data. Manage disbursements. Generate structured donor reports. |
-| ⛓️ **DAOs & ReFi** | On-chain distribution backed by auditable, World Bank-grounded calculations. Non-custodial Solana & EVM adapters. |
-| 🔬 **Researchers** | Standardized economic data and outcome metrics across programs. Research-grade exports. |
-| 💰 **Donors** | Track where money goes. Verify it reaches recipients. Compare program efficiency across countries. |
-
----
-
-## ✨ Principles
-
-- **Neutral** — no hard dependency on any blockchain or token. Values in PPP-adjusted USD, mapped to currencies/tokens via adapters.
-- **Transparent** — all formulas, parameters, and data sources are open. Every result includes `ruleset_version` and `data_version`.
-- **Modular** — clean separation between data, rules engine, simulation, disbursement, and chain adapters.
-- **Non-custodial** — the platform calculates and prepares payment instructions but never holds or moves funds.
+| | Use OGI today to… |
+|---|---|
+| 🔬 **Researchers** | Pull standardized country data, record cohort outcomes, export cross-program benchmarks |
+| 🌱 **NGOs** | Compare candidate countries, model a pilot budget, enrol recipients, prepare disbursements, generate donor reports |
+| 🏛️ **Governments** | Cost a program as % of GDP, design a funding mix, project poverty impact, produce an audit-grade record |
+| 📰 **Journalists** | Quote per-country fact sheets with citations, share calculator scenarios by URL, download the dataset |
+| ⛓️ **DAOs & donors** | Distribute on-chain against an auditable formula; track where money goes |
 
 ---
 
-## 📊 Data Provenance
+## 🧭 What it takes next
 
-Transparency cuts both ways, so the current state of the shipped dataset is stated plainly here.
+OGI can already answer *how much*, *what it costs*, *who pays* and *how it is paid*. What stands between that and basic income actually happening is mostly **trust, reach and evidence** — and each audience needs something different. This is the plan.
 
-`src/data/countries.json` carries 49 countries under `dataVersion: worldbank-2023`. Per country it holds **18 World Bank macro-economic indicators** (GDP and GNI per capita, GDP per capita PPP, PPP conversion factor, Gini, population, tax revenue, social-protection spending, inflation, labour-force participation, unemployment, government debt, social contributions, poverty headcount, GDP growth, health and education expenditure, urbanization) and **4 ILO social-protection indicators** (overall coverage, ILO-basis expenditure, pension coverage, child-benefit coverage).
+### 🔬 Researchers — evidence that survives peer review
 
-Three caveats matter if you are citing these figures:
+| Need | Today | Next step |
+|------|-------|-----------|
+| Credible inputs | Committed snapshot is **manually seeded estimates**; IMF tax breakdown and tiered poverty headcounts are empty | Run the live World Bank / ILO / IMF importers into the snapshot with per-field provenance; publish versioned dataset releases with a DOI |
+| Experimental design | Cohorts are recorded, not assigned | Seeded, auditable **randomized assignment** stored with the pilot; pre-registration (hash the analysis plan before data arrives) |
+| Statistical rigor | Point estimates only | Power analysis, confidence intervals, difference-in-differences with standard errors; low/central/high ranges on funding and impact |
+| Analysis-ready exports | CSV / JSON | Parquet and Stata/SPSS with a generated codebook |
+| Outcome collection | Data fed in via API | Survey instruments delivered over the same channels as payments (SMS/USSD) |
 
-- **The committed snapshot is seeded, not fetched.** The values shipped in the repository are manually seeded estimates based on published indicator ranges — the file says so in its own `source` field. Run `npm run data:update` to replace them with live World Bank / ILO API data before using the numbers for anything that matters. Everything downstream (entitlements, simulations, funding, impact) is only as good as this snapshot.
-- **Coverage is near-complete, not complete.** Gini is absent for Singapore and Afghanistan; Singapore additionally lacks poverty headcount and child-benefit coverage, and Afghanistan is missing 13 of the 22 indicators (the fiscal, expenditure, and social-protection series not published for it). Every other country carries all 22. The API returns `null` for absent fields rather than imputing, and the calculation model degrades explicitly (e.g. the Gini penalty is skipped when Gini is unavailable).
-- **Some defined fields carry no data at all.** `stats.taxBreakdown` (IMF) is empty for every country — the importer in `src/data/imf/` exists but has not been run into the snapshot (`"IMF fiscal breakdown: not available"` in its own completeness report). The same is true of the tiered poverty headcounts `relativePovertyHeadcountRatioPercent`, `povertyHeadcountRatio685Percent` and `povertyHeadcountRatio365Percent`, which the impact model reads but which are populated for 0 of 49 countries — see the [poverty-reduction caveat](#economic-impact).
+### 🌱 NGOs — run a pilot without building infrastructure
 
-`GET /v1/income/countries/:code` returns per-field values as stored, and the admin country dashboards show a data-completeness indicator per country.
+| Need | Today | Next step |
+|------|-------|-----------|
+| Try before installing | Self-host only | Hosted public demo + published Docker image + one-click deploy |
+| A path to follow | Narrative in [USECASE.md](./USECASE.md) | Runnable pilot template: seed script, sample recipients, step-by-step guide from site selection to donor report |
+| Coverage where pilots run | Regions for KE, DE, FR, NL | Sub-national data for Tanzania, Uganda, Mozambique, Ghana, Nigeria, India |
+| Shared, safe operation | Single-tenant admin | Role-based access, multi-tenancy, budget-variance alerts |
+| Paying across rails | Per-rail instructions | Multi-currency reconciliation with live FX |
+
+### 🏛️ Governments — a costing they can defend in parliament
+
+| Need | Today | Next step |
+|------|-------|-----------|
+| A scenario that stays fixed once cited | Saved simulations record their ruleset and data version but are not signed and can be deleted | **Scenario versioning** — signed, immutable snapshots of the inputs, ruleset and data version |
+| Realistic rollout planning | One-shot simulation | Phased multi-year rollout and household-size reporting ([Income Floor Phase 3](./INCOME_FLOOR_PROPOSED_ANSWERS.md)) |
+| Authoritative enrollment | Offline format/checksum validation | One real verifier (e.g. MOSIP IDA) behind the national-ID connector |
+| Procurement readiness | Code + docs | Published threat model, data-protection impact assessment template, accessibility audit |
+| National-scale programs | One simulation per pilot | Multi-region pilot orchestration and roll-up |
+
+### 📰 Journalists & advocates — numbers you can quote safely
+
+| Need | Today | Next step |
+|------|-------|-----------|
+| Figures that are current | Seeded snapshot (see researchers) | Live data with a visible "as of" date and source on every number |
+| Easy reuse | Fact sheets, shareable URLs, CSV | Embeddable charts and fact-sheet cards, social share images |
+| Answers to common objections | Methodology page | Plain-language explainers (inflation, work incentives, fraud) linked to the evidence base |
+| Reach beyond English | i18n scaffolding on the public site | Swahili, French, Portuguese and Hindi translations |
+
+### Sequencing
+
+| When | Work | Unblocks |
+|------|------|----------|
+| **Now** (≈ 3 months) | Live data refresh with provenance · hosted demo + Docker image · clear lint/format debt and gate it in CI · "good first issue" tasks for regional data curation | Every audience — nothing else is quotable until the data is live |
+| **Next** (≈ 3–9 months) | Randomization, power analysis and confidence intervals · uncertainty ranges · scenario versioning · RBAC/multi-tenancy · one authoritative identity verifier · 5 more countries' regions | Research-grade pilots and institutional deployment |
+| **Later** | Survey delivery · solidarity pool for donors · federation (cross-program interop, portability, open evidence base) · multi-stakeholder governance | The protocol vision |
+
+The detailed gap analysis is in [GOVERNMENT_READINESS.md](./GOVERNMENT_READINESS.md); completed phases are documented in [ROADMAP.md](./ROADMAP.md).
+
+**How you can help:** researchers — review the [methodology](./IMPACT_METHODOLOGY.md) and propose ruleset changes through [governance](./GOVERNANCE.md) · NGOs and governments — become a pilot or data partner · journalists — use the fact sheets and report anything that looks wrong · developers — see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ---
 
 ## 🚀 Quickstart
 
-### Clone & run locally
-
 ```bash
 git clone https://github.com/richardkfm/open-global-income.git
 cd open-global-income
 npm install
-npm run dev
+npm run dev        # API + public site + admin on http://localhost:3333
+npm test           # 734 tests across 40 suites
 ```
 
-The API is now running at `http://localhost:3333`. Interactive docs at `http://localhost:3333/docs` (Swagger UI).
+Swagger UI at `/docs`, public site at `/`, admin UI at `/admin`. Docker: `cp .env.example .env` (set `ADMIN_USERNAME` / `ADMIN_PASSWORD`), then `docker compose up --build`.
 
-```bash
-# Verify it works
-curl http://localhost:3333/health
-# → { "status": "ok" }
+> **Before citing any figure:** the committed `countries.json` holds manually seeded estimates. Run `npm run data:update` for live World Bank / ILO data. See [Data provenance](./docs/CAPABILITIES.md#data-provenance).
 
-# Calculate Kenya's entitlement
-curl http://localhost:3333/v1/income/calc?country=KE
-```
-
-### Docker
-
-```bash
-git clone https://github.com/richardkfm/open-global-income.git
-cd open-global-income
-cp .env.example .env          # fill in ADMIN_USERNAME and ADMIN_PASSWORD
-docker compose up --build
-```
-
-The compose file uses `ADMIN_USERNAME` and `ADMIN_PASSWORD` from the environment (or a `.env` file). Both are **required** — compose will refuse to start if either is unset to prevent accidental deployment with default credentials.
-
-The SQLite database is persisted in `./data/ogi.sqlite` on the host via a volume mount, so data survives container restarts.
-
-Once the container is running, the following URLs are available:
-
-| URL | Description |
-|-----|-------------|
-| `http://localhost:3333/` | Public site — fact sheets, calculator, comparison, methodology, downloads |
-| `http://localhost:3333/health` | Health check — verify the server is up |
-| `http://localhost:3333/docs` | Swagger UI — interactive API documentation |
-| `http://localhost:3333/docs/json` | Raw OpenAPI spec (JSON) |
-| `http://localhost:3333/v1/income/calc?country=KE` | Example: calculate Kenya's entitlement |
-| `http://localhost:3333/admin` | Admin UI |
-| `http://localhost:3333/metrics` | Prometheus metrics |
-
-#### Environment variables
-
-All available environment variables are documented in `.env.example`. The most important ones for production:
-
-| Variable | Default | Notes |
-|----------|---------|-------|
-| `ADMIN_USERNAME` | — | **Required.** No default; compose refuses to start without it |
-| `ADMIN_PASSWORD` | — | **Required.** No default; compose refuses to start without it |
-| `DB_PATH` | `./data/ogi.sqlite` | Set to `/app/data/ogi.sqlite` inside Docker |
-| `API_KEY_REQUIRED` | `false` | Set to `true` to enforce API keys on all endpoints |
-| `CORS_ORIGIN` | `*` | Restrict to your frontend origin in production |
-
-#### Docker build only
-
-```bash
-docker build -t open-global-income .
-docker run -p 3333:3333 \
-  -v "$(pwd)/data:/app/data" \
-  -e ADMIN_USERNAME=admin \
-  -e ADMIN_PASSWORD=changeme \
-  open-global-income
-```
-
-### Useful commands
-
-```bash
-npm test             # Run all tests
-npm run typecheck    # TypeScript type checking
-npm run lint         # ESLint
-npm run build        # Production build
-npm start            # Start production server
-npm run sdk:generate # Generate TypeScript client SDK
-npm run data:update  # Refresh World Bank data
-npm run db:migrate   # Run PostgreSQL migrations
-```
+Configuration, every endpoint, auth, webhooks, SDK and database: **[docs/DEVELOPER_GUIDE.md](./docs/DEVELOPER_GUIDE.md)**.
 
 ---
 
-## ⚙️ Environment Variables
+## 📚 Documentation
 
-Every variable the application reads is declared in `src/config.ts` and mirrored in `.env.example`.
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | `3333` | Server port |
-| `HOST` | `0.0.0.0` | Bind address |
-| `LOG_LEVEL` | `info` | Pino log level |
-| `CORS_ORIGIN` | `*` | Allowed CORS origin |
-| `CORS_METHODS` | `GET,POST,OPTIONS` | Allowed CORS methods |
-| `RATE_LIMIT_MAX` | `100` | Max requests per window per IP |
-| `RATE_LIMIT_WINDOW_MS` | `60000` | Rate limit window (ms) |
-| `BATCH_MAX_ITEMS` | `50` | Max items accepted by `POST /v1/income/batch` |
-| `API_KEY_REQUIRED` | `false` | Set to `true` to require an `X-Api-Key` header on every request |
-| `ENABLE_ADMIN` | `true` | Set to `false` to disable the admin UI at `/admin` |
-| `ENABLE_WEB` | `true` | Set to `false` to disable the public site at `/` |
-| `ENABLE_METRICS` | `true` | Set to `false` to disable Prometheus `/metrics` |
-| `ENABLE_AUDIT_LOG` | `true` | Set to `false` to stop recording requests in `audit_log` |
-| `ADMIN_USERNAME` | `admin` | Admin UI login username, seeded on first boot |
-| `ADMIN_PASSWORD` | `admin` | Admin UI login password, seeded on first boot — **change in production** |
-| `DB_BACKEND` | `sqlite` | Database backend (`sqlite` or `postgres`) |
-| `DB_PATH` | `./data/ogi.sqlite` | SQLite file path (ignored when `DB_BACKEND=postgres`) |
-| `DATABASE_URL` | — | PostgreSQL connection string — required when `DB_BACKEND=postgres` |
-| `DB_SSL` | `true` | Set to `false` to disable SSL on the PostgreSQL connection |
-
-Note that the four `ENABLE_*` flags and `DB_SSL` are **opt-out**: each is on unless explicitly set to the string `false`.
+| Document | For |
+|----------|-----|
+| [docs/CAPABILITIES.md](./docs/CAPABILITIES.md) | Everything built, data provenance, rulesets, funding & impact models, public site, admin UI, providers, release history |
+| [docs/DEVELOPER_GUIDE.md](./docs/DEVELOPER_GUIDE.md) | Setup, environment variables, full API reference, auth, webhooks, SDK, database, architecture |
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | Dependency rules and design decisions |
+| [RULESET_V1.md](./RULESET_V1.md) · [IMPACT_METHODOLOGY.md](./IMPACT_METHODOLOGY.md) | The entitlement formula and the impact model, with every assumption |
+| [INCOME_FLOOR_PROPOSED_ANSWERS.md](./INCOME_FLOOR_PROPOSED_ANSWERS.md) | Why $210 PPP, and how local adequacy is reported alongside it |
+| [GOVERNMENT_READINESS.md](./GOVERNMENT_READINESS.md) · [USECASE.md](./USECASE.md) | What a real program can rely on today, and a worked use case |
+| [ROADMAP.md](./ROADMAP.md) · [CHANGELOG.md](./CHANGELOG.md) | Phase-by-phase build history and version notes |
+| [CONTRIBUTING.md](./CONTRIBUTING.md) · [GOVERNANCE.md](./GOVERNANCE.md) | How to contribute and how decisions are made |
 
 ---
-
-## 📡 API
-
-Interactive API docs available at `/docs` (Swagger UI) when the server is running.
-
-All responses follow a consistent shape:
-```json
-{ "ok": true, "data": { ... } }
-{ "ok": false, "error": { "code": "...", "message": "..." } }
-```
-
-### Entitlements
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/health` | Liveness check |
-| `GET` | `/v1/income/calc?country=XX` | Calculate entitlement for a country |
-| `POST` | `/v1/income/batch` | Batch calculate (up to 50 countries) |
-| `GET` | `/v1/income/countries` | List supported countries |
-| `GET` | `/v1/income/countries/:code` | Full country details |
-| `GET` | `/v1/income/regions` | List regions (`?country=KE` to filter) |
-| `GET` | `/v1/income/regions/:id` | Region detail |
-| `GET` | `/v1/income/calc/regional` | Regional entitlement (`?country=KE&region=KE-NAI`) |
-| `POST` | `/v1/income/simulate/regional` | Budget simulation for a specific region |
-| `GET` | `/v1/income/rulesets` | List all rulesets |
-| `GET` | `/v1/income/rulesets/:version` | Get a single ruleset |
-| `POST` | `/v1/users` | Register a user with a country code |
-| `GET` | `/v1/users/:id/income` | Get user's entitlement |
-
-### Simulation
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/v1/simulate` | Run a budget simulation |
-| `POST` | `/v1/simulate/compare` | Compare scenarios across countries (max 20) |
-| `POST` | `/v1/simulations` | Save a simulation |
-| `GET` | `/v1/simulations` | List saved simulations |
-| `GET` | `/v1/simulations/:id` | Retrieve a saved simulation |
-| `DELETE` | `/v1/simulations/:id` | Delete a saved simulation |
-
-### Disbursements
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/v1/disbursements/channels` | List disbursement channels |
-| `POST` | `/v1/disbursements/channels` | Register a channel |
-| `POST` | `/v1/disbursements` | Create disbursement (status: `draft`) |
-| `POST` | `/v1/disbursements/:id/approve` | Approve for processing |
-| `POST` | `/v1/disbursements/:id/submit` | Submit to payment provider |
-| `GET` | `/v1/disbursements/:id` | Get status and audit log |
-| `GET` | `/v1/disbursements` | List all disbursements (paginated) |
-| `POST` | `/v1/webhooks/inbound/:provider` | Inbound payment confirmation callback (HMAC-verified) |
-
-Disbursement status moves `draft` → `approved` → `processing` → `completed`, or `failed` at any point after approval.
-
-### Recipients & Identity
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/v1/recipients` | Enrol a recipient (status: `pending`) |
-| `GET` | `/v1/recipients` | List the registry (paginated, filterable) |
-| `GET` | `/v1/recipients/:id` | Get a single recipient |
-| `PATCH` | `/v1/recipients/:id` | Update a recipient / transition status |
-| `POST` | `/v1/recipients/:id/verify` | Run a claim through an identity provider and mark `verified` |
-| `POST` | `/v1/recipients/check-duplicate` | Cross-program duplicate check on an account hash |
-| `GET` | `/v1/recipients/export` | Export the registry as CSV (default) or JSON (`?format=json`) |
-| `GET` | `/v1/identity/providers` | List the available identity connectors |
-
-### Funding & Fiscal Simulation
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/v1/simulate/fiscal` | Fiscal context analysis for a country's UBI cost |
-| `POST` | `/v1/simulate/fund` | Build a funding scenario with multiple mechanisms |
-| `POST` | `/v1/funding-scenarios` | Save a funding scenario |
-| `GET` | `/v1/funding-scenarios` | List saved scenarios (paginated) |
-| `GET` | `/v1/funding-scenarios/:id` | Retrieve a saved scenario |
-| `DELETE` | `/v1/funding-scenarios/:id` | Delete a saved scenario |
-
-**Supported funding mechanisms:** income tax surcharge, VAT increase, carbon tax, wealth tax, financial transaction tax, automation tax, redirect social spending — 7 domestic levers, each returning explicit assumptions and revenue estimates — plus an 8th, `international_solidarity_transfer`, which the country fact sheet's recommended mix (`calculateRecommendedFundingMix`) appends automatically to label any residual gap left after the seven domestic mechanisms are sized at realistic ceilings, instead of leaving it as an unlabeled shortfall.
-
-### Economic Impact
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/v1/impact` | Run a full economic impact analysis (not saved) |
-| `POST` | `/v1/impact/brief` | Generate exportable policy brief (`?format=json` or `?format=text`) |
-| `POST` | `/v1/impact-analyses` | Run and save an impact analysis |
-| `GET` | `/v1/impact-analyses` | List saved analyses (paginated) |
-| `GET` | `/v1/impact-analyses/:id` | Retrieve a saved analysis |
-| `DELETE` | `/v1/impact-analyses/:id` | Delete a saved analysis |
-
-**Four impact dimensions — every assumption explicitly listed:**
-- **Poverty reduction** — how many people are lifted above the **country-appropriate** poverty line, picked by the ladder in `src/core/poverty.ts` (HIC → 60% of median income; otherwise the World Bank $6.85/day UMC, $3.65/day LMC, or $2.15/day LIC line), with the $2.15/day extreme line reported alongside as a secondary figure. **Caveat:** the headcount ratio at the resolved line is currently only in the dataset for LIC countries, so the other 39 fall back to the clearly-labelled extreme-line figure — see [IMPACT_METHODOLOGY.md](./IMPACT_METHODOLOGY.md#-current-data-limitation)
-- **Purchasing power** — % income increase for the bottom quintile (Lorenz curve model)
-- **Social coverage** — people currently uncovered by social protection, newly reached
-- **GDP stimulus** — Keynesian fiscal multiplier calibrated by income group (LIC=2.3×, LMC=1.9×, UMC=1.5×, HIC=1.1×)
-
-See [IMPACT_METHODOLOGY.md](./IMPACT_METHODOLOGY.md) for full model documentation.
-
-### Pilots
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/v1/pilots` | Create a pilot linked to a simulation |
-| `GET` | `/v1/pilots` | List pilots (paginated) |
-| `GET` | `/v1/pilots/:id` | Get pilot with linked disbursements |
-| `PATCH` | `/v1/pilots/:id` | Update status, dates, description |
-| `POST` | `/v1/pilots/:id/disbursements` | Link a disbursement to a pilot |
-| `GET` | `/v1/pilots/:id/report` | Generate structured donor report |
-| `GET` | `/v1/pilots/:id/audit-export` | Compliance-grade audit export with SHA-256 integrity hash |
-
-### Evidence
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/v1/pilots/:id/outcomes` | Record a recipient- or control-cohort measurement |
-| `GET` | `/v1/pilots/:id/outcomes` | List a pilot's measurements |
-| `GET` | `/v1/pilots/:id/outcomes/compare` | Pre/post comparison and projected vs. actual |
-| `GET` | `/v1/evidence/aggregate` | Anonymized cross-program benchmarks (median, p25, p75) |
-| `GET` | `/v1/evidence/export` | CSV or JSON research export |
-
-### Metrics
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/metrics` | Prometheus metrics |
-
----
-
-## 🔐 Authentication
-
-API key authentication is optional by default. Set `API_KEY_REQUIRED=true` to enforce it.
-
-```bash
-curl -H "X-API-Key: ogi_..." http://localhost:3333/v1/income/calc?country=NG
-```
-
-Keys are stored as SHA-256 hashes. Three tiers:
-- **free** — 30 req/min
-- **standard** — 100 req/min
-- **premium** — 500 req/min
-
----
-
-## ⚖️ Rulesets
-
-### Ruleset v1 (active)
-
-```
-pppUsdPerMonth  = 210                                (global floor, PPP-USD/month)
-localCurrency   = pppUsdPerMonth × pppConversionFactor
-incomeRatio     = 210 / (gniPerCapitaUsd / 12)
-giniPenalty     = (giniIndex / 100) × 0.15           (0 if Gini unavailable)
-score           = clamp(incomeRatio + giniPenalty, 0, 1)
-```
-
-- **$210/month** — derived from the World Bank upper-middle-income poverty line ($6.85/day)
-- **GNI per capita** (not GDP) — reflects what residents actually earn
-- **Gini penalty** — amplifies need for high-inequality countries
-
-See [RULESET_V1.md](./RULESET_V1.md) for the full specification.
-
-### Ruleset v2 (preview — specification only)
-
-Extends v1 with HDI and urbanization factors:
-
-```
-hdiAdjustment = (1 - hdi) × 0.10
-urbanPenalty  = (1 - urbanizationRate) × 0.05
-score         = clamp(incomeRatio + giniPenalty + hdiAdjustment + urbanPenalty, 0, 1)
-```
-
-v2 is **published, not implemented.** It exists as an entry in the ruleset registry (`src/core/rulesets.ts`) so the proposed formula and its parameters are queryable and reviewable via `GET /v1/income/rulesets/v2` — there is no `calculateEntitlement` variant behind it, and `hdi` is not yet a field on `CountryStats`. Implementing it requires a UNDP HDI data source first. Every calculation the API performs today is v1.
-
----
-
-## 🌍 Public Site
-
-A public, no-login web UI at `/` built for the people making the case for basic income — journalists, researchers, and policy makers. Server-rendered, readable without JavaScript, print-friendly, and every scenario is fully encoded in the URL so figures are shareable and reproducible. Disable with `ENABLE_WEB=false`.
-
-- **`/countries`** — sortable explorer of all 49 countries with headline figures and CSV/JSON download
-- **`/countries/:code`** — per-country fact sheet: copy-ready summary paragraph and citation, cost in fiscal context (vs. tax revenue and social spending), targeted program options, impact estimates with every assumption listed, a **recommended funding mix** sized to the country's own economic profile, and the entitlement formula with the country's own numbers plugged in. Print → PDF yields a briefing document
-- **`/calculator`** — cost & funding calculator: coverage, target group, duration, transfer amount, and **live taxation sliders** for all seven funding mechanisms — results, impact and funding coverage update as you drag, and the URL tracks every change so scenarios stay reproducible
-- **`/compare`** — up to four countries side by side on identical terms
-- **`/methodology`** — every formula, constant, assumption, data source, and limitation; values imported from the actual code constants
-- **`/data`** — dataset downloads (`/data/countries.csv`, `/data/countries.json`) and API pointers
-
----
-
-## 🖥️ Admin UI
-
-Server-rendered dashboard using htmx (no SPA). Mounted by default; disable with `ENABLE_ADMIN=false`.
-
-**Login:** Default credentials are username `admin` / password `admin` (both configurable via `ADMIN_USERNAME` and `ADMIN_PASSWORD` env vars).
-
-- **Dashboard** — country count, users, API keys, request stats
-- **API Key Management** — create and revoke keys with tier selection
-- **Audit Log** — recent API requests with live-refresh
-- **Simulate** — budget simulations with live cost preview, comparison, save/delete
-- **Compare** — side-by-side country comparison on identical parameters
-- **Funding** — interactive scenario builder with slider controls for all seven domestic funding mechanisms, stacked bar chart, fiscal context panel, and assumption transparency
-- **Impact** — economic impact analyzer with poverty reduction, purchasing power, social coverage, and GDP stimulus estimates; tabbed breakdown, policy brief export
-- **Pilots** — create and manage pilots, link disbursements, track status, view variance, generate the audit export
-- **Programs** — assemble and print a program summary from a saved simulation
-- **Evidence** — record outcome measurements per pilot and view the cross-program aggregate benchmarks
-- **Identity & Recipients** — connector catalog with a verify form, plus a full recipient registry console: enrol, filter, paginate, per-recipient detail with status transitions, bulk CSV import and CSV export
-- **Countries** — economic dashboards with data completeness indicators
-- **Regions** — sub-national data browser with COL index badges, entitlement comparison (national vs. regional)
-- **Data Sources** — registry of configured import sources with refresh and edit controls
-
-Access at `http://localhost:3333/admin/login`. Sessions are secure (HttpOnly cookies, PBKDF2-hashed passwords) with brute-force protection (15-minute lockout after 5 failed attempts).
-
----
-
-## ⛓️ Chain Adapters
-
-Adapters map entitlements (PPP-USD/month) to concrete token amounts. Pure calculation — no chain writes.
-
-- **Solana** (`src/adapters/solana/`) — SPL token amounts via configurable exchange rate
-- **EVM** (`src/adapters/evm/`) — Ethereum, Polygon, Arbitrum, Optimism, Base
-
-See `src/adapters/types.ts` for the `ChainAdapter<TConfig>` interface.
-
----
-
-## 💸 Disbursement Providers
-
-Non-custodial — calculates and prepares payment instructions, never holds or moves funds. The mobile-money and bank connectors follow the same pattern as the crypto adapters: they emit a format-correct, ready-to-execute instruction in the exact shape the existing rail consumes (Safaricom Daraja, ISO 20022 / Wise), which the program operator submits from their own authenticated environment. OGI builds no payment service and stores no recipient PII; identity/KYC is delegated entirely to the executing provider.
-
-| Provider | ID | Currency | Notes |
-|----------|-----|----------|-------|
-| Solana USDC | `solana` | USDC | Returns unsigned tx payload for multisig signing |
-| EVM USDC | `evm` | USDC | Unsigned ERC-20 calldata for Ethereum/Polygon/Arbitrum/Optimism/Base |
-| M-Pesa B2C | `safaricom` | KES | Prepares a Daraja **B2C PaymentRequest** instruction batch (endpoints, request template) for the operator to submit — no funds moved, no MSISDNs stored |
-| SEPA Credit Transfer | `sepa` | EUR | Prepares an **ISO 20022 pain.001** document + a Wise Payouts bulk skeleton; PPP-USD→EUR via the maintained FX snapshot. Accepts Wise webhooks at `/v1/webhooks/inbound/sepa` |
-
----
-
-## 🔔 Webhooks
-
-**Outbound** — subscribe to events and receive HMAC-SHA256 signed payloads. The 18 event types (`WebhookEvent` in `src/webhooks/types.ts`):
-
-`entitlement.calculated` · `user.created` · `api_key.created` · `api_key.revoked` · `data.updated` · `simulation.created` · `disbursement.created` · `disbursement.approved` · `disbursement.completed` · `disbursement.confirmed` · `disbursement.failed` · `pilot.created` · `pilot.status_changed` · `pilot.report_generated` · `pilot.audit_export_generated` · `pilot.outcome_recorded` · `funding_scenario.created` · `impact_analysis.created`
-
-**Inbound** — `POST /v1/webhooks/inbound/:provider` accepts payment confirmations from a disbursement provider. The provider's `parseCallback()` implementation verifies an HMAC-SHA256 signature against the raw body *before* deserialization, with a replay timestamp window. A confirmed callback transitions the disbursement's status, writes a log entry, and fires the outbound `disbursement.confirmed` / `disbursement.failed` event.
-
-See `src/webhooks/` for the dispatcher and type definitions.
-
----
-
-## 📦 TypeScript SDK
-
-```bash
-npm run sdk:generate
-```
-
-Produces `sdk/client.ts` with the `OgiClient` class — type-safe methods for all API endpoints.
-
----
-
-## 🗄️ Database
-
-SQLite by default (zero-config). PostgreSQL for production:
-
-```bash
-npm run db:migrate
-```
-
-Set `DB_BACKEND=postgres` and `DATABASE_URL` to switch backends.
-
----
-
-## 🏗️ Architecture
-
-```
-src/
-├── core/          Pure domain logic — types, rules, simulations, funding, impact,
-│                  regions, poverty, adequacy, targeting. No I/O, zero framework deps
-├── data/          Data loading, World Bank/ILO/IMF importers, countries.json, regions.json
-├── api/           HTTP layer (Fastify), middleware (auth, audit, metrics), OpenAPI
-├── db/            SQLite persistence, PostgreSQL migrations
-├── admin/         Server-rendered admin UI (htmx)
-├── web/           Public advocacy site at / (fact sheets, calculator, methodology)
-├── i18n/          Translation strings for the public site
-├── adapters/      Chain/currency adapters (Solana, EVM)
-├── disbursements/ Payment providers (Solana USDC, EVM USDC, M-Pesa B2C, SEPA)
-├── identity/      Identity verification connectors (national ID, mobile, wallet, community)
-└── webhooks/      Event dispatch with HMAC-SHA256 signatures
-public/            Static assets for the public site and admin UI
-scripts/           SDK generation, tooling
-sdk/               Generated TypeScript client SDK
-```
-
-See [ARCHITECTURE.md](./ARCHITECTURE.md) for dependency rules and design decisions.
-
----
-
-## 🤝 Contributing
-
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup, code style, testing requirements, and the PR process.
-
-## 📜 Governance
-
-See [GOVERNANCE.md](./GOVERNANCE.md) for the decision-making process, API stability declaration, and versioning policy.
-
-## 📋 Current Status
-
-**Version 0.2.6** — Documentation audit against the code, across `README.md`, `CLAUDE.md`, `CONTRIBUTING.md`, `ARCHITECTURE.md`, `IMPACT_METHODOLOGY.md`, `GOVERNANCE.md`, `GOVERNMENT_READINESS.md`, `ROADMAP.md`, `USECASE.md` and `.env.example`. The dataset is now described as it actually is — 18 World Bank + 4 ILO indicators, a manually seeded rather than fetched snapshot, two countries with gaps, and several defined fields carrying no data — in a new **Data Provenance** section, instead of "all 17 indicators fully populated". Ruleset v2 is identified as a published specification with no implementation behind it. The poverty-reduction dimension is documented against the country-appropriate ladder it actually uses, along with the previously unstated fact that only LIC countries have a headcount at their resolved line, so the other 39 fall back to the labelled $2.15/day figure. The environment-variable table matches `src/config.ts` (notably: `ENABLE_ADMIN` is on by default, not opt-in), the endpoint tables gained the recipient, identity, evidence, audit-export and inbound-webhook routes that shipped undocumented, and the webhook list gained three missing event types. One source line changed: `POST /v1/impact/brief` was printing a nonexistent repository URL into every exported policy brief. 730 tests across 39 suites.
-
-**Version 0.2.5** — Continuous integration, and a fix to the phase numbering. GitHub Actions now runs `npm ci`, `npm run typecheck`, and `npm test` on every pull request and on pushes to `main` (`.github/workflows/ci.yml`) — the docs had described CI for several releases, but no workflow file was ever committed, so pull requests showed zero checks. Lint and format checks stay manual for now: both fail on pre-existing issues, and clearing that is its own change. Separately, the identity connectors and public site had been labelled Phases 24 and 25 here while `ROADMAP.md` reserves those numbers for the unbuilt Scenario Versioning and Multi-tenancy phases; the shipped work is renumbered to Phases 26–28 and documented in the roadmap. 730 tests across 39 suites.
-
-**Version 0.2.4** — Implements the first phases of [INCOME_FLOOR_PROPOSED_ANSWERS.md](./INCOME_FLOOR_PROPOSED_ANSWERS.md): a **local adequacy estimate** now appears next to the $210 PPP global anchor everywhere it's shown (calc API, simulation output, fact sheets, admin dashboard) — informational only, derived from the existing country-appropriate poverty line, never fed into the entitlement itself; a one-click "use local adequacy estimate" override on the public calculator; and an eighth, explicitly-labeled **international solidarity transfer** funding mechanism that attributes any residual gap (after the seven domestic mechanisms hit realistic ceilings) to a modeled external transfer instead of an unlabeled shortfall. 730 tests across 39 suites.
-
-**Version 0.2.3** — The fact-sheet funding mix now explains itself when domestic coverage is low: for countries where universal coverage would cost more than the country's own GDP (common at the low-income end, e.g. Afghanistan), a callout states that plainly instead of leaving readers to assume it's a tax-rate shortfall, and points to external funding or a narrower coverage target. 708 tests across 38 suites.
-
-**Version 0.2.2** — Rotating wireframe globe on the landing page hero (dependency-free canvas animation), and a country-specific **recommended funding mix** on fact sheets — replacing the old fixed-rate 7-mechanism package (which could show wildly over- or under-shooting coverage depending on the country) with rates sized to each country's own formality, tax base, wealth concentration, and social-spending profile, water-filled across mechanisms toward full coverage. 708 tests across 38 suites.
-
-**Version 0.2.1** — Live taxation sliders on the public calculator. The interactive funding-scenario experience from the admin panel is now public: all seven mechanisms (income tax, VAT, carbon tax, wealth tax, FTT, automation tax, redirected social spending) are sliders whose results — cost coverage, gap, chart, impact estimates — update live as you drag, with the URL tracking every change so a dragged-together scenario is still a shareable, reproducible link. Plain-GET fallback works without JavaScript. Also fixes horizontal bar charts showing tick indices instead of category labels. 701 tests across 38 suites.
-
-**Version 0.2.0** — Public advocacy site. A new no-login web UI at `/` (`src/web/`) gives journalists, researchers and policy makers directly quotable, verifiable basic income figures: per-country **fact sheets** with copy-ready summary paragraphs and citation blocks, a **cost & funding calculator** whose entire scenario lives in a shareable URL, **country comparison** on identical terms, a **methodology** page whose numbers are imported from the actual code constants, and **dataset downloads** (CSV/JSON) with computed entitlement and cost columns. Print any fact sheet or calculator result to get a briefing PDF. Poverty figures fall back to the $2.15/day extreme line (clearly marked) where no survey exists for the country-appropriate line. Disable with `ENABLE_WEB=false`. 699 tests across 38 suites.
-
-**Version 0.1.34** — PPP-consistent "% of GDP" everywhere. A new `gdpPerCapitaPppUsd` field (World Bank `NY.GDP.PCAP.PP.CD`) is added to all 49 countries and used as the GDP base wherever a PPP-denominated cost or revenue is expressed as a share of GDP — fixing a distortion that inflated the cost-as-%-of-GDP headline for low-income countries by roughly the PPP gap (Kenya's 20%-coverage figure drops from 24.0% to 7.7%; Nigeria from 23.1% to 2.8%). Simulation, funding, impact, savings, and the admin projection chart all share the PPP unit; funding mechanisms now emit genuine PPP-USD revenue. 671 tests across 37 suites.
-
-**Version 0.1.33** — Recipient registry export, the round-trip counterpart to bulk import. `GET /v1/recipients/export` returns the (optionally filtered) registry as CSV or JSON (`?format=json`) as a download, and a **Download CSV** button on the admin recipients card (`/admin/identity`) streams the same, honouring the active filters. The first five CSV columns are import-compatible, so an export reads straight back through the importer; serialisation lives in a pure core module (`src/core/recipient-export.ts`). 671 tests across 37 suites.
-
-**Version 0.1.32** — Recipient admin UI & bulk import. The Identity Providers page (`/admin/identity`) becomes a full recipient registry console: enrol a recipient from the UI, filter/paginate the registry by country, status, and pilot, and open a per-recipient detail page with status-transition controls that enforce the same `pending → verified → suspended` rules as the API. A **bulk import** form ingests pasted CSV (`countryCode` required; `paymentMethod,accountHash,routingRef,identityProvider` optional), skipping rows whose account hash is already enrolled in the same country (cross-program de-duplication) and reporting a per-line created/skipped/errored summary. CSV parsing lives in a pure, I/O-free core module (`src/core/recipient-import.ts`). 660 tests across 36 suites.
-
-**Version 0.1.31** — Identity provider connections, the first item on the gov-ready list. The `IdentityProvider` interface now ships with four concrete, non-custodial connectors in a registry (`src/identity/`), one per deployment context: **national-id** (MOSIP-compatible, Verhoeff check digit), **mobile-kyc** (E.164 MSISDN), **wallet** (EVM / Solana), and **community-attestation** (NGO witness quorum). A new `POST /v1/recipients/:id/verify` runs a recipient's claim through a provider, marks the recipient `verified`, runs cross-program duplicate detection on the derived hash, and discards the raw claim — only the non-reversible `accountHash` + `routingRef` are stored. `GET /v1/identity/providers` exposes the catalog, and a new **Identity Providers** admin page (`/admin/identity`) lists the connectors and offers a verify form. Each connector does deterministic offline format/checksum validation and delegates the authoritative KYC/personhood assertion to the external provider. 638 tests across 34 suites.
-
-**Version 0.1.30** — M-Pesa and SEPA promoted from stubs to real non-custodial connectors. The M-Pesa provider now emits a Safaricom Daraja **B2C PaymentRequest** instruction batch (env-correct endpoints + a populated request template, secrets never echoed); the SEPA provider emits a standards-compliant **ISO 20022 pain.001** document plus a Wise Payouts bulk skeleton, converting PPP-USD→EUR via the maintained FX snapshot (replacing the old hardcoded rate) and surfacing the applied rate + provenance. Both follow the crypto adapters' non-custodial pattern — OGI prepares operator-executable instructions, stores no recipient PII, and delegates identity/KYC to the executing provider. The `DisbursementProvider.submit`/`checkStatus` interface now receives the channel config so connectors can populate originator fields. 608 tests across 32 suites.
-
-See [CHANGELOG.md](./CHANGELOG.md) for full version history.
 
 ## 📄 License
 

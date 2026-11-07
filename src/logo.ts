@@ -4,9 +4,10 @@
  * Printed on:
  * - `npm install` (see scripts/postinstall.js — plain JS copy)
  * - server start (see src/index.ts)
- * - top of README.md
+ * - top of README.md, as the vector rendering docs/assets/logo.svg
  *
- * If you edit the art, update scripts/postinstall.js and README.md to match.
+ * If you edit the art, update scripts/postinstall.js to match and regenerate
+ * the SVG (scripts/generate-readme-assets.mjs, which carries its own copy).
  */
 
 const C = {

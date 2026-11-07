@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="412" viewBox="0 0 960 412" role="img" aria-labelledby="t d">
+<title id="t">How a basic income study runs on Open Global Income</title>
+<desc id="d">Animated walk-through of one Kenya scenario: country data, a $210 PPP monthly entitlement (KES 10,368), a 20 percent coverage simulation costing 27.2 billion PPP dollars or 7.7 percent of GDP, a non-custodial M-Pesa disbursement batch, and recipient versus control outcomes exported for research. Outcome values are illustrative.</desc>
+<style>
+.bar{transform-box:fill-box;transform-origin:bottom}
+@keyframes f0{0%,5.33%{opacity:0}8.33%,94.00%{opacity:1}98.00%,100%{opacity:0}}
+@keyframes f1{0%,5.33%{opacity:0.45}8.33%,94.00%{opacity:1}98.00%,100%{opacity:0.45}}
+@keyframes f2{0%,5.33%{opacity:0.45}8.33%,94.00%{opacity:1}98.00%,100%{opacity:0.45}}
+@keyframes f3{0%,7.33%{opacity:0}10.33%,94.00%{opacity:1}98.00%,100%{opacity:0}}
+@keyframes f4{0%,9.00%{opacity:0}12.00%,94.00%{opacity:1}98.00%,100%{opacity:0}}
+@keyframes f5{0%,10.67%{opacity:0}13.67%,94.00%{opacity:1}98.00%,100%{opacity:0}}
+@keyframes f6{0%,12.33%{opacity:0}15.33%,94.00%{opacity:1}98.00%,100%{opacity:0}}
+@keyframes f7{0%,6.67%{opacity:0}9.67%,94.00%{opacity:1}98.00%,100%{opacity:0}}
+@keyframes f8{0%,16.00%{stroke-dashoffset:20}20.00%,94.00%{stroke-dashoffset:0}98.00%,100%{stroke-dashoffset:20}}
+@keyframes f9{0%,19.33%{opacity:0}22.33%,94.00%{opacity:1}98.00%,100%{opacity:0}}
+@keyframes f10{0%,20.67%{opacity:0}23.67%,94.00%{opacity:1}98.00%,100%{opacity:0}}
+@keyframes f11{0%,20.67%{opacity:0.45}23.67%,94.00%{opacity:1}98.00%,100%{opacity:0.45}}
+@keyframes f12{0%,20.67%{opacity:0.45}23.67%,94.00%{opacity:1}98.00%,100%{opacity:0.45}}
+@keyframes f13{0%,22.67%{opacity:0}25.67%,94.00%{opacity:1}98.00%,100%{opacity:0}}
+@keyframes f14{0%,24.33%{opacity:0}27.33%,94.00%{opacity:1}98.00%,100%{opacity:0}}
+@keyframes f15{0%,26.00%{opacity:0}29.00%,94.00%{opacity:1}98.00%,100%{opacity:0}}
+@keyframes f16{0%,27.67%{opacity:0}30.67%,94.00%{opacity:1}98.00%,100%{opacity:0}}
+@keyframes f17{0%,22.00%{opacity:0}25.00%,94.00%{opacity:1}98.00%,100%{opacity:0}}
+@keyframes f18{0%,31.33%{stroke-dashoffset:20}35.33%,94.00%{stroke-dashoffset:0}98.00%,100%{stroke-dashoffset:20}}
+@keyframes f19{0%,34.67%{opacity:0}37.67%,94.00%{opacity:1}98.00%,100%{opacity:0}}
+@keyframes f20{0%,36.00%{opacity:0}39.00%,94.00%{opacity:1}98.00%,100%{opacity:0}}
+@keyframes f21{0%,36.00%{opacity:0.45}39.00%,94.00%{opacity:1}98.00%,100%{opacity:0.45}}
+@keyframes f22{0%,36.00%{opacity:0.45}39.00%,94.00%{opacity:1}98.00%,100%{opacity:0.45}}
+@keyframes f23{0%,38.00%{opacity:0}41.00%,94.00%{opacity:1}98.00%,100%{opacity:0}}
+@keyframes f24{0%,39.67%{opacity:0}42.67%,94.00%{opacity:1}98.00%,100%{opacity:0}}
+@keyframes f25{0%,41.33%{opacity:0}44.33%,94.00%{opacity:1}98.00%,100%{opacity:0}}
+@keyframes f26{0%,43.00%{opacity:0}46.00%,94.00%{opacity:1}98.00%,100%{opacity:0}}
+@keyframes f27{0%,37.33%{opacity:0}40.33%,94.00%{opacity:1}98.00%,100%{opacity:0}}
+@keyframes f28{0%,46.67%{stroke-dashoffset:20}50.67%,94.00%{stroke-dashoffset:0}98.00%,100%{stroke-dashoffset:20}}
+@keyframes f29{0%,50.00%{opacity:0}53.00%,94.00%{opacity:1}98.00%,100%{opacity:0}}
+@keyframes f30{0%,51.33%{opacity:0}54.33%,94.00%{opacity:1}98.00%,100%{opacity:0}}
+@keyframes f31{0%,51.33%{opacity:0.45}54.33%,94.00%{opacity:1}98.00%,100%{opacity:0.45}}
+@keyframes f32{0%,51.33%{opacity:0.45}54.33%,94.00%{opacity:1}98.00%,100%{opacity:0.45}}
+@keyframes f33{0%,53.33%{opacity:0}56.33%,94.00%{opacity:1}98.00%,100%{opacity:0}}
+@keyframes f34{0%,55.00%{opacity:0}58.00%,94.00%{opacity:1}98.00%,100%{opacity:0}}
+@keyframes f35{0%,56.67%{opacity:0}59.67%,94.00%{opacity:1}98.00%,100%{opacity:0}}
+@keyframes f36{0%,58.33%{opacity:0}61.33%,94.00%{opacity:1}98.00%,100%{opacity:0}}
+@keyframes f37{0%,52.67%{opacity:0}55.67%,94.00%{opacity:1}98.00%,100%{opacity:0}}
+@keyframes f38{0%,62.00%{stroke-dashoffset:20}66.00%,94.00%{stroke-dashoffset:0}98.00%,100%{stroke-dashoffset:20}}
+@keyframes f39{0%,65.33%{opacity:0}68.33%,94.00%{opacity:1}98.00%,100%{opacity:0}}
+@keyframes f40{0%,66.67%{opacity:0}69.67%,94.00%{opacity:1}98.00%,100%{opacity:0}}
+@keyframes f41{0%,66.67%{opacity:0.45}69.67%,94.00%{opacity:1}98.00%,100%{opacity:0.45}}
+@keyframes f42{0%,66.67%{opacity:0.45}69.67%,94.00%{opacity:1}98.00%,100%{opacity:0.45}}
+@keyframes f43{0%,68.00%{opacity:0}71.00%,94.00%{opacity:1}98.00%,100%{opacity:0}}
+@keyframes f44{0%,69.33%{transform:scaleY(0)}74.67%,94.00%{transform:scaleY(1)}98.00%,100%{transform:scaleY(0)}}
+@keyframes f45{0%,70.67%{transform:scaleY(0)}76.00%,94.00%{transform:scaleY(1)}98.00%,100%{transform:scaleY(0)}}
+@keyframes f46{0%,68.67%{opacity:0}71.67%,94.00%{opacity:1}98.00%,100%{opacity:0}}
+@keyframes f47{0%,72.67%{transform:scaleY(0)}78.00%,94.00%{transform:scaleY(1)}98.00%,100%{transform:scaleY(0)}}
+@keyframes f48{0%,74.00%{transform:scaleY(0)}79.33%,94.00%{transform:scaleY(1)}98.00%,100%{transform:scaleY(0)}}
+@keyframes f49{0%,68.67%{opacity:0}71.67%,94.00%{opacity:1}98.00%,100%{opacity:0}}
+@keyframes f50{0%,77.33%{opacity:0}80.33%,94.00%{opacity:1}98.00%,100%{opacity:0}}
+@keyframes f51{0%,77.33%{opacity:0}80.33%,94.00%{opacity:1}98.00%,100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+<rect x="1" y="1" width="958" height="410" rx="14" fill="#0f172a" stroke="#1e293b" stroke-width="2"/>
+<text x="20" y="44" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="16" font-weight="700" fill="#e2e8f0">One study, end to end — Kenya</text>
+<text x="20" y="68" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" fill="#94a3b8">Every step is a plain API call, so the same scenario can be scripted, re-run and checked in a test.</text>
+<rect x="20" y="92" width="168" height="220" rx="10" fill="#1e293b" stroke="#334155"/>
+<rect x="20" y="92" width="168" height="220" rx="10" fill="none" stroke="#818cf8" stroke-width="2" style="animation:f0 15s linear infinite both"/>
+<text x="104" y="122" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" font-weight="700" letter-spacing="2" fill="#a5b4fc" style="animation:f1 15s linear infinite both">1 · DATA</text>
+<text x="104" y="144" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" fill="#94a3b8" style="animation:f2 15s linear infinite both">What are the facts?</text>
+<text x="104" y="180" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#e2e8f0" style="animation:f3 15s linear infinite both">54.0 M people</text>
+<text x="104" y="208" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#e2e8f0" style="animation:f4 15s linear infinite both">GNI/cap $2,010</text>
+<text x="104" y="236" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#e2e8f0" style="animation:f5 15s linear infinite both">PPP factor 49.37</text>
+<text x="104" y="264" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#e2e8f0" style="animation:f6 15s linear infinite both">Gini 38.7 · LMC</text>
+<text text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="11" fill="#34d399" style="animation:f7 15s linear infinite both"><tspan x="104" y="336" font-weight="700">GET</tspan><tspan x="104" y="352">/v1/income/countries/KE</tspan></text>
+<path d="M190 202H206" stroke="#818cf8" stroke-width="2.5" fill="none" stroke-dasharray="20" style="animation:f8 15s ease-out infinite both"/>
+<path d="M201 197L207 202L201 207" stroke="#818cf8" stroke-width="2.5" fill="none" style="animation:f9 15s linear infinite both"/>
+<rect x="208" y="92" width="168" height="220" rx="10" fill="#1e293b" stroke="#334155"/>
+<rect x="208" y="92" width="168" height="220" rx="10" fill="none" stroke="#818cf8" stroke-width="2" style="animation:f10 15s linear infinite both"/>
+<text x="292" y="122" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" font-weight="700" letter-spacing="2" fill="#a5b4fc" style="animation:f11 15s linear infinite both">2 · CALCULATION</text>
+<text x="292" y="144" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" fill="#94a3b8" style="animation:f12 15s linear infinite both">How much per person?</text>
+<text x="292" y="180" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#e2e8f0" style="animation:f13 15s linear infinite both">$210 PPP / month</text>
+<text x="292" y="208" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#e2e8f0" style="animation:f14 15s linear infinite both">= KES 10,368</text>
+<text x="292" y="236" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#e2e8f0" style="animation:f15 15s linear infinite both">need score 1.00</text>
+<text x="292" y="264" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#e2e8f0" style="animation:f16 15s linear infinite both">ruleset v1</text>
+<text text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="11" fill="#34d399" style="animation:f17 15s linear infinite both"><tspan x="292" y="336" font-weight="700">GET</tspan><tspan x="292" y="352">/v1/income/calc?country=KE</tspan></text>
+<path d="M378 202H394" stroke="#818cf8" stroke-width="2.5" fill="none" stroke-dasharray="20" style="animation:f18 15s ease-out infinite both"/>
+<path d="M389 197L395 202L389 207" stroke="#818cf8" stroke-width="2.5" fill="none" style="animation:f19 15s linear infinite both"/>
+<rect x="396" y="92" width="168" height="220" rx="10" fill="#1e293b" stroke="#334155"/>
+<rect x="396" y="92" width="168" height="220" rx="10" fill="none" stroke="#818cf8" stroke-width="2" style="animation:f20 15s linear infinite both"/>
+<text x="480" y="122" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" font-weight="700" letter-spacing="2" fill="#a5b4fc" style="animation:f21 15s linear infinite both">3 · SIMULATION</text>
+<text x="480" y="144" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" fill="#94a3b8" style="animation:f22 15s linear infinite both">What does it cost?</text>
+<text x="480" y="180" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#e2e8f0" style="animation:f23 15s linear infinite both">20% · 12 months</text>
+<text x="480" y="208" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#e2e8f0" style="animation:f24 15s linear infinite both">10.8 M recipients</text>
+<text x="480" y="236" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#e2e8f0" style="animation:f25 15s linear infinite both">$27.2 B PPP / yr</text>
+<text x="480" y="264" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#e2e8f0" style="animation:f26 15s linear infinite both">7.7% of GDP</text>
+<text text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="11" fill="#34d399" style="animation:f27 15s linear infinite both"><tspan x="480" y="336" font-weight="700">POST</tspan><tspan x="480" y="352">/v1/simulate</tspan></text>
+<path d="M566 202H582" stroke="#818cf8" stroke-width="2.5" fill="none" stroke-dasharray="20" style="animation:f28 15s ease-out infinite both"/>
+<path d="M577 197L583 202L577 207" stroke="#818cf8" stroke-width="2.5" fill="none" style="animation:f29 15s linear infinite both"/>
+<rect x="584" y="92" width="168" height="220" rx="10" fill="#1e293b" stroke="#334155"/>
+<rect x="584" y="92" width="168" height="220" rx="10" fill="none" stroke="#818cf8" stroke-width="2" style="animation:f30 15s linear infinite both"/>
+<text x="668" y="122" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" font-weight="700" letter-spacing="2" fill="#a5b4fc" style="animation:f31 15s linear infinite both">4 · DISTRIBUTION</text>
+<text x="668" y="144" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" fill="#94a3b8" style="animation:f32 15s linear infinite both">How does money move?</text>
+<text x="668" y="180" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#e2e8f0" style="animation:f33 15s linear infinite both">M-Pesa B2C batch</text>
+<text x="668" y="208" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#e2e8f0" style="animation:f34 15s linear infinite both">or SEPA / USDC</text>
+<text x="668" y="236" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#e2e8f0" style="animation:f35 15s linear infinite both">draft → approved</text>
+<text x="668" y="264" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#e2e8f0" style="animation:f36 15s linear infinite both">non-custodial</text>
+<text text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="11" fill="#34d399" style="animation:f37 15s linear infinite both"><tspan x="668" y="336" font-weight="700">POST</tspan><tspan x="668" y="352">/v1/disbursements</tspan></text>
+<path d="M754 202H770" stroke="#818cf8" stroke-width="2.5" fill="none" stroke-dasharray="20" style="animation:f38 15s ease-out infinite both"/>
+<path d="M765 197L771 202L765 207" stroke="#818cf8" stroke-width="2.5" fill="none" style="animation:f39 15s linear infinite both"/>
+<rect x="772" y="92" width="168" height="220" rx="10" fill="#1e293b" stroke="#334155"/>
+<rect x="772" y="92" width="168" height="220" rx="10" fill="none" stroke="#818cf8" stroke-width="2" style="animation:f40 15s linear infinite both"/>
+<text x="856" y="122" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" font-weight="700" letter-spacing="2" fill="#a5b4fc" style="animation:f41 15s linear infinite both">5 · EVIDENCE</text>
+<text x="856" y="144" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" fill="#94a3b8" style="animation:f42 15s linear infinite both">Is it working?</text>
+<text text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="11" fill="#34d399" style="animation:f43 15s linear infinite both"><tspan x="856" y="336" font-weight="700">GET</tspan><tspan x="856" y="352">/v1/evidence/export</tspan></text>
+<rect x="798" y="236" width="22" height="40" rx="2" fill="#64748b" class="bar" style="animation:f44 15s ease-out infinite both"/>
+<rect x="824" y="235" width="22" height="41" rx="2" fill="#34d399" class="bar" style="animation:f45 15s ease-out infinite both"/>
+<text x="822" y="292" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" fill="#94a3b8" style="animation:f46 15s linear infinite both">baseline</text>
+<rect x="864" y="232" width="22" height="44" rx="2" fill="#64748b" class="bar" style="animation:f47 15s ease-out infinite both"/>
+<rect x="890" y="200" width="22" height="76" rx="2" fill="#34d399" class="bar" style="animation:f48 15s ease-out infinite both"/>
+<text x="888" y="292" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" fill="#94a3b8" style="animation:f49 15s linear infinite both">endline</text>
+<path d="M788 276H924" stroke="#334155"/>
+<g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" style="animation:f50 15s linear infinite both"><rect x="794" y="158" width="9" height="9" fill="#64748b"/><text x="807" y="166" fill="#94a3b8">control</text><rect x="860" y="158" width="9" height="9" fill="#34d399"/><text x="873" y="166" fill="#94a3b8">recipients</text></g>
+<text x="856" y="184" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="11" fill="#e2e8f0" style="animation:f51 15s linear infinite both">food security +32 pp</text>
+<text x="480" y="390" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" fill="#94a3b8">Kenya figures: committed seeded snapshot (worldbank-2023), ruleset v1. Evidence values are illustrative, not pilot results.</text>
+</svg>
