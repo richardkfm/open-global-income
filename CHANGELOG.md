@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.7] - 2026-11-23
+
+Bug fixes from a persona review (German researcher, journalist, federal official) of the public site, API and admin UI.
+
+### Fixed
+- **Compare page poverty row.** When no survey exists for the country-appropriate line, the row silently fell back to the $2.15/day extreme-poverty rate, so Germany, France and the Netherlands read as "0.1% poverty (country line)". The fallback is now marked with `*` and footnoted, as on the countries list.
+- **Trillion-scale numbers.** The impact and funding formatters had no trillion tier and printed "$1701.3B"; they now print "$1.70T".
+- **Stale methodology and citation copy.** The methodology page said sub-national data covered "Kenya, 47 counties" (now derived from `regions.json`: Kenya, Germany, France, Netherlands) and "17+ indicators" (22: 18 World Bank + 4 ILO). Public citations credited the IMF although no country carries IMF values; they now read "World Bank, ILO", and the methodology notes that the IMF importer is wired but unpopulated.
+
 ### Changed
 - **README rewritten as a short landing page** (≈ 590 → ≈ 160 lines). The ASCII-art logo and the emoji stack diagram mis-aligned on GitHub (box-drawing and emoji glyph widths differ from the monospace grid); both are replaced — the logo by a vector rendering (`docs/assets/logo.svg`), the stack diagram by a table.
 - Detailed content moved, not dropped: capabilities, data provenance, rulesets, funding/impact models, public site, admin UI, providers and release history to `docs/CAPABILITIES.md`; setup, environment variables, the full API reference, auth, webhooks, SDK, database and architecture to `docs/DEVELOPER_GUIDE.md`.

@@ -25,7 +25,7 @@ export function renderDataPage(data: DataPageData): string {
     <p class="section-lede">
       ${data.countryCount} countries with economic indicators plus the computed entitlement, need
       score and universal-coverage cost columns. Snapshot <strong>${escapeHtml(data.dataVersion)}</strong>
-      (World Bank, ILO, IMF). One row per country; column headers include units.
+      (World Bank, ILO). One row per country; column headers include units.
     </p>
     <div class="flex gap-1">
       <a href="/data/countries.csv" class="btn btn-primary">Download CSV</a>
