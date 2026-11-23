@@ -15,7 +15,8 @@ import { dispatchEvent } from '../../webhooks/dispatcher.js';
 import { parsePagination, buildPaginationMeta } from '../pagination.js';
 import { RULESETS } from '../../core/rulesets.js';
 import { GLOBAL_INCOME_FLOOR_PPP } from '../../core/constants.js';
-import { getDataVersion } from '../../data/loader.js';
+import { getCountryByCode, getDataVersion } from '../../data/loader.js';
+import { isValidIsoDate } from '../validators.js';
 import { applyRulesToRecipients } from '../../core/targeting.js';
 import { parseTargetingRules } from './simulate.js';
 import type { PilotStatus } from '../../core/types.js';
@@ -66,6 +67,26 @@ export const pilotsRoute: FastifyPluginAsync = async (app) => {
         error: { code: 'MISSING_PARAMETER', message: "'countryCode' is required" },
       });
     }
+    if (!getCountryByCode(countryCode.trim().toUpperCase())) {
+      return reply.status(404).send({
+        ok: false,
+        error: { code: 'COUNTRY_NOT_FOUND', message: `No data for country '${countryCode}'` },
+      });
+    }
+    for (const [field, value] of [['startDate', startDate], ['endDate', endDate]] as const) {
+      if (value !== undefined && value !== null && !isValidIsoDate(value)) {
+        return reply.status(400).send({
+          ok: false,
+          error: { code: 'INVALID_PARAMETER', message: `'${field}' must be a valid calendar date (YYYY-MM-DD)` },
+        });
+      }
+    }
+    if (typeof startDate === 'string' && typeof endDate === 'string' && endDate < startDate) {
+      return reply.status(400).send({
+        ok: false,
+        error: { code: 'INVALID_PARAMETER', message: "'endDate' must not be before 'startDate'" },
+      });
+    }
     if (targetRecipients !== undefined && targetRecipients !== null) {
       if (typeof targetRecipients !== 'number' || !Number.isInteger(targetRecipients) || targetRecipients < 1) {
         return reply.status(400).send({
@@ -107,10 +128,10 @@ export const pilotsRoute: FastifyPluginAsync = async (app) => {
       parsedTargetingRules = rulesResult.rules;
     }
 
-    const apiKeyId = (request as { apiKeyId?: string }).apiKeyId;
+    const apiKeyId = request.apiKey?.id;
     const pilot = createPilot({
       name: name.trim(),
-      countryCode: (countryCode as string).toUpperCase(),
+      countryCode: (countryCode as string).trim().toUpperCase(),
       description: typeof description === 'string' ? description : null,
       simulationId: typeof simulationId === 'string' ? simulationId : null,
       targetingRules: parsedTargetingRules,
@@ -193,6 +214,14 @@ export const pilotsRoute: FastifyPluginAsync = async (app) => {
       }
 
       const { status, description, startDate, endDate, targetRecipients } = request.body ?? {};
+      for (const [field, value] of [['startDate', startDate], ['endDate', endDate]] as const) {
+        if (value !== undefined && value !== null && !isValidIsoDate(value)) {
+          return reply.status(400).send({
+            ok: false,
+            error: { code: 'INVALID_PARAMETER', message: `'${field}' must be a valid calendar date (YYYY-MM-DD)` },
+          });
+        }
+      }
 
       if (status !== undefined) {
         if (!VALID_STATUSES.includes(status as string)) {
@@ -324,7 +353,8 @@ export const pilotsRoute: FastifyPluginAsync = async (app) => {
     if (pilot.simulationId) {
       const sim = getSimulationById(pilot.simulationId);
       if (sim) {
-        const projectedCost = sim.results.simulation.cost.annualPppUsd;
+        // Projected spend is the whole program, not one year.
+        const projectedCost = sim.results.simulation.cost.totalPppUsd ?? sim.results.simulation.cost.annualPppUsd;
         const varianceNum =
           projectedCost > 0 ? ((totalDisbursed - projectedCost) / projectedCost) * 100 : 0;
         const varianceStr =

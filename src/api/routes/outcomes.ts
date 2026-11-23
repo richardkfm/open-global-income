@@ -8,6 +8,7 @@ import {
 } from '../../db/outcomes-db.js';
 import { getLatestImpactAnalysisBySimulation } from '../../db/impact-db.js';
 import { dispatchEvent } from '../../webhooks/dispatcher.js';
+import { isValidIsoDate } from '../validators.js';
 import type { OutcomeCohortType, OutcomeIndicators } from '../../core/types.js';
 
 const VALID_COHORT_TYPES: OutcomeCohortType[] = ['recipient', 'control'];
@@ -109,10 +110,10 @@ export const outcomesRoute: FastifyPluginAsync = async (app) => {
         });
       }
 
-      if (typeof measurementDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(measurementDate)) {
+      if (!isValidIsoDate(measurementDate)) {
         return reply.status(400).send({
           ok: false,
-          error: { code: 'INVALID_PARAMETER', message: "'measurementDate' must be a date string (YYYY-MM-DD)" },
+          error: { code: 'INVALID_PARAMETER', message: "'measurementDate' must be a valid calendar date (YYYY-MM-DD)" },
         });
       }
 
@@ -218,9 +219,17 @@ export const evidenceRoute: FastifyPluginAsync = async (app) => {
       incomeGroup?: string;
       coverageMin?: string;
       coverageMax?: string;
+      cohortType?: string;
     };
   }>('/evidence/aggregate', async (request, reply) => {
-    const { country, incomeGroup, coverageMin, coverageMax } = request.query;
+    const { country, incomeGroup, coverageMin, coverageMax, cohortType } = request.query;
+
+    if (cohortType !== undefined && !VALID_COHORT_TYPES.includes(cohortType as OutcomeCohortType)) {
+      return reply.status(400).send({
+        ok: false,
+        error: { code: 'INVALID_PARAMETER', message: `'cohortType' must be one of: ${VALID_COHORT_TYPES.join(', ')}` },
+      });
+    }
 
     const parsedCoverageMin = coverageMin !== undefined ? parseFloat(coverageMin) : undefined;
     const parsedCoverageMax = coverageMax !== undefined ? parseFloat(coverageMax) : undefined;
@@ -243,6 +252,7 @@ export const evidenceRoute: FastifyPluginAsync = async (app) => {
       incomeGroup,
       coverageMin: parsedCoverageMin,
       coverageMax: parsedCoverageMax,
+      ...(cohortType ? { cohortType: cohortType as OutcomeCohortType } : {}),
     });
 
     return reply.send({ ok: true, data: aggregate });

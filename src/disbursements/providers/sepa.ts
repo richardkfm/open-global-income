@@ -48,6 +48,47 @@ function xmlEscape(value: string): string {
     .replace(/'/g, '&apos;');
 }
 
+/**
+ * Restrict free text to the SEPA basic Latin character set (EPC guidance:
+ * a-z A-Z 0-9 / - ? : ( ) . , ' + space). German umlauts and ß are
+ * transliterated (ä → ae, ß → ss); dashes become "-"; any other character
+ * becomes a space. Banks reject or mangle files outside this set, so
+ * "OGI basic income — …" or a debtor name like "Bundesamt für …" would
+ * otherwise fail at the bank.
+ */
+export function toSepaCharset(value: string, maxLength: number): string {
+  const map: Record<string, string> = {
+    ä: 'ae', ö: 'oe', ü: 'ue', Ä: 'Ae', Ö: 'Oe', Ü: 'Ue', ß: 'ss',
+    '–': '-', '—': '-', '‘': "'", '’': "'", '&': '+',
+  };
+  const out = value
+    .replace(/[äöüÄÖÜß–—‘’&]/g, (c) => map[c] ?? ' ')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Za-z0-9/\-?:().,'+ ]/g, ' ')
+    .replace(/ {2,}/g, ' ')
+    .trim();
+  return out.slice(0, maxLength);
+}
+
+/** ISO 13616 IBAN check: country code, check digits, mod-97 = 1. */
+export function isValidIban(value: string): boolean {
+  const iban = value.replace(/\s+/g, '').toUpperCase();
+  if (!/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(iban)) return false;
+  const rearranged = iban.slice(4) + iban.slice(0, 4);
+  let remainder = 0;
+  for (const ch of rearranged) {
+    const digits = /[A-Z]/.test(ch) ? String(ch.charCodeAt(0) - 55) : ch;
+    for (const d of digits) remainder = (remainder * 10 + Number(d)) % 97;
+  }
+  return remainder === 1;
+}
+
+/** ISO 9362 BIC: 4-letter bank, 2-letter country, 2-char location, optional 3-char branch. */
+export function isValidBic(value: string): boolean {
+  return /^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$/.test(value.trim().toUpperCase());
+}
+
 /** Generate a SEPA end-to-end / message reference. */
 function sepaReference(prefix: string): string {
   const ts = Date.now().toString(36).toUpperCase();
@@ -122,6 +163,20 @@ export const sepaProvider: DisbursementProvider = {
     if (env !== 'sandbox' && env !== 'production') {
       return { valid: false, error: "'environment' must be 'sandbox' or 'production'" };
     }
+    if (config.debtorIban !== undefined && (typeof config.debtorIban !== 'string' || !isValidIban(config.debtorIban))) {
+      return { valid: false, error: "'debtorIban' is not a valid IBAN (ISO 13616 mod-97 check failed)" };
+    }
+    if (config.debtorBic !== undefined && (typeof config.debtorBic !== 'string' || !isValidBic(config.debtorBic))) {
+      return { valid: false, error: "'debtorBic' is not a valid BIC (ISO 9362: 8 or 11 characters)" };
+    }
+    if (
+      config.requestedExecutionDate !== undefined &&
+      (typeof config.requestedExecutionDate !== 'string' ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(config.requestedExecutionDate) ||
+        Number.isNaN(Date.parse(config.requestedExecutionDate)))
+    ) {
+      return { valid: false, error: "'requestedExecutionDate' must be a YYYY-MM-DD date" };
+    }
     return { valid: true };
   },
 
@@ -140,13 +195,18 @@ export const sepaProvider: DisbursementProvider = {
     const amountPerRecipientEur = perRecipient.amount.toFixed(2);
     const totalEur = total.amount.toFixed(2);
 
-    const debtorName = (config.debtorName as string) ?? '<PROGRAM_DEBTOR_NAME>';
-    const debtorIban = (config.debtorIban as string) ?? '<PROGRAM_DEBTOR_IBAN>';
-    const debtorBic = (config.debtorBic as string) ?? '<PROGRAM_DEBTOR_BIC>';
+    const debtorName =
+      typeof config.debtorName === 'string' ? toSepaCharset(config.debtorName, 70) : '<PROGRAM_DEBTOR_NAME>';
+    const debtorIban =
+      typeof config.debtorIban === 'string' ? config.debtorIban.replace(/\s+/g, '').toUpperCase() : '<PROGRAM_DEBTOR_IBAN>';
+    const debtorBic =
+      typeof config.debtorBic === 'string' ? config.debtorBic.trim().toUpperCase() : '<PROGRAM_DEBTOR_BIC>';
     const requestedExecutionDate =
       (config.requestedExecutionDate as string) ?? createdAt.slice(0, 10);
-    const remittanceInfo =
-      (config.remittanceInfo as string) ?? `OGI basic income — ${disbursement.id}`;
+    const remittanceInfo = toSepaCharset(
+      typeof config.remittanceInfo === 'string' ? config.remittanceInfo : `OGI basic income - ${disbursement.id}`,
+      140,
+    );
 
     const iso20022Xml = buildPain001({
       msgId,

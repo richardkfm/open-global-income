@@ -14,7 +14,7 @@ import {
 import { getProvider, listProviders } from '../../disbursements/providers/registry.js';
 import { dispatchEvent } from '../../webhooks/dispatcher.js';
 import { parsePagination, buildPaginationMeta } from '../pagination.js';
-import type { DisbursementChannelType } from '../../core/types.js';
+import type { DisbursementChannel, DisbursementChannelType } from '../../core/types.js';
 
 const VALID_CHANNEL_TYPES: DisbursementChannelType[] = [
   'mobile_money',
@@ -24,11 +24,28 @@ const VALID_CHANNEL_TYPES: DisbursementChannelType[] = [
 
 const VALID_STATUSES = ['draft', 'approved', 'processing', 'completed', 'failed'];
 
+/** Config keys that hold credentials — never echoed back by the API. */
+const SECRET_CONFIG_KEY = /(secret|password|passkey|apikey|api_key|consumerkey|privatekey|private_key|credential|token)$/i;
+
+/**
+ * Return a channel with credential-bearing config values replaced by
+ * "[redacted]". Channel configs carry webhook HMAC secrets and provider API
+ * keys; listing them in clear text lets any API caller forge inbound
+ * webhooks or use the operator's provider account.
+ */
+export function redactChannel(channel: DisbursementChannel): DisbursementChannel {
+  const config: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(channel.config ?? {})) {
+    config[k] = SECRET_CONFIG_KEY.test(k) && v !== null && v !== undefined && v !== '' ? '[redacted]' : v;
+  }
+  return { ...channel, config };
+}
+
 export const disbursementsRoute: FastifyPluginAsync = async (app) => {
   // ── GET /v1/disbursements/channels ─────────────────────────────────────────
 
   app.get('/disbursements/channels', async (_request, reply) => {
-    const channels = listChannels();
+    const channels = listChannels().map(redactChannel);
     return reply.send({
       ok: true,
       data: {
@@ -107,7 +124,7 @@ export const disbursementsRoute: FastifyPluginAsync = async (app) => {
         config: config as Record<string, unknown>,
       });
 
-      return reply.status(201).send({ ok: true, data: channel });
+      return reply.status(201).send({ ok: true, data: redactChannel(channel) });
     },
   );
 
@@ -162,6 +179,39 @@ export const disbursementsRoute: FastifyPluginAsync = async (app) => {
         });
       }
 
+      // Amounts are decimal strings (to keep USDC's 6 decimals exact). Reject
+      // anything that is not a positive decimal, and require the total to
+      // match count × per-recipient — otherwise a payment file can carry
+      // "NaN" or a negative amount and still be approved and submitted.
+      const DECIMAL = /^\d+(\.\d{1,6})?$/;
+      for (const [field, value] of [['amountPerRecipient', amountPerRecipient], ['totalAmount', totalAmount]] as const) {
+        if (!DECIMAL.test(value) || !(Number(value) > 0)) {
+          return reply.status(400).send({
+            ok: false,
+            error: {
+              code: 'INVALID_PARAMETER',
+              message: `'${field}' must be a positive decimal string, e.g. "210.00"`,
+            },
+          });
+        }
+      }
+      const expectedTotal = (recipientCount as number) * Number(amountPerRecipient);
+      if (Math.abs(expectedTotal - Number(totalAmount)) > 0.005 + expectedTotal * 1e-9) {
+        return reply.status(400).send({
+          ok: false,
+          error: {
+            code: 'INVALID_PARAMETER',
+            message: `'totalAmount' (${totalAmount}) must equal recipientCount × amountPerRecipient (${expectedTotal.toFixed(2)})`,
+          },
+        });
+      }
+      if (!/^[A-Za-z]{3,5}$/.test(currency)) {
+        return reply.status(400).send({
+          ok: false,
+          error: { code: 'INVALID_PARAMETER', message: "'currency' must be a 3–5 letter currency code, e.g. EUR or USDC" },
+        });
+      }
+
       const channel = getChannelById(channelId as string);
       if (!channel) {
         return reply.status(404).send({
@@ -169,8 +219,17 @@ export const disbursementsRoute: FastifyPluginAsync = async (app) => {
           error: { code: 'NOT_FOUND', message: `Channel '${channelId}' not found` },
         });
       }
+      if (channel.countryCode && channel.countryCode.toUpperCase() !== countryCode.toUpperCase()) {
+        return reply.status(400).send({
+          ok: false,
+          error: {
+            code: 'INVALID_PARAMETER',
+            message: `Channel '${channel.id}' is configured for ${channel.countryCode}, not ${countryCode.toUpperCase()}`,
+          },
+        });
+      }
 
-      const apiKeyId = (request as { apiKeyId?: string }).apiKeyId;
+      const apiKeyId = request.apiKey?.id;
       const disbursement = createDisbursement({
         simulationId: typeof simulationId === 'string' ? simulationId : null,
         channelId: channelId as string,

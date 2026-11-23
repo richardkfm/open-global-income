@@ -11,9 +11,15 @@ import { localAdequacyLine } from './adequacy.js';
  * recipientCount = population × targetFactor × coverage
  * monthlyLocal   = floorPpp × pppConversionFactor
  * monthlyTotal   = recipientCount × monthlyLocal
- * annualTotal    = monthlyTotal × durationMonths
- * annualPppUsd   = recipientCount × floorPpp × durationMonths
+ * yearMonths     = min(durationMonths, 12)
+ * annualTotal    = monthlyTotal × yearMonths          (one program year)
+ * annualPppUsd   = recipientCount × floorPpp × yearMonths
+ * totalPppUsd    = recipientCount × floorPpp × durationMonths   (whole program)
  * asPercentOfGdp = annualPppUsd / (gdpPerCapitaPppUsd × population) × 100
+ *
+ * "Annual" is one program year, so a 24-month scenario is not reported as
+ * twice its yearly cost or compared against a single year's GDP. For
+ * durations of 12 months or less, annual and total are identical.
  *
  * The cost is in PPP-USD (the floor is PPP-denominated), so it is divided by
  * PPP GDP — not nominal GDP — to keep the ratio's units consistent.
@@ -40,8 +46,11 @@ export function calculateSimulation(
     Math.round(floorPpp * country.stats.pppConversionFactor * 100) / 100;
 
   const monthlyLocalCurrency = Math.round(recipientCount * localCurrencyPerMonth * 100) / 100;
-  const annualLocalCurrency = Math.round(monthlyLocalCurrency * params.durationMonths * 100) / 100;
-  const annualPppUsd = Math.round(recipientCount * floorPpp * params.durationMonths * 100) / 100;
+  const yearMonths = Math.min(params.durationMonths, 12);
+  const annualLocalCurrency = Math.round(monthlyLocalCurrency * yearMonths * 100) / 100;
+  const annualPppUsd = Math.round(recipientCount * floorPpp * yearMonths * 100) / 100;
+  const totalLocalCurrency = Math.round(monthlyLocalCurrency * params.durationMonths * 100) / 100;
+  const totalPppUsd = Math.round(recipientCount * floorPpp * params.durationMonths * 100) / 100;
 
   const gdpTotalPpp = country.stats.gdpPerCapitaPppUsd * country.stats.population;
   const asPercentOfGdp =
@@ -50,7 +59,7 @@ export function calculateSimulation(
   // Informational comparison only: same recipientCount and duration, but
   // priced at the country's local adequacy line instead of the floor above.
   const adequacy = localAdequacyLine(country);
-  const adequacyAnnualPppUsd = Math.round(recipientCount * adequacy.monthlyPppUsd * params.durationMonths * 100) / 100;
+  const adequacyAnnualPppUsd = Math.round(recipientCount * adequacy.monthlyPppUsd * yearMonths * 100) / 100;
   const adequacyAsPercentOfGdp =
     gdpTotalPpp > 0 ? Math.round((adequacyAnnualPppUsd / gdpTotalPpp) * 10000) / 100 : 0;
 
@@ -72,6 +81,8 @@ export function calculateSimulation(
         annualLocalCurrency,
         annualPppUsd,
         asPercentOfGdp,
+        totalLocalCurrency,
+        totalPppUsd,
       },
       costAtLocalAdequacyLine: {
         monthlyPppUsd: adequacy.monthlyPppUsd,

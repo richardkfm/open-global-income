@@ -4,9 +4,10 @@ import { calculateSimulation } from '../../core/simulations.js';
 import { calculateFundingScenario, calculateFiscalContext } from '../../core/funding.js';
 import { getSimulationById } from '../../db/simulations-db.js';
 import { saveFundingScenario, listFundingScenarios, getFundingScenarioById, deleteFundingScenario } from '../../db/funding-db.js';
-import type { FundingMechanismInput, SimulationParameters, TargetGroup } from '../../core/types.js';
+import type { FundingMechanismInput, SimulationParameters } from '../../core/types.js';
 import { dispatchEvent } from '../../webhooks/dispatcher.js';
 import { parsePagination, buildPaginationMeta } from '../pagination.js';
+import { parseInlineSimulationInputs } from '../validators.js';
 
 const VALID_MECHANISM_TYPES = [
   'income_tax_surcharge',
@@ -117,9 +118,11 @@ export const fundingRoute: FastifyPluginAsync = async (app) => {
       annualCost = sim.results.simulation.cost.annualPppUsd;
       asPercentOfGdp = sim.results.simulation.cost.asPercentOfGdp;
     } else {
-      const coverage = typeof body.coverage === 'number' ? body.coverage : 0.2;
-      const targetGroup = (typeof body.targetGroup === 'string' ? body.targetGroup : 'all') as TargetGroup;
-      const durationMonths = typeof body.durationMonths === 'number' ? body.durationMonths : 12;
+      const inputs = parseInlineSimulationInputs(body);
+      if (!inputs.ok) {
+        return reply.status(400).send({ ok: false, error: { code: inputs.code, message: inputs.message } });
+      }
+      const { coverage, targetGroup, durationMonths } = inputs;
       const params: SimulationParameters = {
         country: countryCode,
         coverage,
@@ -182,9 +185,11 @@ export const fundingRoute: FastifyPluginAsync = async (app) => {
       if (!country) {
         return reply.status(404).send({ ok: false, error: { code: 'COUNTRY_NOT_FOUND', message: `No data for '${countryCode}'` } });
       }
-      const coverage = typeof body.coverage === 'number' ? body.coverage : 0.2;
-      const targetGroup = (typeof body.targetGroup === 'string' ? body.targetGroup : 'all') as TargetGroup;
-      const durationMonths = typeof body.durationMonths === 'number' ? body.durationMonths : 12;
+      const inputs = parseInlineSimulationInputs(body);
+      if (!inputs.ok) {
+        return reply.status(400).send({ ok: false, error: { code: inputs.code, message: inputs.message } });
+      }
+      const { coverage, targetGroup, durationMonths } = inputs;
       const params: SimulationParameters = {
         country: countryCode,
         coverage,
@@ -237,9 +242,11 @@ export const fundingRoute: FastifyPluginAsync = async (app) => {
       if (!country) {
         return reply.status(404).send({ ok: false, error: { code: 'COUNTRY_NOT_FOUND', message: `No data for '${countryCode}'` } });
       }
-      const coverage = typeof body.coverage === 'number' ? body.coverage : 0.2;
-      const targetGroup = (typeof body.targetGroup === 'string' ? body.targetGroup : 'all') as TargetGroup;
-      const durationMonths = typeof body.durationMonths === 'number' ? body.durationMonths : 12;
+      const inputs = parseInlineSimulationInputs(body);
+      if (!inputs.ok) {
+        return reply.status(400).send({ ok: false, error: { code: inputs.code, message: inputs.message } });
+      }
+      const { coverage, targetGroup, durationMonths } = inputs;
       const params: SimulationParameters = {
         country: countryCode,
         coverage,

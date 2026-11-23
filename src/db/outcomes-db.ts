@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { getDb } from './database.js';
+import { getCountryByCode } from '../data/loader.js';
 import type {
   OutcomeRecord,
   OutcomeIndicators,
@@ -206,6 +207,7 @@ export function aggregateOutcomes(filters: {
   incomeGroup?: string;
   coverageMin?: number;
   coverageMax?: number;
+  cohortType?: 'recipient' | 'control';
 }): EvidenceAggregate {
   const db = getDb();
 
@@ -231,6 +233,16 @@ export function aggregateOutcomes(filters: {
     eligiblePilotIds = new Set<string>();
 
     for (const pilot of pilotRows) {
+      // Income group comes from the country dataset — saved simulation
+      // results do not carry it, so reading it from there matched nothing.
+      if (filters.incomeGroup && getCountryByCode(pilot.country_code)?.stats.incomeGroup !== filters.incomeGroup) {
+        continue;
+      }
+      if (filters.coverageMin === undefined && filters.coverageMax === undefined) {
+        eligiblePilotIds.add(pilot.id);
+        continue;
+      }
+
       const simRow = db
         .prepare('SELECT s.results FROM simulations s JOIN pilots p ON p.simulation_id = s.id WHERE p.id = ?')
         .get(pilot.id) as SimulationRow | undefined;
@@ -239,13 +251,10 @@ export function aggregateOutcomes(filters: {
 
       const results = JSON.parse(simRow.results) as {
         simulation?: { coverageRate?: number };
-        country?: { incomeGroup?: string };
       };
 
       const coverageRate = results.simulation?.coverageRate ?? null;
-      const incomeGroup = results.country?.incomeGroup ?? null;
 
-      if (filters.incomeGroup && incomeGroup !== filters.incomeGroup) continue;
       if (filters.coverageMin !== undefined && coverageRate !== null && coverageRate < filters.coverageMin) continue;
       if (filters.coverageMax !== undefined && coverageRate !== null && coverageRate > filters.coverageMax) continue;
 
@@ -268,9 +277,10 @@ export function aggregateOutcomes(filters: {
 
   // Gather all outcome records for eligible pilots
   const placeholders = pilotIdList.map(() => '?').join(',');
+  const cohortClause = filters.cohortType ? ' AND cohort_type = ?' : '';
   const outcomeRows = db
-    .prepare(`SELECT * FROM pilot_outcomes WHERE pilot_id IN (${placeholders})`)
-    .all(...pilotIdList) as OutcomeRow[];
+    .prepare(`SELECT * FROM pilot_outcomes WHERE pilot_id IN (${placeholders})${cohortClause}`)
+    .all(...pilotIdList, ...(filters.cohortType ? [filters.cohortType] : [])) as OutcomeRow[];
 
   const outcomes = outcomeRows.map(rowToOutcome);
 
@@ -305,7 +315,7 @@ export function aggregateOutcomes(filters: {
 
   return {
     filters,
-    programCount: eligiblePilotIds.size,
+    programCount: new Set(outcomes.map((o) => o.pilotId)).size,
     measurementCount: outcomes.length,
     indicators,
     meta: { generatedAt: new Date().toISOString(), dataVersion: '1.0' },

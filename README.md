@@ -130,7 +130,7 @@ git clone https://github.com/richardkfm/open-global-income.git
 cd open-global-income
 npm install
 npm run dev        # API + public site + admin on http://localhost:3333
-npm test           # 734 tests across 40 suites
+npm test           # 769 tests across 41 suites
 ```
 
 Swagger UI at `/docs`, public site at `/`, admin UI at `/admin`. Docker: `cp .env.example .env` (set `ADMIN_USERNAME` / `ADMIN_PASSWORD`), then `docker compose up --build`.

@@ -322,7 +322,13 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     }
 
     const { rawKey } = createApiKey(name, tier);
-    return reply.redirect(`/admin/api-keys?flash=Key+created:+${encodeURIComponent(rawKey)}`);
+    // Render the one-time key in the response body instead of redirecting with
+    // it in the query string — a redirect URL lands in the audit log, server
+    // access logs and browser history, leaking a live credential.
+    return reply
+      .type('text/html')
+      .header('cache-control', 'no-store')
+      .send(renderApiKeys(listApiKeys(), `Key created: ${rawKey} — copy it now, it will not be shown again.`));
   });
 
   app.post<{ Params: { id: string } }>('/api-keys/:id/revoke', async (request, reply) => {

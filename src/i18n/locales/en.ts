@@ -419,6 +419,18 @@ const en = {
 
   // Countries (countries.ts)
   countries: {
+    incomeCalculation: 'Income calculation',
+    rulesetVersion: 'Ruleset version',
+    // Entitlement methodology drawer
+    drawerEntitlementTitle: 'Entitlement calculation formula',
+    drawerEntitlementFormula: 'Monthly entitlement = global income floor (PPP-USD) × PPP conversion factor, giving the amount in local currency. The need score measures the floor relative to average income (GNI per capita), amplified by inequality (Gini).',
+    drawerInputFloor: 'Income floor:',
+    drawerInputFloorNote: 'global anchor, same for every country',
+    drawerInputPpp: 'PPP conversion factor:',
+    drawerInputGni: 'GNI per capita:',
+    drawerInputGini: 'Gini index:',
+    drawerRuleset: 'Ruleset version:',
+    drawerEntitlementNote: 'Pure function of the inputs above — the same inputs always produce the same entitlement.',
     title: 'Country Economic Profiles',
     phase: 'Open Global Income · Phase 14',
     heroSubtitle: 'avg macro-indicator coverage',
@@ -546,6 +558,11 @@ const en = {
 
   // Program Briefs (programs.ts — Track B owns the route/view)
   programs: {
+    colName: 'Name',
+    colCountry: 'Country',
+    colLinks: 'Linked',
+    colUpdated: 'Updated',
+    fieldName: 'Brief name',
     title: 'Program Briefs',
     new: 'New Brief',
     empty: 'No briefs yet',
@@ -612,6 +629,7 @@ const en = {
 
   // Common strings used across views
   common: {
+    notes: 'Notes (optional)',
     save: 'Save',
     delete: 'Delete',
     create: 'Create',

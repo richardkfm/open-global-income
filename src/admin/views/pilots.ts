@@ -548,7 +548,7 @@ export function renderPilotDetailPage(
 
   let varianceHtml = '';
   if (simulation) {
-    const projected = simulation.results.simulation.cost.annualPppUsd;
+    const projected = simulation.results.simulation.cost.totalPppUsd ?? simulation.results.simulation.cost.annualPppUsd;
     const varianceNum = projected > 0 ? ((totalDisbursed - projected) / projected) * 100 : 0;
     const varianceStr = varianceNum >= 0
       ? `+${Math.round(varianceNum * 10) / 10}%`

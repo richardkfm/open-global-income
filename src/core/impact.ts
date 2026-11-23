@@ -483,7 +483,10 @@ function buildPolicyBrief(
   savings: CostSavingsEstimate,
 ): PolicyBrief {
   const floorPppUsd = params.floorOverride ?? GLOBAL_INCOME_FLOOR_PPP;
-  const coveragePct = (params.coverage * 100).toFixed(0);
+  // Small pilots (e.g. 2,000 of 84M people) would otherwise print as "0%".
+  const coverageRaw = params.coverage * 100;
+  const coveragePct =
+    coverageRaw >= 1 || coverageRaw === 0 ? coverageRaw.toFixed(0) : Number(coverageRaw.toPrecision(2)).toString();
   const targetLabel = targetGroupLabel(params.targetGroup);
 
   const title = `Economic Impact Analysis: Basic Income Program — ${country.name}`;
