@@ -20,6 +20,8 @@ export interface CompareColumn {
   population: number;
   gdpPerCapitaPppUsd: number;
   povertyRatePercent: number | null;
+  /** True when the rate is the $2.15/day extreme line because no survey exists for the country-appropriate line */
+  povertyRateIsExtremeFallback: boolean;
   povertyLineLabel: string;
   monthlyLocalFormatted: string;
   universalAnnualPppUsd: number;
@@ -110,8 +112,12 @@ export function renderCompare(data: CompareData): string {
           ${metricRow('GDP per capita (PPP)', cols.map((c) => `$${formatCompact(c.gdpPerCapitaPppUsd)}`))}
           ${metricRow(
             'Poverty rate (country line)',
-            cols.map((c) => (c.povertyRatePercent != null ? formatPercent(c.povertyRatePercent) : '—')),
-            'Each country uses its income-group-appropriate line',
+            cols.map((c) =>
+              c.povertyRatePercent != null
+                ? `${formatPercent(c.povertyRatePercent)}${c.povertyRateIsExtremeFallback ? '<span class="text-muted">*</span>' : ''}`
+                : '—',
+            ),
+            'Each country uses its income-group-appropriate line. * = $2.15/day extreme-poverty rate shown because no survey exists for the country-appropriate line',
           )}
           ${metricRow('Monthly floor, local currency', cols.map((c) => escapeHtml(c.monthlyLocalFormatted)))}
           ${metricRow('Universal cost / year (PPP)', cols.map((c) => `$${formatCompact(c.universalAnnualPppUsd)}`))}

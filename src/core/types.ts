@@ -290,9 +290,16 @@ export interface SimulationResult {
     };
     cost: {
       monthlyLocalCurrency: number;
+      /** Cost of one program year: monthly × min(durationMonths, 12) */
       annualLocalCurrency: number;
+      /** Cost of one program year in PPP-USD: monthly × min(durationMonths, 12) */
       annualPppUsd: number;
+      /** annualPppUsd as a share of one year's PPP GDP */
       asPercentOfGdp: number;
+      /** Whole-program cost over durationMonths (equals the annual figure when durationMonths ≤ 12). Absent on simulations saved before v0.2.7. */
+      totalLocalCurrency?: number;
+      /** Whole-program cost in PPP-USD over durationMonths. Absent on simulations saved before v0.2.7. */
+      totalPppUsd?: number;
     };
     /**
      * "Cost at local adequacy line" comparison — see `AdequacyLineCostComparison`.
@@ -863,7 +870,10 @@ export interface EvidenceAggregate {
     incomeGroup?: string;
     coverageMin?: number;
     coverageMax?: number;
+    /** Restrict to one cohort — recipient and control values pooled together cannot show a treatment effect */
+    cohortType?: OutcomeCohortType;
   };
+  /** Number of programs (pilots) that contributed at least one measurement */
   programCount: number;
   measurementCount: number;
   indicators: {

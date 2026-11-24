@@ -6,11 +6,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.7] - 2026-11-23
+
+Bug fixes from a persona review (German researcher, journalist, federal official) of the public site, API and admin UI.
+
+### Fixed
+- **Compare page poverty row.** When no survey exists for the country-appropriate line, the row silently fell back to the $2.15/day extreme-poverty rate, so Germany, France and the Netherlands read as "0.1% poverty (country line)". The fallback is now marked with `*` and footnoted, as on the countries list.
+- **Trillion-scale numbers.** The impact and funding formatters had no trillion tier and printed "$1701.3B"; they now print "$1.70T".
+- **Stale methodology and citation copy.** The methodology page said sub-national data covered "Kenya, 47 counties" (now derived from `regions.json`: Kenya, Germany, France, Netherlands) and "17+ indicators" (22: 18 World Bank + 4 ILO). Public citations credited the IMF although no country carries IMF values; they now read "World Bank, ILO", and the methodology notes that the IMF importer is wired but unpopulated.
+- **"Annual" simulation cost was the whole-program cost.** `cost.annualPppUsd`, `annualLocalCurrency` and `asPercentOfGdp` multiplied by `durationMonths`, so a 24-month scenario was reported as twice its yearly cost and compared against a single year's GDP — which also halved funding coverage for multi-year scenarios. Annual is now one program year (`monthly × min(durationMonths, 12)`); new `cost.totalPppUsd` / `totalLocalCurrency` carry the whole-program figure, and pilot projected-vs-actual variance uses the total. Scenarios of 12 months or less are unchanged.
+- **Funding and fiscal routes crashed or produced negative costs.** `POST /v1/simulate/fund`, `/v1/simulate/fiscal` and `/v1/funding-scenarios` returned 500 for an unknown `targetGroup` and accepted `coverage: 5`, `coverage: -1` or `durationMonths: -3`. They now share the `/v1/simulate` bounds (`parseInlineSimulationInputs`) and return 400.
+- **Input validation gaps.** Pilots accepted unknown countries, unparseable dates and an end date before the start date; outcome `measurementDate` accepted impossible dates such as `2027-02-30`, which then displaced the real "latest" measurement; `POST /v1/simulations` saved a negative `floorOverride`; `POST /v1/recipients` accepted unknown countries and returned 500 for an unknown `pilotId`. All now return 400/404.
+- **Regional simulation ignored `adjustments.floorOverride`.** It is now applied (and validated).
+- **Disbursements accepted any amount string.** `amountPerRecipient: "-210"`, `totalAmount: "NaN"`, a total that does not equal count × per-recipient, a malformed currency, and a country different from the channel's were all accepted and could be approved and turned into a pain.001 with `CtrlSum NaN`. They are now rejected with 400.
+- **Channel credentials returned in clear text.** `GET/POST /v1/disbursements/channels` echoed `apiKey`, `webhookSecret` and similar config values to any caller; credential-bearing keys are now `[redacted]` in responses.
+- **SEPA pain.001 input checks.** The debtor IBAN (ISO 13616 mod-97), BIC (ISO 9362) and execution date are validated at channel creation (`DE00INVALID` / `XX` were accepted). Names and remittance text are restricted to the SEPA character set — umlauts transliterated, the em-dash in the default remittance line replaced — and truncated to 70/140 characters.
+- **API keys never attributed.** Routes read `request.apiKeyId`, which the auth middleware never sets, so `apiKeyId` was always null on pilots, simulations, recipients, disbursements and impact analyses. They now read `request.apiKey.id`.
+- **New API key leaked into the audit log.** The admin UI redirected to `/admin/api-keys?flash=Key+created:+ogi_…`, writing the live key into the audit log, access logs and browser history. The key is now rendered once in the response body with `Cache-Control: no-store`.
+- **Evidence aggregate.** `programCount` counted every pilot matching the filters rather than those with data; the `incomeGroup` filter read a field saved simulations never carry, so it always matched nothing. Both fixed; a new `cohortType=recipient|control` filter lets recipient and control values be aggregated separately instead of pooled.
+- **Impact brief ignored a saved simulation's parameters.** With `simulationId`, coverage, target group, duration and floor came from body defaults, so a 2,000-person pilot was labelled "20% coverage". Small coverages now print with precision ("0.0024%") instead of "0%".
+- **Raw translation keys in the admin UI.** 17 keys (`countries.incomeCalculation`, `countries.rulesetVersion`, the entitlement drawer, programs table headers, `common.notes`) were missing from `en.ts`; added, with a test that every literal `t()` key resolves.
+
 ### Changed
 - **README rewritten as a short landing page** (≈ 590 → ≈ 160 lines). The ASCII-art logo and the emoji stack diagram mis-aligned on GitHub (box-drawing and emoji glyph widths differ from the monospace grid); both are replaced — the logo by a vector rendering (`docs/assets/logo.svg`), the stack diagram by a table.
 - Detailed content moved, not dropped: capabilities, data provenance, rulesets, funding/impact models, public site, admin UI, providers and release history to `docs/CAPABILITIES.md`; setup, environment variables, the full API reference, auth, webhooks, SDK, database and architecture to `docs/DEVELOPER_GUIDE.md`.
 
 ### Added
+- `src/api/persona-review.test.ts` — 35 regression tests for the 0.2.7 fixes.
 - Animated README walk-through (`docs/assets/pipeline.svg`) of one Kenya study through Data → Calculation → Simulation → Distribution → Evidence, with the API call behind each step. Pure CSS animation, static under `prefers-reduced-motion`.
 - `scripts/generate-readme-assets.mjs` regenerates both SVGs.
 - `src/api/readme-scenario.test.ts` re-derives the animation's Kenya figures through the same API calls, so the image fails CI rather than drifting from the code.

@@ -121,7 +121,7 @@ export function renderExplore(data: ExploreData): string {
     Need score 0–100: how large the $210/month floor is relative to the country's average income,
     amplified by inequality (Gini). Higher = the floor matters more.
     * = $2.15/day extreme-poverty rate shown because no survey exists for the country-appropriate line.
-    Data snapshot: ${escapeHtml(data.dataVersion)} (World Bank, ILO, IMF).
+    Data snapshot: ${escapeHtml(data.dataVersion)} (World Bank, ILO).
   </p>`;
 
   return publicLayout('Country fact sheets', content, {

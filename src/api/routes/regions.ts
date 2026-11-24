@@ -137,12 +137,14 @@ export const regionsRoute: FastifyPluginAsync = async (app) => {
       coverage,
       targetGroup,
       durationMonths,
+      adjustments,
     } = body as {
       country?: unknown;
       regionId?: unknown;
       coverage?: unknown;
       targetGroup?: unknown;
       durationMonths?: unknown;
+      adjustments?: unknown;
     };
 
     if (typeof countryParam !== 'string' || !countryParam) {
@@ -185,6 +187,18 @@ export const regionsRoute: FastifyPluginAsync = async (app) => {
       });
     }
 
+    const adj = (adjustments as Record<string, unknown> | null | undefined) ?? {};
+    const floorOverride = adj.floorOverride ?? null;
+    if (
+      floorOverride !== null &&
+      (typeof floorOverride !== 'number' || !Number.isFinite(floorOverride) || floorOverride <= 0)
+    ) {
+      return reply.status(400).send({
+        ok: false,
+        error: { code: 'INVALID_PARAMETER', message: "'adjustments.floorOverride' must be a positive number or null" },
+      });
+    }
+
     const country = getCountryByCode(countryParam);
     if (!country) {
       return reply.status(404).send({
@@ -223,7 +237,7 @@ export const regionsRoute: FastifyPluginAsync = async (app) => {
       coverage: coverage as number,
       targetGroup: tg as TargetGroup,
       durationMonths: duration as number,
-      adjustments: { floorOverride: null, householdSize: null },
+      adjustments: { floorOverride: floorOverride as number | null, householdSize: null },
     };
 
     const result = calculateSimulation(adjustedCountry, params, getDataVersion());

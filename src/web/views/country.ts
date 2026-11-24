@@ -88,7 +88,7 @@ export function buildSummaryParagraph(data: CountryFactSheetData): string {
       `living below the country's poverty line (${povertyLine.label}) above it.`;
   }
   sentence +=
-    ` Source: Open Global Income v${data.appVersion}, data snapshot ${data.dataVersion} (World Bank / ILO / IMF).`;
+    ` Source: Open Global Income v${data.appVersion}, data snapshot ${data.dataVersion} (World Bank / ILO).`;
   return sentence;
 }
 
@@ -350,7 +350,7 @@ export function renderCountryFactSheet(data: CountryFactSheetData): string {
   const citation =
     `Open Global Income v${data.appVersion} — ${country.name} basic income fact sheet. ` +
     `Ruleset ${data.entitlement.meta.rulesetVersion}, data snapshot ${data.dataVersion} ` +
-    `(World Bank, ILO, IMF). Retrieved ${data.generatedDate} from ${data.pageUrl}`;
+    `(World Bank, ILO). Retrieved ${data.generatedDate} from ${data.pageUrl}`;
 
   // Prefer the country-appropriate line; fall back to the global $2.15/day
   // extreme-poverty headcount when no matching survey exists — labeled as such.

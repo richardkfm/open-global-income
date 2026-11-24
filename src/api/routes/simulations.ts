@@ -82,6 +82,16 @@ export const simulationsRoute: FastifyPluginAsync = async (app) => {
     }
 
     const adj = (adjustments as Record<string, unknown>) ?? {};
+    if (
+      adj.floorOverride !== undefined &&
+      adj.floorOverride !== null &&
+      (typeof adj.floorOverride !== 'number' || !Number.isFinite(adj.floorOverride) || adj.floorOverride <= 0)
+    ) {
+      return reply.status(400).send({
+        ok: false,
+        error: { code: 'INVALID_PARAMETER', message: "'adjustments.floorOverride' must be a positive number or null" },
+      });
+    }
     const params: SimulationParameters = {
       country: countryCode,
       coverage,
@@ -95,7 +105,7 @@ export const simulationsRoute: FastifyPluginAsync = async (app) => {
 
     const results = calculateSimulation(countryData, params, getDataVersion());
     const simulationName = typeof name === 'string' && name ? name : null;
-    const apiKeyId = (request as { apiKeyId?: string }).apiKeyId;
+    const apiKeyId = request.apiKey?.id;
     const saved = saveSimulation(simulationName, countryCode, params, results, apiKeyId);
 
     void dispatchEvent('simulation.created', {

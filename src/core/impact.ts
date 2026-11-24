@@ -464,6 +464,7 @@ export function estimateFiscalMultiplier(
 // ── Policy Brief Generation ────────────────────────────────────────────────
 
 function formatLargeNumber(n: number): string {
+  if (Math.abs(n) >= 1e12) return `${(n / 1e12).toFixed(2)}T`;
   if (Math.abs(n) >= 1e9) return `${(n / 1e9).toFixed(1)}B`;
   if (Math.abs(n) >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
   if (Math.abs(n) >= 1e3) return `${(n / 1e3).toFixed(0)}K`;
@@ -482,7 +483,10 @@ function buildPolicyBrief(
   savings: CostSavingsEstimate,
 ): PolicyBrief {
   const floorPppUsd = params.floorOverride ?? GLOBAL_INCOME_FLOOR_PPP;
-  const coveragePct = (params.coverage * 100).toFixed(0);
+  // Small pilots (e.g. 2,000 of 84M people) would otherwise print as "0%".
+  const coverageRaw = params.coverage * 100;
+  const coveragePct =
+    coverageRaw >= 1 || coverageRaw === 0 ? coverageRaw.toFixed(0) : Number(coverageRaw.toPrecision(2)).toString();
   const targetLabel = targetGroupLabel(params.targetGroup);
 
   const title = `Economic Impact Analysis: Basic Income Program — ${country.name}`;

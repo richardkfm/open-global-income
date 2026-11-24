@@ -27,12 +27,14 @@ const REPO_URL = 'https://github.com/richardkfm/open-global-income';
 export interface MethodologyData {
   dataVersion: string;
   countryCount: number;
+  /** Human-readable list of countries with sub-national data, e.g. "Kenya (47 regions), Germany (16 regions)" */
+  subnationalSummary: string;
 }
 
 export function renderMethodology(data: MethodologyData): string {
   const citation =
     `Open Global Income v${packageVersion}, ruleset ${RULESET_VERSION}, ` +
-    `data snapshot ${data.dataVersion} (World Bank, ILO, IMF). ` +
+    `data snapshot ${data.dataVersion} (World Bank, ILO). ` +
     `Open-source basic income calculation infrastructure. ${REPO_URL}`;
 
   const content = `
@@ -217,13 +219,13 @@ annualCost   = recipients × monthlyAmount × 12       (PPP-USD)
   <section class="site-section" id="data-sources">
     <h2>8. Data sources</h2>
     <p class="section-lede">
-      ${data.countryCount} countries, 17+ indicators each, current snapshot <strong>${escapeHtml(data.dataVersion)}</strong>:
+      ${data.countryCount} countries, 22 indicators each (18 World Bank + 4 ILO), current snapshot <strong>${escapeHtml(data.dataVersion)}</strong>:
     </p>
     <ul class="assumption-list">
       <li><strong>World Bank</strong> — GDP, GNI, PPP conversion factors, Gini, population, poverty headcounts, fiscal and labor indicators (World Development Indicators API)</li>
       <li><strong>ILO</strong> — social protection coverage and expenditure (Social Protection Data Dashboard)</li>
-      <li><strong>IMF</strong> — tax revenue breakdowns (Government Finance Statistics)</li>
-      <li><strong>National statistics bureaus</strong> — sub-national cost-of-living indices (currently Kenya, 47 counties)</li>
+      <li><strong>IMF</strong> — tax revenue breakdowns (Government Finance Statistics) — importer wired, no country values populated yet</li>
+      <li><strong>National statistics bureaus</strong> — sub-national cost-of-living indices (currently ${escapeHtml(data.subnationalSummary)})</li>
     </ul>
     <p class="text-sm text-muted">
       Snapshots are versioned and checked into the repository, so any historical figure can be

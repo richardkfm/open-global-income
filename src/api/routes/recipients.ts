@@ -6,6 +6,8 @@ import {
   updateRecipient,
   findByAccountHash,
 } from '../../db/recipients-db.js';
+import { getCountryByCode } from '../../data/loader.js';
+import { getPilotById } from '../../db/pilots-db.js';
 import { parsePagination, buildPaginationMeta } from '../pagination.js';
 import { recipientsToCsv } from '../../core/recipient-export.js';
 import { getIdentityProvider, listIdentityProviders } from '../../identity/providers/registry.js';
@@ -42,6 +44,22 @@ export const recipientsRoute: FastifyPluginAsync = async (app) => {
       });
     }
 
+    if (!getCountryByCode(countryCode.trim().toUpperCase())) {
+      return reply.status(404).send({
+        ok: false,
+        error: { code: 'COUNTRY_NOT_FOUND', message: `No data for country '${countryCode}'` },
+      });
+    }
+
+    if (pilotId !== undefined && pilotId !== null) {
+      if (typeof pilotId !== 'string' || !getPilotById(pilotId)) {
+        return reply.status(404).send({
+          ok: false,
+          error: { code: 'NOT_FOUND', message: `Pilot '${String(pilotId)}' not found` },
+        });
+      }
+    }
+
     if (paymentMethod !== undefined && !VALID_PAYMENT_METHODS.includes(paymentMethod as PaymentMethod)) {
       return reply.status(400).send({
         ok: false,
@@ -67,7 +85,7 @@ export const recipientsRoute: FastifyPluginAsync = async (app) => {
       }
     }
 
-    const apiKeyId = (request as { apiKeyId?: string }).apiKeyId;
+    const apiKeyId = request.apiKey?.id;
 
     const recipient = createRecipient({
       countryCode: countryCode.toUpperCase(),

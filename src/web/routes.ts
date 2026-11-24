@@ -98,6 +98,16 @@ function formatMonthlyLocal(country: Country, amountLocal: number): string {
     : `${Math.round(amountLocal).toLocaleString('en-US')} (local currency)`;
 }
 
+/** "Kenya (47 regions), Germany (16 regions), …" — derived from regions.json so the methodology page never goes stale. */
+function subnationalSummary(): string {
+  const counts = new Map<string, number>();
+  for (const r of getAllRegions()) counts.set(r.countryCode, (counts.get(r.countryCode) ?? 0) + 1);
+  if (counts.size === 0) return 'none';
+  return [...counts.entries()]
+    .map(([code, n]) => `${getCountryByCode(code)?.name ?? code} (${n} regions)`)
+    .join(', ');
+}
+
 function countryOptions(): Array<{ code: string; name: string }> {
   return getAllCountries()
     .map((c) => ({ code: c.code, name: c.name }))
@@ -459,6 +469,9 @@ export const webRoutes: FastifyPluginAsync = async (app) => {
         gdpPerCapitaPppUsd: country.stats.gdpPerCapitaPppUsd,
         povertyRatePercent:
           povertyLine.headcountRatioPercent ?? country.stats.povertyHeadcountRatio ?? null,
+        povertyRateIsExtremeFallback:
+          povertyLine.headcountRatioPercent == null &&
+          country.stats.povertyHeadcountRatio != null,
         povertyLineLabel: povertyLine.label,
         monthlyLocalFormatted: formatMonthlyLocal(country, entitlement.localCurrencyPerMonth),
         universalAnnualPppUsd: universal.simulation.cost.annualPppUsd,
@@ -487,6 +500,7 @@ export const webRoutes: FastifyPluginAsync = async (app) => {
       renderMethodology({
         dataVersion: getDataVersion(),
         countryCount: getAllCountries().length,
+        subnationalSummary: subnationalSummary(),
       }),
     );
   });

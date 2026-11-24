@@ -69,6 +69,9 @@ export const impactRoute: FastifyPluginAsync = async (app) => {
     let simulation;
     let country;
     let resolvedSimulationId: string | null = simulationId;
+    // A saved simulation's own parameters win over body defaults — otherwise the
+    // brief labels a saved 0.0024%-coverage pilot as "20% coverage".
+    let savedParams: Partial<Omit<ImpactParameters, 'simulationId' | 'country'>> = {};
 
     if (simulationId) {
       const saved = getSimulationById(simulationId);
@@ -80,6 +83,12 @@ export const impactRoute: FastifyPluginAsync = async (app) => {
         return reply.status(404).send({ ok: false, error: { code: 'COUNTRY_NOT_FOUND', message: `Country data not found for '${saved.countryCode}'` } });
       }
       simulation = saved.results;
+      savedParams = {
+        coverage: saved.parameters.coverage,
+        targetGroup: saved.parameters.targetGroup,
+        durationMonths: saved.parameters.durationMonths,
+        floorOverride: saved.parameters.adjustments?.floorOverride ?? null,
+      };
     } else {
       if (!countryCode) {
         return reply.status(400).send({ ok: false, error: { code: 'MISSING_PARAMETER', message: "Either 'simulationId' or 'country' is required" } });
@@ -104,6 +113,7 @@ export const impactRoute: FastifyPluginAsync = async (app) => {
 
     const impactParams: ImpactParameters = {
       ...paramResult.params,
+      ...savedParams,
       country: country.code,
       simulationId: resolvedSimulationId,
     };
@@ -131,6 +141,9 @@ export const impactRoute: FastifyPluginAsync = async (app) => {
     let simulation;
     let country;
     let resolvedSimulationId: string | null = simulationId;
+    // A saved simulation's own parameters win over body defaults — otherwise the
+    // brief labels a saved 0.0024%-coverage pilot as "20% coverage".
+    let savedParams: Partial<Omit<ImpactParameters, 'simulationId' | 'country'>> = {};
 
     if (simulationId) {
       const saved = getSimulationById(simulationId);
@@ -142,6 +155,12 @@ export const impactRoute: FastifyPluginAsync = async (app) => {
         return reply.status(404).send({ ok: false, error: { code: 'COUNTRY_NOT_FOUND', message: `Country data not found for '${saved.countryCode}'` } });
       }
       simulation = saved.results;
+      savedParams = {
+        coverage: saved.parameters.coverage,
+        targetGroup: saved.parameters.targetGroup,
+        durationMonths: saved.parameters.durationMonths,
+        floorOverride: saved.parameters.adjustments?.floorOverride ?? null,
+      };
     } else {
       if (!countryCode) {
         return reply.status(400).send({ ok: false, error: { code: 'MISSING_PARAMETER', message: "Either 'simulationId' or 'country' is required" } });
@@ -166,11 +185,12 @@ export const impactRoute: FastifyPluginAsync = async (app) => {
 
     const impactParams: ImpactParameters = {
       ...paramResult.params,
+      ...savedParams,
       country: country.code,
       simulationId: resolvedSimulationId,
     };
 
-    const apiKeyId = (request as unknown as { apiKeyId?: string }).apiKeyId ?? null;
+    const apiKeyId = request.apiKey?.id ?? null;
     const result = calculateImpactAnalysis(country, simulation, impactParams, getDataVersion());
     const saved = saveImpactAnalysis(
       name,
@@ -250,6 +270,9 @@ export const impactRoute: FastifyPluginAsync = async (app) => {
       let simulation;
       let country;
       let resolvedSimulationId: string | null = simulationId;
+      // A saved simulation's own parameters win over body defaults — otherwise the
+      // brief labels a saved 0.0024%-coverage pilot as "20% coverage".
+      let savedParams: Partial<Omit<ImpactParameters, 'simulationId' | 'country'>> = {};
 
       if (simulationId) {
         const saved = getSimulationById(simulationId);
@@ -261,6 +284,12 @@ export const impactRoute: FastifyPluginAsync = async (app) => {
           return reply.status(404).send({ ok: false, error: { code: 'COUNTRY_NOT_FOUND', message: `Country data not found for '${saved.countryCode}'` } });
         }
         simulation = saved.results;
+        savedParams = {
+          coverage: saved.parameters.coverage,
+          targetGroup: saved.parameters.targetGroup,
+          durationMonths: saved.parameters.durationMonths,
+          floorOverride: saved.parameters.adjustments?.floorOverride ?? null,
+        };
       } else {
         if (!countryCode) {
           return reply.status(400).send({ ok: false, error: { code: 'MISSING_PARAMETER', message: "Either 'simulationId' or 'country' is required" } });
@@ -285,6 +314,7 @@ export const impactRoute: FastifyPluginAsync = async (app) => {
 
       const impactParams: ImpactParameters = {
         ...paramResult.params,
+        ...savedParams,
         country: country.code,
         simulationId: resolvedSimulationId,
       };
