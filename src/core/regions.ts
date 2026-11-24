@@ -15,6 +15,17 @@ export function buildRegionAdjustedCountry(country: Country, region: Region): Co
       ...country.stats,
       pppConversionFactor: country.stats.pppConversionFactor * region.stats.costOfLivingIndex,
       population: region.stats.population,
+      // The survey median is in national currency. Scale it with the same
+      // cost-of-living index so its PPP-USD value (median / ppp factor) stays
+      // the national figure — otherwise the regional adjustment cancels out
+      // and every Bundesland would be paid exactly the national euro amount.
+      medianIncome:
+        country.stats.medianIncome?.medianAnnualLcu != null
+          ? {
+              ...country.stats.medianIncome,
+              medianAnnualLcu: country.stats.medianIncome.medianAnnualLcu * region.stats.costOfLivingIndex,
+            }
+          : country.stats.medianIncome,
     },
   };
 }

@@ -51,7 +51,10 @@ describe('simulation annual vs total cost', () => {
   it('short programs: annual equals total (cost falls within one year)', () => {
     const r6 = calculateSimulation(de, { ...base, durationMonths: 6 }, getDataVersion());
     expect(r6.simulation.cost.annualPppUsd).toBe(r6.simulation.cost.totalPppUsd);
-    expect(r6.simulation.cost.annualPppUsd).toBeCloseTo(r6.simulation.recipientCount * 210 * 6, 0);
+    expect(r6.simulation.cost.annualPppUsd).toBeCloseTo(
+      r6.simulation.recipientCount * r6.simulation.entitlementPerPerson.pppUsdPerMonth * 6,
+      -2,
+    );
   });
 });
 
@@ -292,10 +295,13 @@ describe('admin translation keys', () => {
 
 describe('public site copy', () => {
   it('compare page marks the extreme-poverty fallback instead of presenting it as the country line', async () => {
-    const res = await app.inject({ method: 'GET', url: '/compare?c=DE&c=FR' });
+    // Brazil has no survey at its $6.85/day line, so its $2.15/day rate is shown and starred;
+    // Germany now carries the Eurostat at-risk-of-poverty rate at its own (60% of median) line.
+    const res = await app.inject({ method: 'GET', url: '/compare?c=DE&c=BR' });
     expect(res.statusCode).toBe(200);
     expect(res.body).toContain('$2.15/day extreme-poverty rate shown');
-    expect(res.body).toMatch(/0\.1%<span class="text-muted">\*<\/span>/);
+    expect(res.body).toMatch(/4\.6%<span class="text-muted">\*<\/span>/);
+    expect(res.body).toContain('16.1%');
   });
 
   it('methodology lists every country with sub-national data', async () => {

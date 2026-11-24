@@ -12,6 +12,8 @@
  *   - World Bank Open Data API (primary: GDP, GNI, PPP, Gini, 12 macro indicators)
  *   - ILO Social Protection Dashboard (social coverage, pension, child benefit)
  *   - IMF Government Finance Statistics (tax revenue breakdown by type)
+ *   - Eurostat EU-SILC / OECD IDD / World Bank PIP (median equivalised disposable
+ *     income for high-income countries → median-income.json, merged at load time)
  *
  * Design: ILO and IMF failures are non-fatal. If either source is unavailable,
  * the importer logs a warning and continues with World Bank data only.
@@ -26,6 +28,7 @@ import { transformCountries } from './worldbank/transformer.js';
 import { validateOutput } from './worldbank/validator.js';
 import { runIloImporter } from './ilo/importer.js';
 import { runImfImporter } from './imf/importer.js';
+import { fetchMedianIncome } from './median-income/importer.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -134,6 +137,17 @@ async function main(): Promise<void> {
 
   const outputPath = resolve(__dirname, wbConfig.output.path);
   writeFileSync(outputPath, JSON.stringify(output, null, 2) + '\n', 'utf-8');
+
+  // ── Step 5: Median income for high-income countries (non-fatal) ─────────
+  console.error('\n=== Median income (Eurostat / OECD / PIP) ===');
+  try {
+    const hic = mergedCountries.filter((c) => c.stats.incomeGroup === 'HIC').map((c) => c.code);
+    const snapshot = await fetchMedianIncome(hic);
+    writeFileSync(resolve(__dirname, 'median-income.json'), JSON.stringify(snapshot, null, 2) + '\n', 'utf-8');
+    console.error(`  ✓ Median income for ${Object.keys(snapshot.countries).length}/${hic.length} high-income countries.`);
+  } catch (err) {
+    console.error(`  WARNING: median-income import failed — keeping the existing median-income.json: ${err}`);
+  }
 
   console.error(`\n=== Done! ===`);
   console.error(`Wrote ${mergedCountries.length} countries to ${outputPath}`);

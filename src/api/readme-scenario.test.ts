@@ -44,7 +44,7 @@ describe('README pipeline scenario (Kenya, 20% coverage, 12 months)', () => {
     expect(data.pppUsdPerMonth).toBe(210);
     expect(Math.round(data.localCurrencyPerMonth)).toBe(10_368);
     expect(data.score).toBe(1);
-    expect(data.meta.rulesetVersion).toBe('v1');
+    expect(data.meta.rulesetVersion).toBe('v3');
   });
 
   it('3 · Simulation — POST /v1/simulate', async () => {

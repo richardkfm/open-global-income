@@ -55,7 +55,7 @@ Open Global Income is a stack. Each layer builds on the one below it. The lower 
 | Layer | Question it answers | Status |
 |-------|-------------------|--------|
 | **Data** | What are the economic facts? | Done — 49 countries, 18 World Bank indicators + 4 ILO social-protection indicators (IMF tax breakdown wired but unpopulated); sub-national data for Kenya (47 counties), Germany (16 Bundesländer), France (13 regions), Netherlands (12 provinces) — 88 regions |
-| **Calculation** | How much per person? How urgent is the need? | Done — Ruleset v1 active (v2 is a registry-published spec, not yet implemented — needs a UNDP HDI source); regional COL adjustments; local adequacy estimate reported alongside the $210 anchor (informational only) |
+| **Calculation** | How much per person? How urgent is the need? | Done — Ruleset v3 active: pays max($210 PPP global floor, local adequacy line); high-income adequacy = 60% of survey median equivalised disposable income (Eurostat / OECD). v1 superseded but reproducible; v2 is a registry-published spec, not yet implemented (needs a UNDP HDI source); regional COL adjustments |
 | **Simulation** | What will it cost to cover X% of the population? | Done — Phase 11; national + regional simulation |
 | **Distribution** | How does money reach people? | Done — Phase 12–13; Solana & EVM generate real unsigned txns; M-Pesa prepares a Daraja B2C instruction batch and SEPA an ISO 20022 pain.001 + Wise skeleton (non-custodial — operator executes; OGI stores no PII) |
 | **Evidence** | Is it working? Can we prove it? | Done — Phase 23; outcome recording, recipient/control cohorts, cross-program aggregates, CSV/JSON export. No randomization / significance testing / survey delivery yet |
@@ -65,7 +65,7 @@ Each layer is independently useful. A government can use just Data + Calculation
 
 ---
 
-## What's Built (v0.2.6)
+## What's Built (v0.3.0)
 
 The platform covers the full workflow from "how much per person?" through "where does the money come from?" to "what happens to poverty?" — with regional precision. Calculation, simulation, funding, and impact are production-ready. The distribution layer is non-custodial across all rails: crypto providers emit unsigned transactions, while the M-Pesa and SEPA connectors emit operator-executable instructions in the rails' native formats (Daraja B2C / ISO 20022 pain.001 + Wise) — OGI never moves funds, stores no recipient PII, and delegates identity/KYC to the executing provider. The recipient registry, evidence layer, and four concrete `IdentityProvider` connectors are built; experimental-design tooling is not.
 
@@ -150,7 +150,13 @@ The platform covers the full workflow from "how much per person?" through "where
 - Eighth funding mechanism — `international_solidarity_transfer` attributes the residual gap (after the seven domestic mechanisms hit realistic ceilings) to a labeled external transfer instead of an unlabeled shortfall
 - Implements Phases 1, 2, and 4 of [INCOME_FLOOR_PROPOSED_ANSWERS.md](./INCOME_FLOOR_PROPOSED_ANSWERS.md); Phases 3, 5, and 6 remain open
 
-**769 tests** across 41 suites. Typecheck clean. CI runs typecheck + test on every pull request and on pushes to `main` (`.github/workflows/ci.yml`).
+**Phase 29 — Ruleset v3: a floor that works in rich countries** ✅ (shipped v0.3.0)
+- Paid amount = max($210 PPP, local adequacy line). Low- and middle-income countries are unchanged; high-income countries are paid their at-risk-of-poverty line (Germany €1,444.55/month instead of €163.80). Need score unchanged. Spec: [RULESET_V3.md](./RULESET_V3.md)
+- Median equivalised disposable income importer (`src/data/median-income/`, `npm run data:update:median`): Eurostat EU-SILC → OECD IDD → World Bank PIP; snapshot in `src/data/median-income.json`, merged at load time, also supplies at-risk-of-poverty rates
+- Replaces the old HIC adequacy proxy (0.85 × Atlas GNI labelled PPP-USD); Singapore, with no survey, uses a calibrated GDP-PPP proxy
+- High-income funding gaps are shown as domestic gaps, never as international solidarity transfers
+
+**786 tests** across 43 suites. Typecheck clean. CI runs typecheck + test on every pull request and on pushes to `main` (`.github/workflows/ci.yml`).
 
 ---
 
@@ -166,11 +172,11 @@ Sub-national data covers Kenya (47 counties), Germany (16 Bundesländer), France
 
 ### Income Floor — remaining phases
 
-[INCOME_FLOOR_PROPOSED_ANSWERS.md](./INCOME_FLOOR_PROPOSED_ANSWERS.md) settled the dual-track design (the $210 PPP anchor stays the sole entitlement anchor; adequacy is reported alongside it, never substituted for it). Phases 1, 2, and 4 shipped in v0.2.4. Still open:
+[INCOME_FLOOR_PROPOSED_ANSWERS.md](./INCOME_FLOOR_PROPOSED_ANSWERS.md) proposed a dual-track design (adequacy reported alongside the $210 anchor, never paid). Phases 1, 2, and 4 shipped in v0.2.4. Its Row E was reversed in v0.3.0: ruleset v3 pays max($210, adequacy) — see [RULESET_V3.md](./RULESET_V3.md). Still open:
 
 - **Phase 3 — Household size (reporting only)** — add `avgHouseholdSize` to `CountryStats` from UN DESA, an OECD-modified equivalence-scale helper, and an "effective per-person adequacy in an average household" figure. The curation of 49 values is the slow part
 - **Phase 5 — Solidarity pool, donor view** — `src/core/solidarity.ts` sizing a global or regional pool with a pluggable GNI-proportional allocation key. The first concrete Federation-layer artifact
-- **Phase 6 — Ruleset v3 preview (gated, not committed)** — paying per-adult-equivalent rather than per-person, only if the evidence layer supports it, and only via the normal ruleset registry process
+- **Phase 6 — Per-adult-equivalent ruleset preview (gated, not committed; would be v4)** — paying per-adult-equivalent rather than per-person, only if the evidence layer supports it, and only via the normal ruleset registry process
 
 ### Evidence Layer — built (Phase 23), with rigor gaps remaining
 
@@ -291,7 +297,7 @@ Track where money goes. Verify it reaches recipients. Compare program efficiency
 - **API:** Fastify with OpenAPI/Swagger at `/docs`
 - **Database:** SQLite (default) / PostgreSQL (production)
 - **Admin UI:** Server-rendered HTML + htmx (no SPA)
-- **Testing:** Vitest — 769 tests across 41 suites
+- **Testing:** Vitest — 786 tests across 43 suites
 - **Metrics:** Prometheus via prom-client at `/metrics`
 - **CI:** GitHub Actions (`.github/workflows/ci.yml`) — `npm ci`, `npm run typecheck`, `npm test` on every pull request and on pushes to `main`. `npm run lint` and `npm run format:check` are **not** gated yet: both currently fail on pre-existing issues, so they are run manually until that debt is cleared
 
@@ -306,7 +312,8 @@ npm run lint         # ESLint
 npm run build        # Production build
 npm start            # Start production server
 npm run sdk:generate # Generate TypeScript client SDK
-npm run data:update  # Refresh World Bank data
+npm run data:update  # Refresh World Bank / ILO / IMF / median-income data
+npm run data:update:median  # Refresh only the Eurostat / OECD median incomes
 npm run db:migrate   # Run PostgreSQL migrations
 ```
 
@@ -333,15 +340,16 @@ src/
 
 | File | What it does |
 |------|-------------|
-| `src/core/rules.ts` | The entitlement formula — pure function, no side effects |
-| `src/core/rulesets.ts` | Registry of all formula versions — v1 (active, implemented), v2 (preview, spec only), stub v0 (deprecated) |
+| `src/core/rules.ts` | The entitlement formula (active v3 + `calculateEntitlementV1`) — pure functions, no side effects |
+| `src/core/rulesets.ts` | Registry of all formula versions — v3 (active), v1 (superseded, implemented), v2 (preview, spec only), stub v0 (deprecated) |
 | `src/core/constants.ts` | Named constants: income floor ($210), weights |
 | `src/core/simulations.ts` | Budget simulation math — pure function |
 | `src/core/funding.ts` | 8 funding mechanism calculators + recommended mix — pure functions |
 | `src/core/impact.ts` | 4-dimension economic impact analysis — pure functions |
 | `src/core/regions.ts` | Regional COL adjustment via "adjusted Country" pattern |
 | `src/core/poverty.ts` | Country-appropriate poverty-line ladder — pure functions |
-| `src/core/adequacy.ts` | Local adequacy estimate shown beside the $210 anchor — pure functions |
+| `src/core/adequacy.ts` | Local adequacy line — paid by v3 where above $210 — pure functions |
+| `src/data/median-income.json` | Survey median equivalised income for high-income countries (Eurostat / OECD), merged into country stats |
 | `src/data/countries.json` | Country snapshot — 49 countries, World Bank + ILO indicators |
 | `src/data/regions.json` | Sub-national data — 88 regions across KE, DE, FR, NL |
 | `src/api/server.ts` | Fastify server factory |

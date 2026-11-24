@@ -1,7 +1,7 @@
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import type { Country, Region } from '../core/types.js';
+import type { Country, MedianIncomeStat, Region } from '../core/types.js';
 import type { FxSnapshot } from '../core/fx.js';
 
 interface RegionDataFile {
@@ -22,11 +22,41 @@ const __dirname = dirname(__filename);
 
 let cached: CountryDataFile | null = null;
 
+interface MedianIncomeFile {
+  countries: Record<
+    string,
+    MedianIncomeStat & { atRiskOfPovertyRatePercent: number | null; povertyRateYear: number | null }
+  >;
+}
+
+/**
+ * Merge the median-income snapshot (src/data/median-income.json, written by
+ * `npm run data:update:median`) into each country's stats. The survey's own
+ * at-risk-of-poverty rate also fills `relativePovertyHeadcountRatioPercent`
+ * when the country file has none, so high-income countries get a poverty
+ * baseline at the same 60%-of-median line the adequacy figure uses.
+ */
+function mergeMedianIncome(data: CountryDataFile): void {
+  const filePath = join(__dirname, 'median-income.json');
+  if (!existsSync(filePath)) return;
+  const file = JSON.parse(readFileSync(filePath, 'utf-8')) as MedianIncomeFile;
+  for (const country of data.countries) {
+    const rec = file.countries[country.code];
+    if (!rec) continue;
+    const { atRiskOfPovertyRatePercent, povertyRateYear: _year, ...median } = rec;
+    country.stats.medianIncome = median;
+    if (country.stats.relativePovertyHeadcountRatioPercent == null && atRiskOfPovertyRatePercent != null) {
+      country.stats.relativePovertyHeadcountRatioPercent = atRiskOfPovertyRatePercent;
+    }
+  }
+}
+
 function load(): CountryDataFile {
   if (cached) return cached;
   const filePath = join(__dirname, 'countries.json');
   const raw = readFileSync(filePath, 'utf-8');
   cached = JSON.parse(raw) as CountryDataFile;
+  mergeMedianIncome(cached);
   return cached;
 }
 

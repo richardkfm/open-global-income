@@ -74,7 +74,7 @@ export function buildSummaryParagraph(data: CountryFactSheetData): string {
   const poor = impact.povertyReduction.extremePoorBaseline;
 
   let sentence =
-    `A universal basic income of $${universal.simulation.entitlementPerPerson.pppUsdPerMonth} per month ` +
+    `A universal basic income of $${Math.round(universal.simulation.entitlementPerPerson.pppUsdPerMonth)} per month ` +
     `(PPP; ${data.monthlyLocalFormatted} in local currency) for all ${formatCompact(country.stats.population)} ` +
     `people in ${country.name} would cost $${formatCompact(cost.annualPppUsd)} PPP per year — ` +
     `${cost.asPercentOfGdp.toFixed(1)}% of GDP`;
@@ -253,12 +253,17 @@ function fundingSection(funding: FundingScenarioResult, countryCode: string): st
           ? `; the remaining <strong>${formatPercent(solidarity.coversPercentOfUbiCost)}</strong>
       (≈$${formatCompact(solidarity.annualRevenuePppUsd)}/year) is shown below as a pooled
       international solidarity transfer rather than an unlabeled gap`
-          : ''
+          : funding.gapPppUsd > 0 && funding.domesticCoveragePercent < 99.5
+            ? `; the remaining <strong>${formatPercent(100 - funding.domesticCoveragePercent)}</strong>
+      (≈$${formatCompact(funding.gapPppUsd)}/year) is an unfunded gap that would need higher rates,
+      other revenue or a narrower program. High-income countries contribute to international
+      solidarity transfers rather than receive them`
+            : ''
       }.
       Adjust every rate in the <a href="/calculator?country=${escapeHtml(countryCode)}">calculator</a>.
     </p>
     ${
-      funding.domesticCoveragePercent < LOW_DOMESTIC_COVERAGE_THRESHOLD
+      funding.domesticCoveragePercent < LOW_DOMESTIC_COVERAGE_THRESHOLD && solidarity
         ? `<div class="alert alert-info">
       This isn't a tax-rate problem: universal coverage for ${escapeHtml(funding.country.name)} costs
       $${formatCompact(funding.ubiCost.annualPppUsd)}/year, ${formatPercent(funding.ubiCost.asPercentOfGdp)} of
@@ -288,13 +293,17 @@ function formulaDrawer(data: CountryFactSheetData): string {
   return `<details class="drawer">
     <summary class="drawer-summary">How these figures are calculated — with ${escapeHtml(data.country.name)}'s numbers plugged in</summary>
     <div class="drawer-body">
-      <div class="drawer-title">Entitlement (Ruleset v1)</div>
+      <div class="drawer-title">Entitlement (Ruleset ${escapeHtml(data.entitlement.meta.rulesetVersion)})</div>
       <p class="text-sm">
-        The floor is fixed at <strong>$${GLOBAL_INCOME_FLOOR_PPP} PPP-USD/month</strong> for everyone
-        (from the World Bank $6.85/day upper-middle-income poverty line). Converting to local currency:
+        Each person is paid the <strong>higher</strong> of the global floor
+        (<strong>$${GLOBAL_INCOME_FLOOR_PPP} PPP-USD/month</strong>, from the World Bank $6.85/day line) and
+        ${escapeHtml(data.country.name)}'s local adequacy line
+        (<strong>$${Math.round(data.entitlement.adequacyEstimate.monthlyPppUsd)}</strong> — ${escapeHtml(data.entitlement.adequacyEstimate.label)}).
+        Converting to local currency:
       </p>
       <p class="mono text-sm mt-1">
-        ${GLOBAL_INCOME_FLOOR_PPP} × ${s.pppConversionFactor} (PPP conversion factor) = ${formatNumber(data.entitlement.localCurrencyPerMonth, 'en-US', 2)} per month
+        max(${GLOBAL_INCOME_FLOOR_PPP}, ${Math.round(data.entitlement.adequacyEstimate.monthlyPppUsd)}) = ${formatNumber(data.entitlement.pppUsdPerMonth, 'en-US', 2)} PPP-USD<br>
+        ${formatNumber(data.entitlement.pppUsdPerMonth, 'en-US', 2)} × ${s.pppConversionFactor} (PPP conversion factor) = ${formatNumber(data.entitlement.localCurrencyPerMonth, 'en-US', 2)} per month
       </p>
       <div class="drawer-title mt-2">Need score</div>
       <p class="mono text-sm">
@@ -304,7 +313,7 @@ function formulaDrawer(data: CountryFactSheetData): string {
       </p>
       <div class="drawer-title mt-2">Universal annual cost</div>
       <p class="mono text-sm">
-        ${formatCompact(s.population)} people × $${GLOBAL_INCOME_FLOOR_PPP} × 12 months = $${formatCompact(data.universal.simulation.cost.annualPppUsd)} PPP<br>
+        ${formatCompact(s.population)} people × $${formatNumber(data.entitlement.pppUsdPerMonth, 'en-US', 2)} × 12 months = $${formatCompact(data.universal.simulation.cost.annualPppUsd)} PPP<br>
         ÷ PPP GDP ($${formatCompact(s.gdpPerCapitaPppUsd * s.population)}) = ${data.universal.simulation.cost.asPercentOfGdp.toFixed(1)}% of GDP
       </p>
       <p class="text-xs text-muted mt-1">Full derivations, constants and source code: <a href="/methodology">methodology</a>.</p>
@@ -390,8 +399,16 @@ export function renderCountryFactSheet(data: CountryFactSheetData): string {
   <div class="pull-quote">${escapeHtml(summary)}</div>
 
   <div class="grid grid-auto mb-2">
-    ${statTile(`$${universal.simulation.entitlementPerPerson.pppUsdPerMonth}`, 'Global anchor — per person / month (PPP-USD)', `${data.monthlyLocalFormatted} in local currency. Fixed everywhere for comparability.`)}
-    ${statTile(`$${data.entitlement.adequacyEstimate.monthlyPppUsd.toFixed(0)}`, `Local adequacy estimate (${data.country.name})`, data.entitlement.adequacyEstimate.label)}
+    ${statTile(
+      `$${Math.round(universal.simulation.entitlementPerPerson.pppUsdPerMonth)}`,
+      'Basic income — per person / month (PPP-USD)',
+      `${data.monthlyLocalFormatted} in local currency. ${
+        data.entitlement.floor?.basis === 'local_adequacy'
+          ? `${data.country.name}'s adequacy line, because it is above the $${GLOBAL_INCOME_FLOOR_PPP} global floor.`
+          : `The $${GLOBAL_INCOME_FLOOR_PPP} global floor — the minimum paid everywhere.`
+      }`,
+    )}
+    ${statTile(`$${data.entitlement.adequacyEstimate.monthlyPppUsd.toFixed(0)}`, `Local adequacy line (${data.country.name})`, data.entitlement.adequacyEstimate.label)}
     ${statTile(`$${formatCompact(cost.annualPppUsd)}`, 'Universal program, annual cost (PPP)', `${formatCompact(universal.simulation.recipientCount)} recipients`)}
     ${statTile(formatPercent(cost.asPercentOfGdp), 'Share of GDP (PPP)', 'Cost and GDP in matching PPP units')}
     ${statTile(
@@ -402,11 +419,12 @@ export function renderCountryFactSheet(data: CountryFactSheetData): string {
     ${statTile(povertyTileValue, countryLineRate != null ? 'Poverty rate (country line)' : 'Poverty rate (extreme line)', povertyTileNote)}
   </div>
   <p class="text-sm text-muted mb-2">
-    Two different numbers, on purpose: the <strong>global anchor</strong> is fixed everywhere so
-    programs stay comparable; the <strong>local adequacy estimate</strong> answers "enough to live on
-    here" and is informational only — it is never used to compute the entitlement above. See
-    <a href="/methodology#adequacy">Methodology</a> for why, and set it as a suggested override in the
-    <a href="/calculator?country=${escapeHtml(country.code)}">calculator</a>.
+    Each person is paid the <strong>higher</strong> of two numbers: the <strong>global floor</strong>
+    ($${GLOBAL_INCOME_FLOOR_PPP} PPP-USD, the minimum everywhere) and the <strong>local adequacy line</strong>
+    — "enough to live on here". In high-income countries the adequacy line is 60% of median disposable
+    income from official household surveys, so the amount works as a basic income there; elsewhere the
+    global floor is higher and is paid. See <a href="/methodology#adequacy">Methodology</a>, or try other
+    amounts in the <a href="/calculator?country=${escapeHtml(country.code)}">calculator</a>.
   </p>
 
   ${fiscalChart(data)}
@@ -414,7 +432,7 @@ export function renderCountryFactSheet(data: CountryFactSheetData): string {
   <section class="site-section" id="options">
     <h2>Universal isn't the only option</h2>
     <p class="section-lede">
-      The same $${GLOBAL_INCOME_FLOOR_PPP}/month floor at different targeting levels — how policy makers
+      The same $${Math.round(data.entitlement.pppUsdPerMonth)}/month amount at different targeting levels — how policy makers
       typically phase programs in. Model any coverage rate, duration or transfer amount in the
       <a href="/calculator?country=${escapeHtml(country.code)}">calculator</a>.
     </p>

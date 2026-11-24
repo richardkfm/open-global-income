@@ -130,19 +130,27 @@ function numberField(
 }
 
 /**
- * "Use local adequacy estimate" one-click override affordance (row C of
- * INCOME_FLOOR_PROPOSED_ANSWERS.md): sets the amount field to the country's
- * local adequacy line and lets the existing htmx live-update handle the rest.
- * The default stays the $210 anchor; this is a suggestion, not a change to it.
+ * One-click amount presets: the country's local adequacy line and the $210
+ * global floor. The default amount is the active ruleset's (v3: the higher of
+ * the two); a preset is offered only when it differs from the current amount.
  */
 function adequacySuggestion(data: CalculatorData): string {
   const adequacy = data.result?.simulation.simulation.costAtLocalAdequacyLine;
   if (!adequacy) return '';
-  const value = Math.round(adequacy.monthlyPppUsd);
-  return `<button type="button" class="btn btn-xs btn-secondary mt-1"
+  const current = Math.round(data.form.monthlyAmount);
+  const presets: Array<[number, string]> = [
+    [Math.round(adequacy.monthlyPppUsd), 'Use local adequacy line'],
+    [GLOBAL_INCOME_FLOOR_PPP, 'Use global floor'],
+  ];
+  return presets
+    .filter(([value]) => value !== current)
+    .map(
+      ([value, label]) => `<button type="button" class="btn btn-xs btn-secondary mt-1"
     onclick="var el=document.getElementById('amount'); el.value=${value}; el.dispatchEvent(new Event('change', {bubbles:true}));">
-    Use local adequacy estimate ($${value}/month)
-  </button>`;
+    ${label} ($${value}/month)
+  </button>`,
+    )
+    .join(' ');
 }
 
 function renderForm(data: CalculatorData): string {
@@ -185,7 +193,7 @@ function renderForm(data: CalculatorData): string {
         ${numberField('amount', 'Monthly amount (PPP-USD)', f.monthlyAmount, {
           min: 1,
           step: 1,
-          help: `Default $${GLOBAL_INCOME_FLOOR_PPP} = the global floor`,
+          help: `Default = the higher of the $${GLOBAL_INCOME_FLOOR_PPP} global floor and the country's adequacy line`,
           suggestion: adequacySuggestion(data),
         })}
       </div>

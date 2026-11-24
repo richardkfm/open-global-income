@@ -156,7 +156,7 @@ const STAGES = [
   {
     title: 'CALCULATION',
     q: 'How much per person?',
-    lines: ['$210 PPP / month', '= KES 10,368', 'need score 1.00', 'ruleset v1'],
+    lines: ['$210 PPP / month', '= KES 10,368', 'need score 1.00', 'ruleset v3'],
     call: 'GET /v1/income/calc?country=KE',
   },
   {
@@ -245,7 +245,7 @@ ${keyframes.join('\n')}
 <text x="${x0}" y="44" font-family="${MONO}" font-size="16" font-weight="700" fill="${C.text}">One study, end to end — Kenya</text>
 <text x="${x0}" y="68" font-family="${SANS}" font-size="12.5" fill="${C.muted}">Every step is a plain API call, so the same scenario can be scripted, re-run and checked in a test.</text>
 ${parts.join('\n')}
-<text x="${W / 2}" y="${H - 22}" text-anchor="middle" font-family="${SANS}" font-size="11" fill="${C.muted}">Kenya figures: committed seeded snapshot (worldbank-2023), ruleset v1. Evidence values are illustrative, not pilot results.</text>
+<text x="${W / 2}" y="${H - 22}" text-anchor="middle" font-family="${SANS}" font-size="11" fill="${C.muted}">Kenya figures: committed seeded snapshot (worldbank-2023), ruleset v3. Evidence values are illustrative, not pilot results.</text>
 </svg>
 `;
 }

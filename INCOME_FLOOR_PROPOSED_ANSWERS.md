@@ -1,6 +1,11 @@
 # Proposed Answers & Plan: The Income Floor Open Questions
 
-**Status:** Proposal — nothing here is implemented or ratified.
+**Status:** Phases 1, 2 and 4 shipped in v0.2.4. **Row E was reversed in v0.3.0:** the maintainer
+decided on 2026-11-24 that a flat $210 payment does not work as a basic income in high-income
+countries (≈ €164 a month in Germany). Ruleset v3 now *pays* max($210, local adequacy line), and the
+high-income adequacy line is 60% of the survey median equivalised disposable income (Eurostat /
+OECD) instead of a GNI proxy. The need score stays anchor-based. See [RULESET_V3.md](./RULESET_V3.md).
+The text below is kept as the historical proposal.
 **Companion to:** [INCOME_FLOOR_OPEN_QUESTIONS.md](./INCOME_FLOOR_OPEN_QUESTIONS.md), which captures the
 original discussion. This document proposes a concrete answer for each open row (A–E) and a phased
 implementation plan. Row letters below refer to the gap table in §6 of that document.

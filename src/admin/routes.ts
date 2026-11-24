@@ -62,6 +62,22 @@ import {
   SESSION_TTL_REMEMBER,
 } from '../db/admin-auth.js';
 import type { SimulationParameters, TargetGroup, TargetingRules, PilotStatus, ImpactParameters } from '../core/types.js';
+import { resolveEntitlementFloor } from '../core/rules.js';
+
+/**
+ * Per-recipient monthly amount (PPP-USD) for a pilot's audit export: the
+ * linked simulation's amount when there is one, otherwise the active
+ * ruleset's amount for the pilot's country (v3: max of anchor and adequacy).
+ */
+function pilotEntitlementPppUsd(pilot: { simulationId: string | null; countryCode: string }): number {
+  const sim = pilot.simulationId ? getSimulationById(pilot.simulationId) : undefined;
+  if (sim) return sim.results.simulation.entitlementPerPerson.pppUsdPerMonth;
+  const country = getCountryByCode(pilot.countryCode);
+  return country
+    ? Math.round(resolveEntitlementFloor(country).pppUsdPerMonth * 100) / 100
+    : GLOBAL_INCOME_FLOOR_PPP;
+}
+
 
 // ---------------------------------------------------------------------------
 // Brute-force protection — in-memory per-IP attempt tracker
@@ -735,7 +751,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
         rulesetVersion: activeRuleset.version,
         dataVersion,
         formulaDescription: activeRuleset.description,
-        entitlementPerRecipient: { pppUsd: GLOBAL_INCOME_FLOOR_PPP },
+        entitlementPerRecipient: { pppUsd: pilotEntitlementPppUsd(pilot) },
       },
       recipients: {
         totalEnrolled: pilotRecipients.length,

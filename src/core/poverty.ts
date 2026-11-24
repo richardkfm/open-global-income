@@ -42,12 +42,18 @@ export const POVERTY_LINE_LMIC_DAILY_PPP_USD = 3.65;
 export const POVERTY_LINE_UMIC_DAILY_PPP_USD = 6.85;
 
 /**
- * Ratio of per-capita median income to per-capita mean income, used to
- * approximate median from GNI per capita when microdata is unavailable.
- * Cross-country OECD data shows median/mean ≈ 0.80–0.90 for typical
- * inequality levels; 0.85 is a conservative central estimate.
+ * Proxy for high-income countries with no survey median (e.g. Singapore):
+ * median equivalised disposable income ≈ this share of GDP per capita (PPP).
+ *
+ * Calibrated as the median, across the high-income countries that do have a
+ * Eurostat / OECD survey median in src/data/median-income.json, of
+ * (median equivalised disposable income in PPP-USD) / (GDP per capita PPP).
+ * A test recomputes it from the snapshot and fails if it drifts.
+ *
+ * This replaces the earlier proxy 0.85 × GNI per capita (Atlas, nominal USD),
+ * which mixed nominal dollars into a PPP-USD figure and overstated the line.
  */
-const MEDIAN_TO_MEAN_RATIO = 0.85;
+export const MEDIAN_INCOME_TO_GDP_PPP_RATIO = 0.6;
 
 /**
  * The fraction of median income used to define the relative at-risk-of
@@ -108,13 +114,56 @@ export function dailyToMonthlyPppUsd(dailyPppUsd: number): number {
   return dailyPppUsd * 30;
 }
 
+/** Annual median disposable income in PPP-USD, with how it was obtained. */
+export interface MedianIncomeEstimate {
+  annualPppUsd: number;
+  /** survey — equivalised survey median; survey_per_capita — PIP per-capita median; proxy — share of GDP per capita */
+  method: 'survey' | 'survey_per_capita' | 'proxy';
+  /** Short provenance, e.g. "Eurostat EU-SILC 2025" */
+  sourceShort: string;
+  sourceLabel: string;
+}
+
 /**
- * Estimate per-capita median annual income in USD from GNI per capita
- * using a median-to-mean ratio. This is a rough proxy used only when
- * country microdata is unavailable. It returns annual USD (Atlas method).
+ * Median disposable income in PPP-USD per year.
+ *
+ * Survey medians in national currency are divided by the country's PPP
+ * conversion factor (LCU per international $), so the result is in the same
+ * PPP-USD unit as the $210 anchor and converts back to exactly the survey
+ * figure in local currency. Falls back to a GDP-per-capita proxy.
  */
-function estimateAnnualMedianIncomeUsd(gniPerCapitaUsd: number): number {
-  return gniPerCapitaUsd * MEDIAN_TO_MEAN_RATIO;
+export function estimateMedianIncome(country: Country): MedianIncomeEstimate {
+  const stats = country.stats;
+  const m = stats.medianIncome;
+  if (m?.medianAnnualLcu != null && stats.pppConversionFactor > 0) {
+    return {
+      annualPppUsd: m.medianAnnualLcu / stats.pppConversionFactor,
+      method: 'survey',
+      sourceShort: `${m.source === 'eurostat' ? 'Eurostat EU-SILC' : 'OECD IDD'} ${m.referenceYear}`,
+      sourceLabel: m.sourceLabel,
+    };
+  }
+  if (m?.medianAnnualPppUsd != null) {
+    return {
+      annualPppUsd: m.medianAnnualPppUsd,
+      method: 'survey_per_capita',
+      sourceShort: `World Bank PIP ${m.referenceYear}`,
+      sourceLabel: m.sourceLabel,
+    };
+  }
+  // Records without PPP GDP fall back to GNI per capita — rough, but never NaN.
+  const base =
+    Number.isFinite(stats.gdpPerCapitaPppUsd) && stats.gdpPerCapitaPppUsd > 0
+      ? stats.gdpPerCapitaPppUsd
+      : stats.gniPerCapitaUsd;
+  return {
+    annualPppUsd: base * MEDIAN_INCOME_TO_GDP_PPP_RATIO,
+    method: 'proxy',
+    sourceShort: 'estimate',
+    sourceLabel:
+      `No survey median available — estimated as ${MEDIAN_INCOME_TO_GDP_PPP_RATIO} × GDP per capita (PPP), ` +
+      'the ratio observed across high-income countries that have Eurostat / OECD survey data.',
+  };
 }
 
 /**
@@ -141,17 +190,23 @@ export function resolveCountryPovertyLine(country: Country): CountryPovertyLine 
 
   // HIC → relative poverty (60% of median)
   if (incomeGroup === 'HIC') {
-    const medianAnnual = estimateAnnualMedianIncomeUsd(stats.gniPerCapitaUsd);
-    const monthlyLine = (medianAnnual * RELATIVE_POVERTY_MEDIAN_FRACTION) / 12;
+    const median = estimateMedianIncome(country);
+    const monthlyLine = (median.annualPppUsd * RELATIVE_POVERTY_MEDIAN_FRACTION) / 12;
+    const headcount = stats.relativePovertyHeadcountRatioPercent ?? null;
+    const what =
+      median.method === 'survey'
+        ? `median equivalised disposable income (${median.sourceShort})`
+        : median.method === 'survey_per_capita'
+          ? `median income per capita (${median.sourceShort})`
+          : 'estimated median income';
     return {
       monthlyPppUsd: Math.round(monthlyLine * 100) / 100,
       dailyPppUsd: Math.round((monthlyLine / 30) * 100) / 100,
       basis: 'relative_median',
-      label: `60% of estimated median income — ≈ $${monthlyLine.toFixed(0)} PPP-USD/month`,
-      source:
-        'OECD / Eurostat at-risk-of-poverty standard (60% of median equivalised disposable income). Median approximated from GNI per capita using a 0.85 median-to-mean ratio — replace with survey microdata when available.',
-      headcountRatioPercent: stats.relativePovertyHeadcountRatioPercent ?? null,
-      dataQuality: stats.relativePovertyHeadcountRatioPercent != null ? 'high' : 'low',
+      label: `60% of ${what} — ≈ $${monthlyLine.toFixed(0)} PPP-USD/month`,
+      source: `EU / OECD at-risk-of-poverty standard (60% of median equivalised disposable income). ${median.sourceLabel}`,
+      headcountRatioPercent: headcount,
+      dataQuality: median.method === 'survey' ? (headcount != null ? 'high' : 'medium') : 'low',
     };
   }
 
@@ -217,7 +272,7 @@ export function povertyLineLadder(country: Country): PovertyLineLadderEntry[] {
   const selected = resolveCountryPovertyLine(country);
   const stats = country.stats;
 
-  const medianMonthly = (estimateAnnualMedianIncomeUsd(stats.gniPerCapitaUsd) * RELATIVE_POVERTY_MEDIAN_FRACTION) / 12;
+  const medianMonthly = (estimateMedianIncome(country).annualPppUsd * RELATIVE_POVERTY_MEDIAN_FRACTION) / 12;
 
   const ladder: PovertyLineLadderEntry[] = [
     {

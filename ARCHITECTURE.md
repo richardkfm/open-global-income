@@ -25,7 +25,8 @@ open-global-income/
 ├── scripts/             SDK generation and tooling
 ├── sdk/                 Generated TypeScript client
 ├── ARCHITECTURE.md      This file
-├── RULESET_V1.md        Formula specification for Ruleset v1
+├── RULESET_V1.md        Formula specification for Ruleset v1 (superseded)
+├── RULESET_V3.md        Formula specification for Ruleset v3 (active)
 ├── CONTRIBUTING.md      Contributor guide
 └── CHANGELOG.md         Version history
 ```
@@ -69,8 +70,8 @@ Pure domain logic. No I/O, no side effects, no framework dependencies.
 |------|---------|
 | `types.ts` | All shared TypeScript types and interfaces (`Country`, `CountryStats`, `GlobalIncomeEntitlement`, `RulesetInfo`, `IncomeGroup`, `Pilot`, `RecipientProfile`, `TargetingRules`, …) |
 | `constants.ts` | Named constants: `RULESET_VERSION`, `GLOBAL_INCOME_FLOOR_PPP`, `GINI_WEIGHT`, and the v2 preview weights |
-| `rules.ts` | `calculateEntitlement(country, dataVersion)` — the Ruleset v1 formula (pure function) |
-| `rulesets.ts` | Registry of every formula version: v1 (active), v2 (preview — spec only, no implementation), stub v0 (deprecated) |
+| `rules.ts` | `calculateEntitlement(country, dataVersion)` — the active Ruleset v3 formula, `resolveEntitlementFloor`, and `calculateEntitlementV1` kept for reproducibility (pure functions) |
+| `rulesets.ts` | Registry of every formula version: v3 (active), v1 (superseded), v2 (preview — spec only, no implementation), stub v0 (deprecated) |
 | `simulations.ts` | Budget simulation math — recipient counts, cost, share of PPP GDP |
 | `funding.ts` | 8 funding mechanism calculators plus `calculateRecommendedFundingMix` |
 | `impact.ts` | 4-dimension impact analysis — poverty, purchasing power, social coverage, GDP stimulus |

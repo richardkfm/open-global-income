@@ -13,11 +13,10 @@
  *
  *   poverty data → adequacy line → display / suggested override
  *
- * The adequacy line NEVER feeds the need score, the default entitlement, or
- * any disbursement math. It is surfaced next to the anchor so the gap
- * between "comparable" and "locally adequate" is visible rather than
- * implicit, and so program operators who want to pay the locally-calibrated
- * figure have a one-click, audited number to use as their `floorOverride`.
+ * Since ruleset v3 (0.3.0) the paid amount is max(anchor, adequacy line):
+ * high-income countries are paid this line, everyone else the $210 anchor.
+ * The line still never feeds the need score, which stays anchor-based so
+ * need rankings remain comparable across countries.
  *
  * v1 (this module): purely derived from the existing income-group poverty
  * ladder — no new data. v2 (future): replace the ladder with each country's
@@ -31,9 +30,9 @@ import { resolveCountryPovertyLine } from './poverty.js';
 export type { LocalAdequacyEstimate };
 
 export const LOCAL_ADEQUACY_CAVEAT =
-  'Estimate derived from the country-appropriate poverty line (see Methodology) — not a ' +
-  'budget-standard costing. Informational only: it never feeds the need score or the default ' +
-  'entitlement amount. Programs that want to pay this figure can set it as a floorOverride.';
+  'Derived from the country-appropriate poverty line (see Methodology) — not a budget-standard ' +
+  'costing. Ruleset v3 pays this line where it is above the $210 global floor (high-income ' +
+  'countries); it never feeds the need score, which always uses the fixed floor.';
 
 /**
  * The v1 local adequacy line for a country: a pure re-presentation of
