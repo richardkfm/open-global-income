@@ -78,7 +78,7 @@
 <text x="292" y="180" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#e2e8f0" style="animation:f13 15s linear infinite both">$210 PPP / month</text>
 <text x="292" y="208" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#e2e8f0" style="animation:f14 15s linear infinite both">= KES 10,368</text>
 <text x="292" y="236" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#e2e8f0" style="animation:f15 15s linear infinite both">need score 1.00</text>
-<text x="292" y="264" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#e2e8f0" style="animation:f16 15s linear infinite both">ruleset v1</text>
+<text x="292" y="264" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#e2e8f0" style="animation:f16 15s linear infinite both">ruleset v3</text>
 <text text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="11" fill="#34d399" style="animation:f17 15s linear infinite both"><tspan x="292" y="336" font-weight="700">GET</tspan><tspan x="292" y="352">/v1/income/calc?country=KE</tspan></text>
 <path d="M378 202H394" stroke="#818cf8" stroke-width="2.5" fill="none" stroke-dasharray="20" style="animation:f18 15s ease-out infinite both"/>
 <path d="M389 197L395 202L389 207" stroke="#818cf8" stroke-width="2.5" fill="none" style="animation:f19 15s linear infinite both"/>
@@ -118,5 +118,5 @@
 <path d="M788 276H924" stroke="#334155"/>
 <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" style="animation:f50 15s linear infinite both"><rect x="794" y="158" width="9" height="9" fill="#64748b"/><text x="807" y="166" fill="#94a3b8">control</text><rect x="860" y="158" width="9" height="9" fill="#34d399"/><text x="873" y="166" fill="#94a3b8">recipients</text></g>
 <text x="856" y="184" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="11" fill="#e2e8f0" style="animation:f51 15s linear infinite both">food security +32 pp</text>
-<text x="480" y="390" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" fill="#94a3b8">Kenya figures: committed seeded snapshot (worldbank-2023), ruleset v1. Evidence values are illustrative, not pilot results.</text>
+<text x="480" y="390" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" fill="#94a3b8">Kenya figures: committed seeded snapshot (worldbank-2023), ruleset v3. Evidence values are illustrative, not pilot results.</text>
 </svg>

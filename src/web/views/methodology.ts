@@ -48,7 +48,7 @@ export function renderMethodology(data: MethodologyData): string {
   </div>
 
   <section class="site-section" id="floor">
-    <h2>1. The income floor: $${GLOBAL_INCOME_FLOOR_PPP}/month (PPP)</h2>
+    <h2>1. The global floor: $${GLOBAL_INCOME_FLOOR_PPP}/month (PPP), the minimum everywhere</h2>
     <p class="section-lede">
       The entitlement is anchored to the <strong>World Bank upper-middle-income poverty line of
       $${POVERTY_LINE_UMIC_DAILY_PPP_USD}/day (2017 PPP)</strong>: $${POVERTY_LINE_UMIC_DAILY_PPP_USD} × 365 ÷ 12 ≈ $208, rounded to
@@ -58,12 +58,12 @@ export function renderMethodology(data: MethodologyData): string {
       (indicator <code class="mono">PA.NUS.PPP</code>).
     </p>
     <p class="section-lede mt-1">
-      <strong>What the anchor is, and is not.</strong> $${GLOBAL_INCOME_FLOOR_PPP} is a
-      <strong>comparability anchor</strong>, not a claim that it is locally adequate everywhere it is
-      quoted. It is the one number used for need-scoring, cross-country comparison, and headline
-      program-cost figures, precisely because it is held fixed — a Kenyan and a German pilot can be
-      compared on equal terms only if the underlying unit does not itself vary by country. It is a
-      floor on comparability, not a verdict on sufficiency.
+      <strong>What the floor is, and is not.</strong> $${GLOBAL_INCOME_FLOOR_PPP} is the
+      <strong>minimum</strong> paid to anyone, and the fixed unit the need score is measured in, so a
+      Kenyan and a German pilot can still be compared on equal terms. It is not a claim that
+      $${GLOBAL_INCOME_FLOOR_PPP} is enough everywhere: in high-income countries it is a small top-up
+      (about €164 a month in Germany), not a basic income. Since ruleset v3, those countries are paid
+      their <a href="#adequacy">local adequacy line</a> instead, because it is higher.
     </p>
     <p class="section-lede mt-1">
       <strong>A caveat on what the PPP conversion actually equalizes.</strong> The PPP factor (the
@@ -83,40 +83,38 @@ export function renderMethodology(data: MethodologyData): string {
   </section>
 
   <section class="site-section" id="adequacy">
-    <h2>2. Local adequacy estimate — a second, deliberately different number</h2>
+    <h2>2. Local adequacy line — paid wherever it is higher than the floor</h2>
     <p class="section-lede">
-      Every calc response, fact sheet and simulation on this site shows a second figure next to the
-      $${GLOBAL_INCOME_FLOOR_PPP} anchor: a <strong>local adequacy estimate</strong> — "what would be
-      enough to live on <em>here</em>", derived from the same country-appropriate poverty line used in
-      §4 below. It answers a genuinely different question from the anchor, and the platform never
-      confuses the two: the field is named <code class="mono">adequacyEstimate</code>, not
-      <code class="mono">floor</code>, and it is <strong>informational only</strong> — it never feeds
-      the need score, the default entitlement, or any disbursement math. Programs that want to actually
-      pay the local figure can already do so via the existing <code class="mono">floorOverride</code>
-      parameter; the platform's job is to make the locally-honest number visible and auditable, not to
-      impose it.
+      Every country also has a <strong>local adequacy line</strong>: "what would be enough to live on
+      <em>here</em>", the same country-appropriate poverty line used in §4 below. Under ruleset v3 each
+      person is paid the <strong>higher</strong> of the global floor and this line. In practice that
+      splits by income group: low- and middle-income countries keep the $${GLOBAL_INCOME_FLOOR_PPP}
+      floor (never less), and high-income countries are paid their adequacy line.
     </p>
     <p class="section-lede mt-1">
-      Because it is built from the income-group poverty ladder, the adequacy estimate sits
-      <strong>below</strong> the $${GLOBAL_INCOME_FLOOR_PPP} anchor in low-income countries and
-      <strong>above</strong> it in high-income ones — by construction, since the anchor is calibrated
-      to the upper-middle-income line:
+      For high-income countries the line is the EU / OECD at-risk-of-poverty standard:
+      <strong>${RELATIVE_POVERTY_MEDIAN_FRACTION * 100}% of median equivalised disposable income</strong>, taken
+      from official household surveys (Eurostat EU-SILC for EU / EFTA members, the OECD Income
+      Distribution Database for the others) and converted to PPP-USD with the same PPP factor used
+      everywhere else, so it converts back to exactly the official figure in local currency. For
+      Germany that is the Eurostat poverty threshold for a single adult. Programs can still pay any
+      other amount through <code class="mono">floorOverride</code>.
     </p>
     <div class="data-table-container">
       <table class="data-table">
         <thead><tr><th>Income group</th><th>Local adequacy estimate</th><th>vs. the $${GLOBAL_INCOME_FLOOR_PPP} anchor</th></tr></thead>
         <tbody>
-          <tr><td>Low income</td><td>≈ $${dailyToMonthlyPppUsd(POVERTY_LINE_EXTREME_DAILY_PPP_USD).toFixed(0)}/month</td><td>well below</td></tr>
-          <tr><td>Lower-middle income</td><td>≈ $${dailyToMonthlyPppUsd(POVERTY_LINE_LMIC_DAILY_PPP_USD).toFixed(0)}/month</td><td>below</td></tr>
-          <tr><td>Upper-middle income</td><td>≈ $${dailyToMonthlyPppUsd(POVERTY_LINE_UMIC_DAILY_PPP_USD).toFixed(0)}/month</td><td>the anchor <em>is</em> this line</td></tr>
-          <tr><td>High income</td><td>${RELATIVE_POVERTY_MEDIAN_FRACTION * 100}% of estimated median income</td><td>typically well above</td></tr>
+          <tr><td>Low income</td><td>≈ $${dailyToMonthlyPppUsd(POVERTY_LINE_EXTREME_DAILY_PPP_USD).toFixed(0)}/month</td><td>below — $${GLOBAL_INCOME_FLOOR_PPP} floor is paid</td></tr>
+          <tr><td>Lower-middle income</td><td>≈ $${dailyToMonthlyPppUsd(POVERTY_LINE_LMIC_DAILY_PPP_USD).toFixed(0)}/month</td><td>below — $${GLOBAL_INCOME_FLOOR_PPP} floor is paid</td></tr>
+          <tr><td>Upper-middle income</td><td>≈ $${dailyToMonthlyPppUsd(POVERTY_LINE_UMIC_DAILY_PPP_USD).toFixed(0)}/month</td><td>the floor <em>is</em> this line, rounded up — $${GLOBAL_INCOME_FLOOR_PPP} is paid</td></tr>
+          <tr><td>High income</td><td>${RELATIVE_POVERTY_MEDIAN_FRACTION * 100}% of median equivalised disposable income (survey)</td><td>well above — the adequacy line is paid</td></tr>
         </tbody>
       </table>
     </div>
     <p class="text-sm text-muted mt-1">
-      v1 (current) re-presents the same poverty-line ladder as §4, with an adequacy-specific label and
-      caveat — no new data. A future v2 would replace the ladder with each country's own national
-      poverty line monetary value where curated data is available. Source:
+      Survey medians are refreshed with <code class="mono">npm run data:update:median</code> and
+      committed with their source and year. Singapore has no Eurostat or OECD survey median and uses a
+      proxy calibrated on the other high-income countries (flagged low quality). Source:
       <a href="${REPO_URL}/blob/main/src/core/adequacy.ts" target="_blank" rel="noopener noreferrer"><code class="mono">src/core/adequacy.ts</code></a>
       · design rationale: <a href="${REPO_URL}/blob/main/INCOME_FLOOR_PROPOSED_ANSWERS.md" target="_blank" rel="noopener noreferrer">INCOME_FLOOR_PROPOSED_ANSWERS.md</a>.
     </p>
@@ -125,7 +123,8 @@ export function renderMethodology(data: MethodologyData): string {
   <section class="site-section" id="formula">
     <h2>3. The entitlement formula (ruleset ${RULESET_VERSION})</h2>
     <div class="card">
-      <pre class="mono text-sm" style="white-space:pre-wrap">pppUsdPerMonth        = ${GLOBAL_INCOME_FLOOR_PPP}                        (the global floor)
+      <pre class="mono text-sm" style="white-space:pre-wrap">adequacy              = local adequacy line           (§2)
+pppUsdPerMonth        = max(${GLOBAL_INCOME_FLOOR_PPP}, adequacy)         (paid amount)
 localCurrencyPerMonth = pppUsdPerMonth × pppConversionFactor
 
 incomeRatio  = ${GLOBAL_INCOME_FLOOR_PPP} / (GNI per capita / 12)
@@ -136,8 +135,9 @@ score        = clamp(incomeRatio + giniPenalty, 0, 1)</pre>
       The <strong>score</strong> (shown as 0–100 on this site) measures relative need: how large the
       floor is compared to what residents actually earn (GNI, not GDP), amplified by inequality —
       two countries with identical average income but different Gini coefficients score differently,
-      because the floor matters more for the poorest where inequality is high. The amount itself is
-      the same floor everywhere; the score is for prioritization and comparison.
+      because the floor matters more for the poorest where inequality is high. The score always uses
+      the fixed $${GLOBAL_INCOME_FLOOR_PPP} floor, so need rankings stay comparable across countries
+      even though the paid amount differs; the score is for prioritization and comparison.
       Formula source: <a href="${REPO_URL}/blob/main/src/core/rules.ts" target="_blank" rel="noopener noreferrer"><code class="mono">src/core/rules.ts</code></a>
       · <a href="${REPO_URL}/blob/main/RULESET_V1.md" target="_blank" rel="noopener noreferrer">RULESET_V1.md</a>.
     </p>

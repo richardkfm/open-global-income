@@ -42,8 +42,11 @@ describe('GET /v1/income/calc', () => {
     const body = res.json();
     expect(body.ok).toBe(true);
     expect(body.data.countryCode).toBe('DE');
-    expect(body.data.pppUsdPerMonth).toBe(210);
-    expect(body.data.meta.rulesetVersion).toBe('v1');
+    // Ruleset v3: Germany is paid its adequacy line — 60% of the Eurostat
+    // median equivalised net income (28,891 € in EU-SILC 2025) per month.
+    expect(body.data.floor.basis).toBe('local_adequacy');
+    expect(body.data.localCurrencyPerMonth).toBeCloseTo((28891 * 0.6) / 12, 0);
+    expect(body.data.meta.rulesetVersion).toBe('v3');
   });
 
   it('is case-insensitive', async () => {
@@ -114,10 +117,11 @@ describe('POST /v1/income/batch', () => {
 
     const de = body.data.results[0];
     expect(de.countryCode).toBe('DE');
-    expect(de.pppUsdPerMonth).toBe(210);
+    expect(de.pppUsdPerMonth).toBeGreaterThan(1000);
 
     const br = body.data.results[1];
     expect(br.countryCode).toBe('BR');
+    expect(br.pppUsdPerMonth).toBe(210);
 
     const ng = body.data.results[2];
     expect(ng.countryCode).toBe('NG');
@@ -135,7 +139,7 @@ describe('POST /v1/income/batch', () => {
     expect(body.data.count).toBe(3);
 
     expect(body.data.results[0].countryCode).toBe('DE');
-    expect(body.data.results[0].pppUsdPerMonth).toBe(210);
+    expect(body.data.results[0].pppUsdPerMonth).toBeGreaterThan(1000);
 
     expect(body.data.results[1].countryCode).toBe('XX');
     expect(body.data.results[1].error.code).toBe('COUNTRY_NOT_FOUND');
@@ -203,7 +207,7 @@ describe('GET /v1/income/rulesets', () => {
 
     const active = body.data.find((r: { active: boolean }) => r.active);
     expect(active).toBeDefined();
-    expect(active.version).toBe('v1');
+    expect(active.version).toBe('v3');
     expect(active.parameters).toHaveProperty('globalIncomeFloorPpp');
     expect(active.formula).toBeTruthy();
   });
@@ -218,13 +222,24 @@ describe('GET /v1/income/rulesets', () => {
 });
 
 describe('GET /v1/income/rulesets/:version', () => {
-  it('returns the active v1 ruleset', async () => {
+  it('returns the active v3 ruleset', async () => {
+    const res = await app.inject({ method: 'GET', url: '/v1/income/rulesets/v3' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.ok).toBe(true);
+    expect(body.data.version).toBe('v3');
+    expect(body.data.active).toBe(true);
+    expect(body.data.parameters).toHaveProperty('globalIncomeFloorPpp');
+    expect(body.data.formula).toContain('max(GLOBAL_INCOME_FLOOR_PPP, adequacy)');
+  });
+
+  it('still serves the superseded v1 ruleset', async () => {
     const res = await app.inject({ method: 'GET', url: '/v1/income/rulesets/v1' });
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body.ok).toBe(true);
     expect(body.data.version).toBe('v1');
-    expect(body.data.active).toBe(true);
+    expect(body.data.active).toBe(false);
     expect(body.data.parameters).toHaveProperty('globalIncomeFloorPpp');
     expect(body.data.formula).toBeTruthy();
   });

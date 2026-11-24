@@ -39,15 +39,15 @@ describe('localAdequacyLine', () => {
   });
 
   it('HIC adequacy scales with the country median income, not a fixed number', () => {
-    const poorHic = localAdequacyLine(makeCountry({ incomeGroup: 'HIC', gniPerCapitaUsd: 30000 }));
-    const richHic = localAdequacyLine(makeCountry({ incomeGroup: 'HIC', gniPerCapitaUsd: 90000 }));
+    const poorHic = localAdequacyLine(makeCountry({ incomeGroup: 'HIC', gdpPerCapitaPppUsd: 30000 }));
+    const richHic = localAdequacyLine(makeCountry({ incomeGroup: 'HIC', gdpPerCapitaPppUsd: 90000 }));
     expect(richHic.monthlyPppUsd).toBeGreaterThan(poorHic.monthlyPppUsd);
   });
 
   it('always carries the informational caveat', () => {
     const estimate = localAdequacyLine(makeCountry({}));
     expect(estimate.caveat.length).toBeGreaterThan(0);
-    expect(estimate.caveat).toMatch(/informational/i);
+    expect(estimate.caveat).toMatch(/never feeds the need score/i);
   });
 
   it('carries a human-readable label and source for display', () => {

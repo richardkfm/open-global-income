@@ -16,6 +16,20 @@ export interface TaxBreakdown {
   otherTaxPercentGdp: number | null;
 }
 
+/** Survey median disposable income for one country (see `CountryStats.medianIncome`). */
+export interface MedianIncomeStat {
+  /** Median per year in national currency (Eurostat / OECD). Null when only a PPP figure exists. */
+  medianAnnualLcu: number | null;
+  /** Median per year in PPP-USD, for sources that publish PPP directly (World Bank PIP). */
+  medianAnnualPppUsd: number | null;
+  /** True when per equivalised adult (Eurostat / OECD); false when per capita (PIP). */
+  equivalised: boolean;
+  referenceYear: number;
+  source: 'eurostat' | 'oecd' | 'pip';
+  sourceLabel: string;
+  sourceUrl: string;
+}
+
 export interface CountryStats {
   /** GDP per capita in current USD (market exchange rate) */
   gdpPerCapitaUsd: number;
@@ -75,6 +89,12 @@ export interface CountryStats {
    * proxy when OECD data is not yet wired up.
    */
   relativePovertyHeadcountRatioPercent?: number | null;
+  /**
+   * Median disposable income from a household survey — the base of the
+   * relative (60% of median) adequacy line for high-income countries.
+   * Merged in from src/data/median-income.json; absent where no source exists.
+   */
+  medianIncome?: MedianIncomeStat | null;
   /** Urban population as % of total */
   urbanizationRate?: number | null;
 
@@ -217,8 +237,26 @@ export interface GlobalIncomeEntitlement {
    * `adequacyEstimate`, not `floor`, so it is never mistaken for a promise.
    */
   adequacyEstimate: LocalAdequacyEstimate;
+  /**
+   * Where `pppUsdPerMonth` comes from. Ruleset v3 pays the higher of the
+   * global anchor and the local adequacy line; v1 always pays the anchor.
+   * Optional so v1 results and older saved results stay valid.
+   */
+  floor?: EntitlementFloor;
   /** Which ruleset and data snapshot produced this result */
   meta: RulesetMeta;
+}
+
+/** Which amount a ruleset pays per person, and why. */
+export interface EntitlementFloor {
+  /** The paid amount, PPP-USD per month */
+  pppUsdPerMonth: number;
+  /** global_anchor — the $210 floor; local_adequacy — the country's adequacy line, because it is higher */
+  basis: 'global_anchor' | 'local_adequacy';
+  /** The fixed global anchor (always GLOBAL_INCOME_FLOOR_PPP) */
+  anchorPppUsdPerMonth: number;
+  /** The country's local adequacy line, PPP-USD per month */
+  adequacyPppUsdPerMonth: number;
 }
 
 /** Target group for budget simulation */

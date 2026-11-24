@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-24
+
+Ruleset v3: the paid amount becomes the higher of the $210 PPP global floor and the country's local adequacy line, so the amount works as a basic income in high-income countries. Reverses Row E of INCOME_FLOOR_PROPOSED_ANSWERS.md by maintainer decision. Spec: [RULESET_V3.md](./RULESET_V3.md).
+
+### Changed
+- **Ruleset v3 is the active ruleset.** `pppUsdPerMonth = max(210, localAdequacyLine)`. All 33 low- and middle-income countries are paid exactly what v1 paid; the 16 high-income countries are paid their at-risk-of-poverty line — Germany €1,444.55 a month (the Eurostat EU-SILC 2025 single-adult threshold) instead of €163.80. A universal program now costs 26–47% of GDP in high-income countries instead of 2–5%. The need score is unchanged. Simulations, the calculator default, fact sheets, impact briefs and audit exports use the v3 amount; `floorOverride` still wins. Responses carry a new `floor` object (`basis: global_anchor | local_adequacy`).
+- **Ruleset v1 is superseded but reproducible** through `calculateEntitlementV1`, and stays in the registry (`active: false`).
+- **Regional amounts scale with cost of living under v3.** The national median is scaled by the region's cost-of-living index alongside the PPP factor, so Hamburg (1.15) is paid €1,661 and Sachsen-Anhalt (0.82) €1,185.
+- **No international solidarity transfer for high-income countries.** Their residual in the recommended funding mix is shown as a domestic funding gap; they are donors to such a pool, not recipients.
+- Public site, methodology page, admin country drawer and calculator presets ("Use local adequacy line" / "Use global floor") explain the paid amount and its basis.
+
+### Fixed
+- **High-income adequacy line was built from the wrong unit.** It used 0.85 × GNI per capita (Atlas method, nominal USD) and labelled the result PPP-USD, putting Germany at ≈ €1,712 instead of the official ≈ €1,445. It now uses 60% of the survey median equivalised disposable income in national currency, divided by the PPP factor, so it converts back to exactly the official threshold. Countries without a survey median (Singapore) use 0.6 × GDP per capita (PPP), the median ratio across the 15 surveyed countries.
+- **High-income countries had no poverty baseline.** The survey's at-risk-of-poverty rate now fills `relativePovertyHeadcountRatioPercent` (Germany 16.1%), so the compare page and the poverty-reduction model use the 60%-of-median line rather than the $2.15/day fallback.
+
+### Added
+- `src/data/median-income/importer.ts` — Eurostat EU-SILC (`ilc_di03`, `ilc_li02`) → OECD IDD → World Bank PIP importer with an injectable HTTP transport; `npm run data:update:median`, also run (non-fatally) by `npm run data:update`. Snapshot committed as `src/data/median-income.json` with source and year per country.
+- `RULESET_V3.md`; tests for the importer, the snapshot/proxy calibration and v3 on the committed data (`src/core/ruleset-v3.test.ts`).
+
 ## [0.2.7] - 2026-11-23
 
 Bug fixes from a persona review (German researcher, journalist, federal official) of the public site, API and admin UI.

@@ -7,8 +7,14 @@ export const RULESET_V1_VERSION = 'v1';
 /** Identifies Ruleset v2 */
 export const RULESET_V2_VERSION = 'v2';
 
+/**
+ * Identifies Ruleset v3 — pays the higher of the global anchor and the
+ * country's local adequacy line (see RULESET_V3.md).
+ */
+export const RULESET_V3_VERSION = 'v3';
+
 /** Active ruleset version used by the API */
-export const RULESET_VERSION = RULESET_V1_VERSION;
+export const RULESET_VERSION = RULESET_V3_VERSION;
 
 /**
  * Global income floor in PPP-adjusted USD per month.
@@ -18,7 +24,10 @@ export const RULESET_VERSION = RULESET_V1_VERSION;
  *   $6.85 × 365 / 12 ≈ $208.35, rounded to $210.
  *
  * This represents the minimum monthly income (in PPP terms) that the model
- * considers a baseline entitlement for any person globally.
+ * considers a baseline entitlement for any person globally. Since ruleset v3
+ * it is the *minimum* paid amount: countries whose local adequacy line is
+ * higher (high-income countries) pay that line instead. It remains the fixed
+ * comparability anchor for the need score.
  */
 export const GLOBAL_INCOME_FLOOR_PPP = 210;
 

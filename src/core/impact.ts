@@ -27,7 +27,7 @@ import type {
   SimulationResult,
   TargetGroup,
 } from './types.js';
-import { GLOBAL_INCOME_FLOOR_PPP, RULESET_VERSION } from './constants.js';
+import { RULESET_VERSION } from './constants.js';
 import {
   resolveCountryPovertyLine,
   POVERTY_LINE_EXTREME_DAILY_PPP_USD,
@@ -481,8 +481,8 @@ function buildPolicyBrief(
   social: SocialCoverageEstimate,
   fiscal: FiscalMultiplierEstimate,
   savings: CostSavingsEstimate,
+  floorPppUsd: number,
 ): PolicyBrief {
-  const floorPppUsd = params.floorOverride ?? GLOBAL_INCOME_FLOOR_PPP;
   // Small pilots (e.g. 2,000 of 84M people) would otherwise print as "0%".
   const coverageRaw = params.coverage * 100;
   const coveragePct =
@@ -709,7 +709,9 @@ export function calculateImpactAnalysis(
   params: ImpactParameters,
   dataVersion: string,
 ): ImpactAnalysisResult {
-  const floorPppUsd = params.floorOverride ?? GLOBAL_INCOME_FLOOR_PPP;
+  // The amount actually simulated (active-ruleset default or override).
+  const floorPppUsd =
+    params.floorOverride ?? simulation.simulation.entitlementPerPerson.pppUsdPerMonth;
   const recipientCount = simulation.simulation.recipientCount;
   const annualCostPppUsd = simulation.simulation.cost.annualPppUsd;
 
@@ -744,6 +746,7 @@ export function calculateImpactAnalysis(
     socialCoverage,
     fiscalMultiplier,
     costSavings,
+    floorPppUsd,
   );
 
   return {

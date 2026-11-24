@@ -379,11 +379,12 @@ export function renderCountryDetail(
     `<p class="text-sm text-muted">${t('countries.drawerEntitlementFormula')}</p>
     <ul class="text-sm text-muted" style="padding-left:1.2rem;margin:0.5rem 0">
       <li><strong>${t('countries.drawerInputFloor')}</strong> $${GLOBAL_INCOME_FLOOR_PPP} PPP-USD/month — ${t('countries.drawerInputFloorNote')}</li>
+      <li><strong>${t('countries.localAdequacyEstimate')}:</strong> $${entitlement.adequacyEstimate.monthlyPppUsd.toFixed(0)} PPP-USD/month — ${escapeHtml(entitlement.adequacyEstimate.label)}</li>
+      <li><strong>${t('countries.drawerPaidAmount')}</strong> $${entitlement.pppUsdPerMonth.toFixed(0)} PPP-USD/month — ${entitlement.floor?.basis === 'local_adequacy' ? t('countries.drawerPaidAdequacy') : t('countries.drawerPaidAnchor')}</li>
       <li><strong>${t('countries.drawerInputPpp')}</strong> ${s.pppConversionFactor.toFixed(2)} — ${t('countries.worldBank')} 2023 (PA.NUS.PPP)</li>
       <li><strong>${t('countries.drawerInputGni')}</strong> $${s.gniPerCapitaUsd.toLocaleString('en-US')}/yr — ${t('countries.worldBank')} 2023 (NY.GNP.PCAP.CD)</li>
       <li><strong>${t('countries.drawerInputGini')}</strong> ${s.giniIndex != null ? s.giniIndex : t('common.none')} — ${t('countries.worldBank')} 2023 (SI.POV.GINI)</li>
       <li><strong>${t('countries.drawerRuleset')}</strong> ${escapeHtml(entitlement.meta.rulesetVersion)}</li>
-      <li><strong>${t('countries.localAdequacyEstimate')}:</strong> $${entitlement.adequacyEstimate.monthlyPppUsd.toFixed(0)} PPP-USD/month — ${escapeHtml(entitlement.adequacyEstimate.label)}. Informational only; never an input to the formula above.</li>
     </ul>
     <p class="text-xs text-muted" style="font-style:italic">${t('countries.drawerEntitlementNote')}</p>`,
   );

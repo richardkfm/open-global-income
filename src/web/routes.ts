@@ -35,7 +35,7 @@ import {
   getAllRegions,
   getRegionsByCountry,
 } from '../data/loader.js';
-import { calculateEntitlement } from '../core/rules.js';
+import { calculateEntitlement, resolveEntitlementFloor } from '../core/rules.js';
 import { calculateSimulation } from '../core/simulations.js';
 import {
   calculateFiscalContext,
@@ -346,12 +346,18 @@ export const webRoutes: FastifyPluginAsync = async (app) => {
       const targetGroup = TARGET_GROUPS.includes(q.target as TargetGroup)
         ? (q.target as TargetGroup)
         : 'all';
+      // Default amount = the active ruleset's amount for the chosen country
+      // (v3: the higher of the $210 floor and the local adequacy line).
+      const selected = q.country ? getCountryByCode(q.country) : undefined;
+      const defaultAmount = selected
+        ? Math.round(resolveEntitlementFloor(selected).pppUsdPerMonth * 100) / 100
+        : GLOBAL_INCOME_FLOOR_PPP;
       const form: CalculatorFormState = {
         country: (q.country ?? '').toUpperCase(),
         coveragePercent: toNumber(q.coverage, 100, 1, 100),
         targetGroup,
         durationMonths: toNumber(q.months, 12, 1, 120),
-        monthlyAmount: toNumber(q.amount, GLOBAL_INCOME_FLOOR_PPP, 1, 100000),
+        monthlyAmount: toNumber(q.amount, defaultAmount, 1, 100000),
         // Bounds mirror FUNDING_SLIDERS in views/calculator.ts — keep in sync
         fIncomeTax: toNumber(q.f_income, 0, 0, 15),
         fVat: toNumber(q.f_vat, 0, 0, 10),
@@ -366,7 +372,7 @@ export const webRoutes: FastifyPluginAsync = async (app) => {
       const country = form.country ? getCountryByCode(form.country) : undefined;
       if (country) {
         const floorOverride =
-          form.monthlyAmount === GLOBAL_INCOME_FLOOR_PPP ? null : form.monthlyAmount;
+          form.monthlyAmount === defaultAmount ? null : form.monthlyAmount;
         const simulation = calculateSimulation(
           country,
           simulationParams(

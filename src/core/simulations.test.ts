@@ -134,7 +134,7 @@ describe('calculateSimulation', () => {
 
   it('includes correct metadata', () => {
     const result = calculateSimulation(kenya, defaultParams, DATA_VERSION);
-    expect(result.simulation.meta.rulesetVersion).toBe('v1');
+    expect(result.simulation.meta.rulesetVersion).toBe('v3');
     expect(result.simulation.meta.dataVersion).toBe(DATA_VERSION);
   });
 
@@ -154,10 +154,19 @@ describe('calculateSimulation', () => {
     const result = calculateSimulation(germany, params, DATA_VERSION);
     // 83800000 × 0.2 = 16760000
     expect(result.simulation.recipientCount).toBe(16760000);
-    // 210 × 0.78 = 163.8
-    expect(result.simulation.entitlementPerPerson.localCurrencyPerMonth).toBe(163.8);
-    // GDP % should be low for HIC
-    expect(result.simulation.cost.asPercentOfGdp).toBeLessThan(1);
+    // Ruleset v3: a high-income country is paid its adequacy line, not $210
+    expect(result.simulation.entitlementPerPerson.pppUsdPerMonth).toBeGreaterThan(210);
+    expect(result.simulation.entitlementPerPerson.pppUsdPerMonth).toBeCloseTo(
+      result.simulation.costAtLocalAdequacyLine!.monthlyPppUsd,
+      1,
+    );
+    // An explicit override still wins
+    const v1Like = calculateSimulation(
+      germany,
+      { ...params, adjustments: { floorOverride: 210, householdSize: null } },
+      DATA_VERSION,
+    );
+    expect(v1Like.simulation.entitlementPerPerson.localCurrencyPerMonth).toBe(163.8);
   });
 
   it('handles coverage=1.0 (universal)', () => {
@@ -195,11 +204,12 @@ describe('calculateSimulation', () => {
       );
     });
 
-    it('is higher than the anchor cost for a high-income country', () => {
+    it('equals the paid cost for a high-income country (v3 pays the adequacy line there)', () => {
       const params: SimulationParameters = { ...defaultParams, country: 'DE' };
       const result = calculateSimulation(germany, params, DATA_VERSION);
-      expect(result.simulation.costAtLocalAdequacyLine!.annualPppUsd).toBeGreaterThan(
+      expect(result.simulation.costAtLocalAdequacyLine!.annualPppUsd).toBeCloseTo(
         result.simulation.cost.annualPppUsd,
+        -3,
       );
       expect(result.simulation.costAtLocalAdequacyLine!.basis).toBe('relative_median');
     });

@@ -32,7 +32,7 @@ The funding and impact layers (Phases 14–16) are not a departure from the API 
 
 The sub-national data layer (Phase 17) brings precision where it matters most. A basic income floor in Nairobi (COL 1.35×) should not be the same local-currency amount as in rural Turkana (COL 0.68×). Regional cost-of-living indices adjust the national PPP conversion factor, and existing formulas work transparently via the "adjusted Country" pattern — zero formula changes needed.
 
-Secure admin UI with login, approval workflows, and audit trails — plus a public, no-login advocacy site at `/` for journalists, researchers and policy makers. **769 tests** across 41 suites.
+Secure admin UI with login, approval workflows, and audit trails — plus a public, no-login advocacy site at `/` for journalists, researchers and policy makers. **786 tests** across 43 suites.
 
 ## Phase 23: Evidence Layer ✅
 
@@ -64,7 +64,19 @@ Three caveats matter if you are citing these figures:
 
 ## Rulesets
 
-### Ruleset v1 (active)
+### Ruleset v3 (active since 0.3.0)
+
+```
+adequacy        = local adequacy line                (HIC: 0.6 × survey median equivalised income;
+                                                      others: World Bank $2.15 / $3.65 / $6.85 per day)
+pppUsdPerMonth  = max(210, adequacy)                 (paid amount, PPP-USD/month)
+localCurrency   = pppUsdPerMonth × pppConversionFactor
+score           = v1 score (unchanged)
+```
+
+Low- and middle-income countries are paid $210 exactly as under v1; high-income countries are paid their at-risk-of-poverty line (Germany: €1,444.55 a month, the Eurostat EU-SILC 2025 single-adult threshold). Median incomes come from Eurostat EU-SILC, the OECD Income Distribution Database or World Bank PIP (`src/data/median-income.json`, `npm run data:update:median`). Full specification and per-country effect: [RULESET_V3.md](../RULESET_V3.md).
+
+### Ruleset v1 (superseded, still reproducible via `calculateEntitlementV1`)
 
 ```
 pppUsdPerMonth  = 210                                (global floor, PPP-USD/month)

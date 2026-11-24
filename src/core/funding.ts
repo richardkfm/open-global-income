@@ -817,8 +817,9 @@ export function calculateRecommendedFundingMix(
   // If even the seven domestic mechanisms at realistic ceilings can't close
   // the cost, attribute the residual to an explicit, labeled international
   // solidarity transfer (row D of INCOME_FLOOR_PROPOSED_ANSWERS.md) instead
-  // of leaving it as an unlabeled gap.
-  if (domesticScenario.gapPppUsd > 0) {
+  // of leaving it as an unlabeled gap. High-income countries are the donors
+  // in that pool, not recipients: their residual stays a domestic funding gap.
+  if (domesticScenario.gapPppUsd > 0 && country.stats.incomeGroup !== 'HIC') {
     mechanisms.push({
       type: 'international_solidarity_transfer',
       annualAmountPppUsd: domesticScenario.gapPppUsd,

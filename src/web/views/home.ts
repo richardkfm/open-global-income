@@ -39,7 +39,7 @@ export function renderHome(data: HomeData): string {
   <div class="stat-strip no-print">
     <div class="card stat-card">
       <div class="stat-value">$${GLOBAL_INCOME_FLOOR_PPP}</div>
-      <div class="stat-label">Global income floor / month (PPP)</div>
+      <div class="stat-label">Minimum income floor / month (PPP)</div>
     </div>
     <div class="card stat-card">
       <div class="stat-value">${data.countryCount}</div>
@@ -123,8 +123,10 @@ export function renderHome(data: HomeData): string {
   <section class="site-section">
     <h2>How the numbers are made</h2>
     <p class="section-lede">
-      The entitlement is anchored to the World Bank upper-middle-income poverty line:
-      $6.85/day (2017 PPP) ≈ <strong>$${GLOBAL_INCOME_FLOOR_PPP} per person per month</strong>, converted to each
+      Everyone receives at least the World Bank upper-middle-income poverty line:
+      $6.85/day (2017 PPP) ≈ <strong>$${GLOBAL_INCOME_FLOOR_PPP} per person per month</strong>. In high-income
+      countries, where that would only be a top-up, people receive the local at-risk-of-poverty line
+      instead (60% of median disposable income, from official surveys). Amounts are converted to each
       country's currency with its PPP conversion factor. Costs are computed from population
       and coverage, compared against PPP GDP so units always match, and impact estimates use
       country-appropriate poverty lines — not one global line for everyone. Every model is a

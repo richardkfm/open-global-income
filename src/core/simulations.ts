@@ -1,5 +1,6 @@
 import type { Country, SimulationParameters, SimulationResult } from './types.js';
-import { GLOBAL_INCOME_FLOOR_PPP, RULESET_VERSION } from './constants.js';
+import { RULESET_VERSION } from './constants.js';
+import { resolveEntitlementFloor } from './rules.js';
 import { populationFactorFromRules, expandPresetToRules } from './targeting.js';
 import { localAdequacyLine } from './adequacy.js';
 
@@ -33,7 +34,11 @@ export function calculateSimulation(
   params: SimulationParameters,
   dataVersion: string,
 ): SimulationResult {
-  const floorPpp = params.adjustments.floorOverride ?? GLOBAL_INCOME_FLOOR_PPP;
+  // Default per-person amount follows the active ruleset (v3): the higher of
+  // the $210 anchor and the local adequacy line. An explicit floorOverride wins.
+  const floorPpp =
+    params.adjustments.floorOverride ??
+    Math.round(resolveEntitlementFloor(country).pppUsdPerMonth * 100) / 100;
 
   // Resolve the effective targeting rules: explicit rules beat legacy targetGroup
   const effectiveRules = params.targetingRules ?? expandPresetToRules(params.targetGroup);

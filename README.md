@@ -42,7 +42,7 @@ Six layers, each independently useful; the upper ones multiply the lower ones.
 | Layer | Question it answers | Status |
 |-------|---------------------|--------|
 | 📦 **Data** | What are the economic facts? | ✅ 49 countries, 18 World Bank + 4 ILO indicators; 88 sub-national regions (KE, DE, FR, NL) — [caveats](./docs/CAPABILITIES.md#data-provenance) |
-| ⚖️ **Calculation** | How much per person? How urgent is the need? | ✅ Ruleset v1 ($210 PPP/month anchor + need score), regional cost-of-living, local adequacy estimate alongside |
+| ⚖️ **Calculation** | How much per person? How urgent is the need? | ✅ Ruleset v3: the higher of the $210 PPP/month global floor and the local adequacy line (60% of survey median income in high-income countries) + need score; regional cost-of-living |
 | 🧮 **Simulation** | What does it cost, and who pays? | ✅ Budget simulation, targeting, 8 funding mechanisms, 4-dimension impact model, policy briefs |
 | 💸 **Distribution** | How does money reach people? | ✅ Non-custodial: unsigned Solana/EVM txns, M-Pesa Daraja B2C batches, SEPA ISO 20022 — OGI never moves funds or stores PII |
 | 📊 **Evidence** | Is it working? Can we prove it? | 🟡 Outcome recording, recipient/control cohorts, cross-program aggregates, CSV/JSON export — no randomization or significance testing yet |
@@ -130,7 +130,7 @@ git clone https://github.com/richardkfm/open-global-income.git
 cd open-global-income
 npm install
 npm run dev        # API + public site + admin on http://localhost:3333
-npm test           # 769 tests across 41 suites
+npm test           # 786 tests across 43 suites
 ```
 
 Swagger UI at `/docs`, public site at `/`, admin UI at `/admin`. Docker: `cp .env.example .env` (set `ADMIN_USERNAME` / `ADMIN_PASSWORD`), then `docker compose up --build`.

@@ -121,10 +121,13 @@ describe('Public web UI', () => {
       expect(res.body).toContain('Browse all countries');
     });
 
-    it('shows the local adequacy estimate next to the global anchor', async () => {
-      const res = await app.inject({ method: 'GET', url: '/countries/KE' });
-      expect(res.body).toContain('Local adequacy estimate');
-      expect(res.body).toContain('Global anchor');
+    it('shows the paid amount next to the local adequacy line', async () => {
+      const ke = await app.inject({ method: 'GET', url: '/countries/KE' });
+      expect(ke.body).toContain('Local adequacy line');
+      expect(ke.body).toContain('The $210 global floor — the minimum paid everywhere.');
+      const de = await app.inject({ method: 'GET', url: '/countries/DE' });
+      expect(de.body).toContain("Germany's adequacy line, because it is above the $210 global floor.");
+      expect(de.body).toContain('max(210, 1852)');
     });
 
     it('shows the pooled international solidarity transfer for a low-income country', async () => {
@@ -187,10 +190,16 @@ describe('Public web UI', () => {
         url: '/calculator?country=KE&coverage=100&target=all&months=12',
       });
       expect(res.statusCode).toBe(200);
-      expect(res.body).toContain('Use local adequacy estimate');
-      // Suggestion only appears once a scenario exists; empty form has none.
+      // Kenya's default is the $210 floor, so the adequacy preset is offered
+      expect(res.body).toContain('Use local adequacy line');
+      expect(res.body).not.toContain('Use global floor');
+      // Germany's default is its adequacy line, so the floor preset is offered
+      const de = await app.inject({ method: 'GET', url: '/calculator?country=DE&coverage=100&target=all&months=12' });
+      expect(de.body).toContain('Use global floor ($210/month)');
+      expect(de.body).not.toContain('Use local adequacy line');
+      // Presets only appear once a scenario exists; empty form has none.
       const empty = await app.inject({ method: 'GET', url: '/calculator' });
-      expect(empty.body).not.toContain('Use local adequacy estimate');
+      expect(empty.body).not.toContain('Use local adequacy line');
     });
 
     it('renders taxation sliders wired for live htmx updates', async () => {
@@ -256,8 +265,8 @@ describe('Public web UI', () => {
     it('explains the local adequacy estimate and the international solidarity transfer', async () => {
       const res = await app.inject({ method: 'GET', url: '/methodology' });
       expect(res.body).toContain('id="adequacy"');
-      expect(res.body).toContain('Local adequacy estimate');
-      expect(res.body).toContain('comparability anchor');
+      expect(res.body).toContain('Local adequacy line');
+      expect(res.body).toContain('max(210, adequacy)');
       expect(res.body).toContain('pooled international');
     });
 
@@ -289,12 +298,14 @@ describe('Public web UI', () => {
       const parsed = JSON.parse(res.body) as {
         source: string;
         dataVersion: string;
-        countries: Array<{ code: string; entitlement_ppp_usd_per_month: number }>;
+        countries: Array<{ code: string; income_group?: string; entitlement_ppp_usd_per_month: number }>;
       };
       expect(parsed.source).toBe('Open Global Income');
       expect(parsed.dataVersion).toBeTruthy();
       expect(parsed.countries.length).toBeGreaterThan(40);
-      expect(parsed.countries[0].entitlement_ppp_usd_per_month).toBe(210);
+      const byCode = Object.fromEntries(parsed.countries.map((c) => [c.code, c]));
+      expect(byCode.KE.entitlement_ppp_usd_per_month).toBe(210);
+      expect(byCode.DE.entitlement_ppp_usd_per_month).toBeGreaterThan(1000);
     });
   });
 

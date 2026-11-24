@@ -356,7 +356,7 @@ describe('calculateImpactAnalysis', () => {
   it('meta includes rulesetVersion, dataVersion, and generatedAt', () => {
     const sim = makeSimulation(kenya, 0.2);
     const result = calculateImpactAnalysis(kenya, sim, params, 'worldbank-2023');
-    expect(result.meta.rulesetVersion).toBe('v1');
+    expect(result.meta.rulesetVersion).toBe('v3');
     expect(result.meta.dataVersion).toBe('worldbank-2023');
     expect(result.meta.generatedAt).toBeTruthy();
   });

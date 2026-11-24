@@ -48,7 +48,7 @@ describe('POST /v1/simulate', () => {
     expect(simulation.cost.annualLocalCurrency).toBeGreaterThan(0);
     expect(simulation.cost.annualPppUsd).toBeGreaterThan(0);
     expect(simulation.cost.asPercentOfGdp).toBeGreaterThan(0);
-    expect(simulation.meta.rulesetVersion).toBe('v1');
+    expect(simulation.meta.rulesetVersion).toBe('v3');
   });
 
   it('is case-insensitive for country code', async () => {
